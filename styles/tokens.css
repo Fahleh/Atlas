@@ -1,0 +1,107 @@
+:root {
+  /* Background */
+  --color-background: #fafafa;
+
+  /* Surface */
+  --color-surface: #ffffff;
+  --color-surface-raised: #f4f4f5;
+
+  /* Border */
+  --color-border: #e4e4e7;
+  --color-border-strong: #d4d4d8;
+
+  /* Text */
+  --color-text-primary: #18181b;
+  --color-text-secondary: #71717a;
+  --color-text-muted: #a1a1aa;
+
+  /* Accent */
+  --color-accent: #ea8c00;
+  --color-accent-hover: #c97a00;
+  --color-accent-subtle: #fef3c7;
+
+  /* Semantic */
+  --color-danger: #dc2626;
+  --color-success: #16a34a;
+  --color-warning: #f97316;
+
+  /* Typography */
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  --font-size-xs: 0.75rem; /* 12px */
+  --font-size-sm: 0.875rem; /* 14px */
+  --font-size-base: 1rem; /* 16px */
+  --font-size-lg: 1.125rem; /* 18px */
+  --font-size-xl: 1.25rem; /* 20px */
+  --font-size-2xl: 1.5rem; /* 24px */
+  --font-size-3xl: 1.875rem; /* 30px */
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+
+  /* Spacing — 4px base scale */
+  --space-1: 0.25rem; /* 4px */
+  --space-2: 0.5rem; /* 8px */
+  --space-3: 0.75rem; /* 12px */
+  --space-4: 1rem; /* 16px */
+  --space-5: 1.25rem; /* 20px */
+  --space-6: 1.5rem; /* 24px */
+  --space-8: 2rem; /* 32px */
+  --space-10: 2.5rem; /* 40px */
+  --space-12: 3rem; /* 48px */
+  --space-16: 4rem; /* 64px */
+  --space-20: 5rem; /* 80px */
+
+  /* Border Radius */
+  --radius-sm: 4px; /* badges, tags, inputs */
+  --radius-md: 8px; /* cards, buttons */
+  --radius-lg: 12px; /* modals, panels */
+  --radius-pill: 9999px; /* pill buttons, status chips */
+
+  /* Shadows */
+  --shadow-sm:
+    0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04); /* cards */
+  --shadow-md:
+    0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.05); /* dropdowns */
+  --shadow-lg:
+    0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.06); /* modals */
+
+  /* Layout */
+  --sidebar-width: 240px;
+  --header-height: 56px;
+}
+
+[data-theme="dark"] {
+  /* Background */
+  --color-background: #18181b;
+
+  /* Surface */
+  --color-surface: #27272a;
+  --color-surface-raised: #3f3f46;
+
+  /* Border */
+  --color-border: #3f3f46;
+  --color-border-strong: #52525b;
+
+  /* Text */
+  --color-text-primary: #fafafa;
+  --color-text-secondary: #a1a1aa;
+  --color-text-muted: #71717a;
+
+  /* Accent */
+  --color-accent: #fbbf24;
+  --color-accent-hover: #f59e0b;
+  --color-accent-subtle: #292524;
+
+  /* Semantic */
+  --color-danger: #f87171;
+  --color-success: #4ade80;
+  --color-warning: #fb923c;
+}
