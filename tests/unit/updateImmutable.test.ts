@@ -1,4 +1,4 @@
-import { Project, Task } from "@/lib/entityFactory";
+import { Project, Task } from "@/types/atlas.types";
 import {
   updateProject,
   updateProjectStatus,
@@ -8,7 +8,8 @@ import {
 
 const project: Project = {
   id: crypto.randomUUID(),
-  title: "Atlas",
+  ownerId: "user-123",
+  name: "Atlas",
   description: "A PM tool",
   dueDate: null,
   status: "active",
@@ -36,13 +37,13 @@ describe("updateProject", () => {
 
   it("should map all project changes to their respective inputs", () => {
     const changes = {
-      title: "Atlas Pro",
+      name: "Atlas Pro",
       description: "An updated PM tool",
       dueDate: new Date("2026-12-31"),
     };
     const updatedProject = updateProject(project, changes);
 
-    expect(updatedProject.title).toBe(changes.title);
+    expect(updatedProject.name).toBe(changes.name);
     expect(updatedProject.description).toBe(changes.description);
     expect(updatedProject.dueDate).toBe(changes.dueDate);
   });
@@ -65,6 +66,7 @@ describe("updateProjectStatus", () => {
 const task: Task = {
   projectId: crypto.randomUUID(),
   id: crypto.randomUUID(),
+  assigneeId: null,
   title: "Create navigation bar",
   description: "Build navigation menu bar",
   dueDate: null,

@@ -48,10 +48,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
 
-  /**
-   * Toggles between "light" and "dark", syncing localStorage and the
-   * data-theme attribute on <html> so CSS tokens update immediately.
-   */
+  
   function toggleTheme() {
     const next: Theme = theme === "light" ? "dark" : "light";
     setTheme(next);

@@ -17,6 +17,7 @@
 
   /* Accent */
   --color-accent: #ea8c00;
+  --color-text-on-accent: #ffffff;
   --color-accent-hover: #c97a00;
   --color-accent-subtle: #fef3c7;
 
