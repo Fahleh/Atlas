@@ -279,4 +279,28 @@ Atlas uses request-scoped data fetching in all Server Components. The `createCac
 
 ---
 
+## React Render Performance — Week 5 Profiling
+
+### TaskList re-render analysis (June 2026)
+
+Profiled using React DevTools Profiler during modal open/close cycle on the Projects page.
+
+**Finding:** `TaskList` re-renders twice per `TaskModal` open/close cycle — once when the modal opens and once when it closes. Root cause: `openForEdit` is defined as an inline function in `ProjectSlideOver`'s component body. It receives a new reference on every render, causing `TaskList` (which receives it as `onTaskSelect`) to re-render even though its task data hasn't changed.
+
+`openForCreate` also gets a new reference on every render but is not passed to any child component, so it causes no downstream re-renders.
+
+**Measurements:**
+- Commit 1 — 2.2ms (initial mount, expected)
+- Commit 2 — 1.1ms (React Query returning data, expected)
+- Commit 3 — 0.8ms (modal opened, `onTaskSelect` prop changed)
+- Commit 4 — 0.8ms (modal closed, `onTaskSelect` prop changed)
+
+**Decision: no optimization applied.**
+
+`useCallback` on `openForEdit` would eliminate the two unnecessary re-renders, but each costs ~0.8ms — imperceptible to users and not worth the added complexity of a dependency array to maintain. The memoization overhead would likely exceed the savings at this render budget.
+
+**Revisit if:** `TaskList` grows to render 50+ items, or profiling in a future session reveals a meaningful regression.
+
+---
+
 *This document will be updated in Week 7 with Lighthouse audit scores, bundle size analysis, and production performance benchmarks.*

@@ -16,6 +16,7 @@ This is a living document — it is updated as new patterns are established.
 - Next.js 15 (App Router) + TypeScript (strict mode)
 - Tailwind CSS + CSS Modules (hybrid strategy)
 - Supabase (PostgreSQL, auth, real-time subscriptions)
+- TanStack React Query v5 (client-side data fetching)
 - Jest (unit + integration tests)
 - Playwright (E2E tests — Week 8)
 - lucide-react (icons)
@@ -48,6 +49,9 @@ If unsure about an implementation detail:
 - Flag the uncertainty explicitly
 - Never guess silently
 
+### Third-Party Tools and Libraries
+Before providing any how-to steps, walkthrough, or implementation guidance for any third-party tool, library, or platform (Supabase, Next.js, Vercel, Playwright, TanStack, or any other), always search the official documentation and leading community sources to confirm the current recommended approach. Never rely on training data for third-party implementation details.
+
 ---
 
 ## Code Quality Standards
@@ -68,7 +72,7 @@ If unsure about an implementation detail:
 - Direct returns over unnecessary intermediate variable declarations for simple expressions
 - JSDoc on all exported functions — include `@param`, `@returns`, and `@template` where applicable
 - Inline comments only for non-obvious logic — never for self-explanatory code
-- Static data (nav items, config arrays) defined outside the component — never inside render
+- Static data (nav items, config arrays, status maps) defined outside the component — never inside render
 
 ### React Components
 - Client Components (`"use client"`) only when the component uses hooks, browser APIs, or event handlers
@@ -96,10 +100,22 @@ useEffect(() => {
 }, []);
 ```
 
+### React 19 — Forms and Actions
+Atlas targets React 19. All forms and mutation flows must use React 19's Actions APIs — never the pre-19 `useState` + `onSubmit` + `e.preventDefault()` pattern.
+
+- **Form submission**: use `useActionState` — `const [state, formAction, isPending] = useActionState(actionFn, initialState)`. The action signature is `(previousState, formData) => newState`.
+- **`<form action={formAction}>`** — never `onSubmit` + `preventDefault` for forms with an action function.
+- **Inputs are uncontrolled by default** — use `name` + `defaultValue`, read via `formData.get("fieldName")` inside the action. Reserve controlled `useState` for custom widgets that don't map to native form elements (custom dropdowns, date pickers) — these participate via a hidden `<input type="hidden" name="..." value={...}>`.
+- **Pending/loading state**: use `useFormStatus()` in a child component rendered inside the `<form>` — never prop-drill `isPending`. `useFormStatus` cannot be called in the component that renders the `<form>` element itself.
+- **Validation**: HTML attributes (`required`, `type`, `minLength`, etc.) for instant client feedback; re-validate inside the action function before calling any mutation.
+- **Optimistic UI**: use `useOptimistic` for instant feedback on mutations where the eventual server state is predictable (e.g. marking a task done).
+- **Mutations**: the action function calls the React Query `mutateAsync` (Supabase create/update/delete) and returns `{ error: string | null }` (or similar) as the action state. On success, invalidate the relevant query key and close any modal.
+- Before implementing any new form or mutation flow, confirm against the current React 19 docs (react.dev) that the pattern is still current — React's Actions APIs are actively evolving across minor versions.
+
 ### General
 - No `console.log` left in production code
 - No hardcoded magic numbers — use tokens or named constants
-- No inline styles — use token variables via CSS Modules or Tailwind utilities
+- No inline styles — use token variables via CSS Modules or CSS custom properties (see Dynamic Colors)
 - No direct DOM mutation outside of designated utility functions
 - Composition over inheritance
 - Immutable update patterns at all times — never mutate objects or arrays directly
@@ -118,8 +134,21 @@ atlas/
 ├── app/
 │   ├── (auth)/           — login, signup — standalone layout, no shell
 │   └── (dashboard)/      — all authenticated pages — shell layout
-├── components/           — global reusable UI components (Sidebar, Header, etc.)
-├── features/             — feature-specific components and logic
+├── components/           — globally reusable UI components (Sidebar, Header)
+├── features/             — feature-specific components, styles, and utilities
+│   └── projects/
+│       ├── ProjectList.tsx
+│       ├── ProjectList.module.css
+│       ├── ProjectCard.tsx
+│       ├── ProjectCard.module.css
+│       ├── ProjectListTable.tsx
+│       ├── ProjectListTable.module.css
+│       ├── ProjectStats.tsx
+│       ├── ProjectStats.module.css
+│       ├── ProjectSlideOver.tsx
+│       ├── ProjectSlideOver.module.css
+│       ├── projectShared.module.css  — styles shared across feature components
+│       └── projectUtils.ts           — display utilities scoped to this feature
 ├── hooks/                — custom React hooks
 ├── lib/                  — shared utilities
 │   ├── asyncQueue.ts
@@ -130,16 +159,39 @@ atlas/
 │   ├── errorHandler.ts
 │   ├── fetcher.ts
 │   ├── updateImmutable.ts
+│   ├── utils.ts          — shared transformation utilities (toCamelCase etc.)
+│   ├── supabase/
+│   │   ├── client.ts     — browser client
+│   │   └── server.ts     — server client
 │   └── index.ts          — barrel file, explicit named exports only
+├── providers/            — context providers and infrastructure wrappers
+│   ├── ThemeProvider.tsx
+│   ├── QueryProvider.tsx
+│   └── ProjectContext.tsx
 ├── styles/
 │   ├── tokens.css        — single source of truth for all design tokens
 │   └── global.css        — reset, base styles, token import
 ├── tests/
-│   ├── unit/             — mirrors lib/ structure
+│   ├── unit/
 │   ├── integration/
 │   └── e2e/
-└── docs/                 — architecture and decision documentation
+├── types/
+│   ├── atlas.types.ts    — camelCase domain types
+│   └── database.types.ts — generated from Supabase schema
+└── docs/
 ```
+
+### Feature Folder Structure
+- Feature-specific components live in `features/[feature]/` — not in `components/`
+- `components/` is reserved for globally reusable UI with no feature coupling
+- Each feature folder may contain a shared styles file (`featureShared.module.css`) and a shared utilities file (`featureUtils.ts`) when multiple components within the feature share styles or logic
+- Extract shared styles to a shared module rather than duplicating across component modules within the same feature
+- If a utility is needed across multiple features, move it to `lib/utils.ts`
+
+### Utility Location Rules
+- `lib/utils.ts` — transformation utilities used by hooks or multiple features (e.g. `toCamelCase`)
+- `features/[feature]/[feature]Utils.ts` — display utilities scoped to one feature (e.g. `getInitials`, `getMemberAvatarColor`, `STATUS_LABELS`)
+- If a feature-scoped utility is later needed by another feature, move it to `lib/utils.ts` at that point
 
 ### Route Groups
 - `(auth)` — login, signup. No sidebar or header. Standalone layout.
@@ -155,28 +207,33 @@ atlas/
 - Closure-based stores (`lib/createStore.ts`) for auth/session state
 - React Context for feature-scoped shared state
 - Local `useState` for component-scoped state
+- TanStack React Query for all server state (fetching, caching, mutations)
 - No external state management library unless explicitly decided and documented
 
 ### Data Fetching
-- `lib/fetcher.ts` for all HTTP requests — never call `fetch` directly in components
+- TanStack React Query v5 is the data fetching layer for all client-side Supabase queries
+- `lib/fetcher.ts` for generic HTTP requests — never call `fetch` directly in components
+- `lib/supabase/client.ts` for browser Supabase queries (Client Components)
+- `lib/supabase/server.ts` for server Supabase queries (Server Components, Server Actions)
 - `lib/createCache.ts` for client-side caching (TTL + LRU eviction + max size)
-- Supabase client via `lib/supabase.ts`
 - All errors normalized through `lib/errorHandler.ts`
+- All Supabase responses transformed from snake_case to camelCase at the hook level using `toCamelCase` from `lib/utils.ts`
 - Independent async operations always run in parallel with `Promise.all` or `Promise.allSettled`
+- Hooks use `enabled: !!param` to prevent queries firing with invalid or missing parameters
+- Mock data used in hooks pending auth implementation — always marked `// TODO: remove mock data when auth is implemented`
+- Default staleTime: 60 seconds globally in `QueryProvider`, overridden per hook where appropriate
+
+### Type System
+- Database types (`types/database.types.ts`) — snake_case, generated from Supabase, never manually edited
+- Application domain types (`types/atlas.types.ts`) — camelCase, hand-authored, used throughout the app
+- Transformation from snake_case → camelCase happens at the data fetching layer (hooks), never in components
 
 ### Active Link Detection
 - Use `usePathname()` from `next/navigation`
 - Root/Dashboard link (`href="/"`) — always strict equality: `pathname === "/"`
 - All other links — prefix match: `pathname.startsWith(href)`
 - Never use `pathname.startsWith("/")` — it matches every route
-- Extract as a pure named function outside the component:
-
-```typescript
-function isLinkActive(href: string, pathname: string): boolean {
-  if (href === "/") return pathname === "/";
-  return pathname.startsWith(href);
-}
-```
+- Extract as a pure named function outside the component
 
 ### Dark Mode
 - Implemented via `[data-theme="dark"]` on the `<html>` element
@@ -210,6 +267,7 @@ var(--color-border-strong)
 var(--color-text-primary)
 var(--color-text-secondary)
 var(--color-text-muted)
+var(--color-text-on-accent)
 var(--color-accent)
 var(--color-accent-hover)
 var(--color-accent-subtle)
@@ -242,8 +300,25 @@ var(--sidebar-width)    /* 240px */
 var(--header-height)    /* 56px */
 ```
 
+### Dynamic Colors via CSS Custom Properties
+When a color value is dynamic (e.g. user-specific avatar colors), use CSS custom properties set via inline style — never set color values directly as inline styles:
+
+```tsx
+// Correct — dynamic value via CSS custom property
+<span
+  style={{ "--avatar-bg": color.bg, "--avatar-text": color.text } as React.CSSProperties}
+  className={styles.avatar}
+/>
+
+// Forbidden — inline color value
+<span style={{ backgroundColor: color.bg }} />
+```
+
+Non-token hex colors are permitted only for UI-only accent hues with no semantic meaning (e.g. member avatar palette) that the token system cannot provide. Always add an inline comment explaining why.
+
 ### CSS Module Conventions
 - One CSS Module per component: `ComponentName.module.css`
+- Shared styles within a feature: `featureShared.module.css`
 - Class names in camelCase: `.navLinkActive`, `.closeButton`
 - Component positioning (fixed, absolute, sticky) always goes in CSS Modules
 - Animation and transition styles always go in CSS Modules — never inline or Tailwind arbitrary values
@@ -251,14 +326,12 @@ var(--header-height)    /* 56px */
 - `focus-visible` with `outline: 2px solid var(--color-accent)` and `outline-offset: 2px` on every interactive element
 
 ### Overlay and Transition Pattern
-- Overlays (backdrops, drawers, modals) are always rendered in the DOM — visibility controlled via CSS, not conditional rendering
+- Overlays (backdrops, drawers, modals, slide-overs) are always rendered in the DOM — visibility controlled via CSS, not conditional rendering
 - Use `opacity: 0` + `pointer-events: none` for hidden state
 - Use `opacity: 1` + `pointer-events: auto` for visible state
 - Apply transitions on the base class, not the modifier class
-- This ensures CSS transitions fire correctly on both open and close
 
 ```css
-/* Required pattern for animated overlays */
 .backdrop {
   opacity: 0;
   pointer-events: none;
@@ -270,6 +343,22 @@ var(--header-height)    /* 56px */
   pointer-events: auto;
 }
 ```
+
+### Slide-over Panel Width
+- Never use a fixed pixel width alone for slide-over panels
+- Always use `width: 100%` + `max-width: Xpx` for responsive behavior
+
+```css
+.panel {
+  width: 100%;
+  max-width: 540px; /* or appropriate value */
+}
+```
+
+### CSS Cascade Order
+- Base styles must always be defined before media query overrides in the same file
+- Media queries for the same breakpoint must be merged into a single block at the bottom of the file
+- Never split the same breakpoint across multiple `@media` rules
 
 ### Responsive Breakpoints
 - Mobile-first — base styles target mobile, `min-width` media queries enhance for larger screens
@@ -295,11 +384,32 @@ Accessibility is non-negotiable in Atlas. Every interactive component must pass 
 - Every clickable element is reachable and operable by keyboard
 - `onClick` and `onKeyDown` (Enter + Space) on all non-button interactive elements
 - Prevent default on Space key to avoid page scroll: `e.preventDefault()`
-- Escape key closes any open overlay, modal, or dropdown
+- Escape key closes any open overlay, modal, dropdown, or slide-over
+
+### Table Accessibility
+- Always use semantic table elements: `<table>`, `<thead>`, `<tbody>`, `<tr>`, `<th scope="col">`, `<td>`
+- Never use divs to simulate table layout
+- Empty header cells for icon-only columns must contain a visually hidden label
+- Row-level click handlers must use `stopPropagation` on cell-level interactive elements to prevent double-firing
+
+### Dropdown Menus
+- Trigger button must have `aria-haspopup="menu"` and `aria-expanded={isOpen}`
+- Dropdown container must have `role="menu"` and `aria-label`
+- Each item must have `role="menuitem"`
+- Two separate `useEffect` hooks for closing: one for Escape key, one for mousedown outside
+- Use a `data-[menu-cell]` attribute on the containing cell for outside-click detection
+
+### Custom Select / Listbox (form fields)
+For custom-styled select inputs (e.g. status dropdowns) that must participate in `useActionState`/`FormData` submission:
+- Trigger button: `aria-haspopup="listbox"` and `aria-expanded={isOpen}`
+- Options container: `role="listbox"`
+- Each option: `role="option"` and `aria-selected={value === selected}`
+- A `<input type="hidden" name="..." value={selected}>` carries the value into `FormData` — the visible trigger/options are presentational only
+- Selected value and open/close state use local `useState`; this is the documented exception to "uncontrolled by default" for forms
 
 ### Overlay and Modal Components
 - Sidebar container when open: `role="dialog"` + `aria-modal="true"` + `aria-label`
-- On desktop where overlay is persistent: remove `role="dialog"` and `aria-modal` — it is not a dialog
+- On desktop where overlay is persistent: remove `role="dialog"` and `aria-modal`
 - Apply `role` and `aria-modal` conditionally based on open state: `role={isOpen ? "dialog" : undefined}`
 - Backdrop: `role="button"` + `aria-label="Close [component name]"` + `tabIndex={isOpen ? 0 : -1}`
 - Never use `aria-hidden="true"` on a functional backdrop
@@ -308,14 +418,14 @@ Accessibility is non-negotiable in Atlas. Every interactive component must pass 
 - When an overlay opens, move focus to the first focusable element inside it
 - Implement focus trap on mobile overlays — Tab and Shift+Tab must cycle within the overlay
 - Focus trap must be mobile-only for components that are persistent on desktop
-- Check `window.innerWidth < 1024` before activating focus trap
+- Slide-over panels are always overlays regardless of viewport — focus trap always active, no `window.innerWidth` guard needed
 - Focusable element query: `'button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])'`
 - Always clean up focus trap event listeners in the `useEffect` return function
 
 ### Body Scroll Lock
 - Lock body scroll when a mobile overlay is open: `document.body.style.overflow = "hidden"`
 - Add `touch-action: none` to the backdrop CSS Module for iOS Safari compatibility
-- Guard with `window.innerWidth < 1024` — never lock scroll on desktop
+- Guard with `window.innerWidth < 1024` for sidebar — never lock scroll on desktop for persistent elements
 - Always restore in the `useEffect` cleanup: `document.body.style.overflow = ""`
 
 ---
@@ -326,13 +436,14 @@ Accessibility is non-negotiable in Atlas. Every interactive component must pass 
 - Every `lib/` utility gets a unit test file in `tests/unit/`
 - Test files mirror the source path: `lib/fetcher.ts` → `tests/unit/fetcher.test.ts`
 - Every new component gets tests where behaviour is non-trivial
+- React Query hooks are technical debt for Week 8 — marked with `// TODO: add tests in Week 8`
 - Integration tests live in `tests/integration/`
 - E2E tests with Playwright live in `tests/e2e/`
 
 ### Test Writing Standards
 - AAA pattern — Arrange, Act, Assert — every test, every time
 - One logical guarantee per `it` block — one clear assertion of behaviour
-- Descriptive test names that complete the sentence "it should...": `"should return a new object reference"`
+- Descriptive test names that complete the sentence "it should..."
 - `beforeEach` for shared setup — never repeat Arrange code across tests
 - Extract shared fixtures and constants above the `describe` block
 
@@ -344,15 +455,16 @@ Accessibility is non-negotiable in Atlas. Every interactive component must pass 
 - Chain `.mockResolvedValueOnce()` for multiple sequential fetch responses
 - Use `mockRejectedValueOnce(new Error(...))` for rejection tests — always throw `Error` objects, never bare strings
 
+### Component Testing
+- Use `@testing-library/react` — `render`, `renderHook`, `act`, `screen`
+- Add `@jest-environment jsdom` directive at top of component test files
+- Mock `window.matchMedia` and `window.localStorage` for components that use them
+- Use CSS custom properties pattern for dynamic color tests
+
 ### Immutability Testing
 - Always assert that the original input is unchanged after a function call
 - Assert reference inequality: `expect(result).not.toBe(original)`
 - Assert value equality: `expect(result).toEqual(expected)`
-
-### What Not to Test
-- TypeScript types — the compiler handles this
-- Third-party library behaviour
-- Implementation details — test observable behaviour, not internals
 
 ---
 
@@ -363,13 +475,14 @@ Accessibility is non-negotiable in Atlas. Every interactive component must pass 
 - Inline comments only for non-obvious logic or deliberate decisions
 - No comments that restate what the code already says
 - TODO comments for planned work: `// TODO: wire to Supabase auth logout`
+- Non-token hex colors must have an inline comment explaining why they exist outside the token system
 
 ### Docs Folder
 - `docs/` contains architectural documentation — not tutorials or guides
 - Each document explains decisions, tradeoffs, and patterns — not just what, but why
 - Docs are living documents — update them when decisions change
-- Current: `docs/js-execution.md`, `docs/performance.md`
-- Planned: `docs/styles.md`, `docs/security.md`, `docs/a11y.md`, `docs/architecture.md`, `docs/decisions.md`
+- Current: `docs/js-execution.md`, `docs/performance.md`, `docs/styles.md`
+- Planned: `docs/security.md`, `docs/a11y.md`, `docs/architecture.md`, `docs/decisions.md`
 
 ---
 
@@ -411,7 +524,7 @@ All bugs must follow this process — no exceptions, no shortcuts:
 - Never use `Object.assign` with the entity as the target
 - Always spread: `{ ...entity, ...changes }`
 - `getState()` on closure-based stores always returns a copy: `{ ...state }`
-- `reset()` and `logout()` always spread from `initialState`: `{ ...initialState }` — never assign `initialState` directly
+- `reset()` and `logout()` always spread from `initialState`: `{ ...initialState }`
 
 ### Async Utilities
 - `fetcher` handles both network failures (thrown exceptions) and server failures (`response.ok === false`) explicitly
@@ -423,7 +536,14 @@ All bugs must follow this process — no exceptions, no shortcuts:
 - `createCache` always initialized with explicit `maxSize` and `ttl`
 - LRU eviction: delete then reinsert to move entry to end of Map insertion order
 - Lazy expiration: check TTL on `get`, not on a background timer
-- `createdAt` never refreshed on access — it tracks when data was cached, not when it was last read
+- `createdAt` never refreshed on access — tracks when data was cached, not last read
+
+### Data Transformation
+- `toCamelCase<T>` in `lib/utils.ts` transforms snake_case database responses to camelCase application types
+- Always transform at the hook level — never in components or pages
+- `truncateDescription(text, maxLength)` for JS-based text truncation in table cells — more reliable than CSS line-clamp in constrained layouts
+- Feature-specific display utilities (`getInitials`, `getMemberAvatarColor`, `STATUS_LABELS`) live in `features/[feature]/[feature]Utils.ts`
+- Cross-feature or hook-level utilities live in `lib/utils.ts`
 
 ---
 
@@ -454,6 +574,9 @@ className="bg-amber-500 text-zinc-700"
 // Tailwind arbitrary color values
 className="bg-[var(--color-accent)]"
 
+// Inline color styles — use CSS custom properties instead
+<span style={{ backgroundColor: color.bg }} />
+
 // export * in barrel files
 export * from "./fetcher";
 
@@ -471,12 +594,12 @@ useEffect(() => {
 // aria-hidden on functional elements
 <div aria-hidden="true" onClick={onClose} />
 
-// Focus trap without mobile guard
+// Focus trap without mobile guard (sidebar only — not for slide-overs)
 useEffect(() => {
   trapFocus(sidebarRef); // activates on desktop too
 }, [isOpen]);
 
-// Body scroll lock without mobile guard
+// Body scroll lock without mobile guard (sidebar only)
 document.body.style.overflow = "hidden";
 
 // Conditional rendering of animated overlays
@@ -493,6 +616,27 @@ throw "error message";
 
 // Hardcoded breakpoint misaligned with Tailwind lg
 window.innerWidth < 768
+
+// Fixed pixel width on slide-over panels
+width: 480px; /* use width: 100%; max-width: 540px; instead */
+
+// Duplicating styles across component modules in the same feature
+/* ProjectCard.module.css */
+.memberAvatar { width: 34px; ... }
+/* ProjectListTable.module.css */
+.memberAvatar { width: 34px; ... } /* extract to projectShared.module.css */
+
+// Divs simulating table layout
+<div className="table-row"> /* use <tr>, <td> etc. */
+
+// Split media queries for the same breakpoint
+@media (min-width: 1024px) { .a { ... } }
+/* other styles */
+@media (min-width: 1024px) { .b { ... } } /* merge into one block */
+
+// Media query before base style it overrides
+@media (min-width: 1024px) { .button { display: none; } }
+.button { display: flex; } /* overrides the media query above */
 ```
 
 ---
