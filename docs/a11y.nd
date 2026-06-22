@@ -1,0 +1,239 @@
+# Accessibility (a11y) Decisions
+
+> **Atlas Internal Documentation**
+> Week 5 — Advanced React Patterns & Performance
+> Last updated: June 2026
+
+---
+
+## Overview
+
+Accessibility in Atlas is not a checklist — it is a design constraint applied from the start. Every interactive component is built to be operable by keyboard, navigable by screen reader, and visually clear at any contrast level. This document records the patterns, decisions, and known gaps across Atlas's component library.
+
+Atlas targets **WCAG 2.1 Level AA** compliance.
+
+---
+
+## Table of Contents
+
+1. [Core Principles](#1-core-principles)
+2. [Semantic HTML Strategy](#2-semantic-html-strategy)
+3. [Keyboard Navigation](#3-keyboard-navigation)
+4. [ARIA Patterns](#4-aria-patterns)
+5. [Focus Management](#5-focus-management)
+6. [Overlay & Modal Components](#6-overlay--modal-components)
+7. [Custom Interactive Widgets](#7-custom-interactive-widgets)
+8. [Component Audit](#8-component-audit)
+9. [Known Gaps & Future Work](#9-known-gaps--future-work)
+
+---
+
+## 1. Core Principles
+
+**Semantic HTML first.** The correct element is always preferred over ARIA. A `<button>` is better than a `<div role="button">`. A `<table>` is better than a grid of `<div>`s. ARIA is used to supplement semantics when native HTML falls short — never to compensate for using the wrong element.
+
+**Every interactive element is keyboard-operable.** Click handlers are always accompanied by keyboard equivalents. No user flow requires a mouse.
+
+**Focus is always visible.** `focus-visible` outlines are applied to every interactive element using `outline: 2px solid var(--color-accent)` with `outline-offset: 2px`. Focus outlines are never suppressed.
+
+**State changes are announced.** Dynamic content changes (error messages, loading states, live regions) are marked with `role="alert"` or `aria-live` so screen readers announce them without requiring a page reload.
+
+---
+
+## 2. Semantic HTML Strategy
+
+### Tables
+All tabular data uses semantic table elements: `<table>`, `<thead>`, `<tbody>`, `<tr>`, `<th scope="col">`, `<td>`. Div-based table layouts are explicitly forbidden in Atlas. Empty header cells (e.g. for icon-only columns) contain a visually hidden label using the `.srOnly` CSS utility class.
+
+### Forms
+All form fields use native `<input>`, `<textarea>`, and `<label>` elements with explicit `htmlFor`/`id` pairing. Custom widgets (e.g. the status dropdown in `TaskModal`) participate in form submission via a hidden `<input type="hidden">` rather than replacing native form elements entirely.
+
+### Lists
+Task lists render as `<ul>` with `<li>` children — never as `<div>` stacks. The `<ul>` carries `aria-label` describing its purpose ("Project tasks", "Loading tasks").
+
+### Landmarks
+All landmark elements carry `aria-label` values: `<nav aria-label="...">`, `<aside aria-label="...">`, `<header aria-label="...">`. No landmark is unlabeled.
+
+---
+
+## 3. Keyboard Navigation
+
+### Standard interactions
+
+| Element type | Keys supported |
+|---|---|
+| Button (`<button>`) | Enter, Space (native) |
+| Non-button interactive (`role="button"`) | Enter, Space (explicit `onKeyDown`) |
+| Overlay close (backdrop) | Enter, Space |
+| Overlay dismiss | Escape |
+| Dropdown/menu dismiss | Escape |
+| Focus trap cycling | Tab, Shift+Tab |
+| Listbox navigation | ArrowUp, ArrowDown, Enter, Space |
+
+### Space key default prevention
+All non-button interactive elements call `e.preventDefault()` on the Space key to prevent the page from scrolling while the user activates a control.
+
+### Escape key layering
+Where multiple overlay-like components can be open simultaneously (e.g. `TaskModal` inside `ProjectSlideOver`), Escape is handled at the innermost layer first:
+
+1. `TaskModal.StatusField` — Escape closes the status dropdown (capture phase, stops propagation)
+2. `TaskModal` — Escape closes the modal (bubble phase, only fires if dropdown is not open)
+3. `ProjectSlideOver` — Escape closes the slide-over (gated by `!isModalOpen`)
+
+This three-layer pattern ensures Escape always closes only the topmost open element.
+
+---
+
+## 4. ARIA Patterns
+
+### Dialogs (overlays)
+All slide-over panels and centered modals use:
+- `role="dialog"` applied conditionally (only when open, `undefined` when closed)
+- `aria-modal="true"` applied conditionally alongside `role="dialog"`
+- `aria-label` or `aria-labelledby` identifying the dialog name
+- Focus moved to the first focusable element on open
+
+The conditional pattern (`role={isOpen ? "dialog" : undefined}`) is used because the overlay is always in the DOM (for CSS transitions) but should only be announced as a dialog when visible.
+
+### Listbox (custom select)
+`TaskModal.StatusField` uses the WAI-ARIA listbox pattern:
+- Trigger button: `aria-haspopup="listbox"`, `aria-expanded={isOpen}`, `aria-labelledby` pointing at the visible "Status" label
+- Container: `role="listbox"`, `tabIndex={0}`, `aria-activedescendant` pointing at the currently focused option's `id`
+- Options: `role="option"`, `aria-selected={s === status}`, unique `id` per option (`status-option-{value}`)
+- Hidden `<input type="hidden">` carries the selected value into `FormData`
+
+DOM focus stays on the listbox container throughout navigation. `aria-activedescendant` communicates the active option to screen readers without moving real focus, which is the standard WAI-ARIA recommendation for listbox widgets.
+
+### Menus (more options)
+`ProjectListTable`'s per-row more menu uses:
+- Trigger button: `aria-haspopup="menu"`, `aria-expanded={openMenuId === project.id}`
+- Container: `role="menu"`, `aria-label`
+- Items: `role="menuitem"`
+
+### Alert regions
+Error states and form validation errors use `role="alert"`, which causes screen readers to announce the content immediately when it appears — no user navigation required. Used in `TaskList` (error state), `TaskModal` (form error banner).
+
+### Visually hidden text
+Icon-only buttons and empty table header cells use either `aria-label` on the element or a `.srOnly` CSS class (position absolute, 1px, clipped) to provide screen reader text without visible content.
+
+---
+
+## 5. Focus Management
+
+### On overlay open
+When any overlay opens (slide-over, modal), focus is programmatically moved to the first focusable element inside the overlay. This is implemented via a `useEffect` keyed on the open state, using `querySelector` with the standard focusable selector:
+
+```typescript
+'button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+```
+
+### Focus trap
+Focus is trapped inside open overlays so Tab and Shift+Tab cycle within the overlay rather than reaching the inert background content. Implemented via a `keydown` listener on the overlay container that intercepts Tab at the first and last focusable elements.
+
+**Scope of focus trap:**
+- `Sidebar` — mobile only (`window.innerWidth < 1024`). Desktop sidebar is persistent, not a dialog, so trapping focus would break normal keyboard flow.
+- `ProjectSlideOver` — always active. The slide-over is always a dialog regardless of viewport (it overlays content on all sizes).
+- `TaskModal` — always active. Centered modal, always a dialog.
+
+### Listbox focus
+`TaskModal.StatusField` keeps DOM focus on the `role="listbox"` container throughout keyboard navigation. Option highlighting is communicated via `aria-activedescendant` rather than moving real focus to individual `role="option"` elements. This follows the WAI-ARIA authoring practices for the listbox pattern.
+
+### Body scroll lock
+Body scroll is locked (`document.body.style.overflow = "hidden"`) when any overlay is open, preventing background content from scrolling while the overlay is in use. `touch-action: none` is applied to backdrops for iOS Safari compatibility. Scroll lock is always restored in the `useEffect` cleanup function.
+
+---
+
+## 6. Overlay & Modal Components
+
+### ProjectSlideOver
+- Always in DOM — visibility via CSS (`translateX`)
+- `role="dialog"` + `aria-modal` applied conditionally on open
+- `aria-label` derived from project name (`"{project.name} details"`)
+- Focus moves to close button on open (first focusable element)
+- Focus trap active always (no mobile guard)
+- Escape closes panel (gated by `!isModalOpen` to avoid closing slide-over while task modal is open)
+- Body scroll lock on open
+- Backdrop: `role="button"` + `aria-label="Close project details"` + `tabIndex={isOpen ? 0 : -1}`
+
+### TaskModal
+- Always in DOM — visibility via CSS (scale + opacity)
+- Two-layer positioning: backdrop (z-40) + centering positioner (z-50, `pointer-events: none`)
+- `role="dialog"` + `aria-modal` applied conditionally on open
+- `aria-labelledby={MODAL_TITLE_ID}` — static ID safe since only one modal is ever open at a time
+- Focus moves to first focusable element on open
+- Focus trap always active
+- Escape closes modal regardless of `isPending` — blocking close during a pending action could trap users
+- Body scroll lock disabled via `disableScrollLock` prop when nested inside `ProjectSlideOver` (which already holds the lock)
+- Backdrop: `role="button"` + `aria-label="Close modal"` + `tabIndex={open ? 0 : -1}`
+
+### Sidebar (mobile)
+- On mobile: `role="dialog"` + `aria-modal` + `aria-label="Navigation"`
+- On desktop: `role` and `aria-modal` removed — persistent sidebar is not a dialog
+- Focus trap mobile-only (`window.innerWidth < 1024`)
+- Body scroll lock mobile-only
+- Escape closes mobile overlay
+
+---
+
+## 7. Custom Interactive Widgets
+
+### ProjectCard & TaskItem (non-button clickable elements)
+Both cards and task rows are `<div>` elements that behave as buttons — they are not `<button>` elements because they contain nested interactive elements (icon buttons, status badges) and need layout flexibility that `<button>` restricts.
+
+Pattern applied:
+- `role="button"`
+- `tabIndex={0}`
+- `onKeyDown` handling Enter and Space, with `e.preventDefault()` on Space
+- `aria-label` describing the action ("Open {name}")
+
+### ProjectListTable more menu
+- Reveal pattern: more button is `opacity: 0` at rest, revealed on row hover and `:focus-visible`
+- This is acceptable because the button is always in the DOM and reachable by keyboard — visibility is purely presentational
+
+### TaskModal.StatusField (custom listbox)
+See [ARIA Patterns — Listbox](#aria-patterns) and [Focus Management — Listbox focus](#focus-management) above for full detail.
+
+Arrow key navigation wraps correctly at both ends:
+- ArrowDown from last option → wraps to first
+- ArrowUp from first option → wraps to last
+
+---
+
+## 8. Component Audit
+
+Audited June 2026 against the patterns documented above.
+
+| Component | Semantic HTML | Keyboard | ARIA roles | Focus management | Status |
+|---|---|---|---|---|---|
+| `Sidebar.tsx` | `<nav>`, `<aside>` | Tab, Escape | `role="dialog"` (mobile), `aria-modal`, `aria-label` | Focus trap (mobile), scroll lock (mobile) | ✅ |
+| `Header.tsx` | `<header>`, `<button>` | Tab, Enter/Space | `aria-label` on burger | — | ✅ |
+| `ProjectCard.tsx` | `<div role="button">` | Enter, Space | `role="button"`, `aria-label` | — | ✅ |
+| `ProjectListTable.tsx` | `<table>`, `<th scope="col">` | Tab, Escape (menu) | `role="menu"`, `role="menuitem"`, `aria-haspopup`, `aria-expanded`, `.srOnly` on empty `<th>` | — | ✅ |
+| `ProjectSlideOver.tsx` | `<section>`, `<dl>` | Tab, Shift+Tab, Escape | `role="dialog"`, `aria-modal`, `aria-label` | Focus on open, focus trap, scroll lock | ✅ |
+| `TaskItem.tsx` | `<div role="button">` | Enter, Space | `role="button"`, `aria-label` | — | ✅ |
+| `TaskList.tsx` | `<ul>`, `<li>` | — | `aria-label` on list, `role="alert"` on error | — | ✅ |
+| `TaskModal.tsx` | `<form>`, `<label>`, `<input>` | Tab, Shift+Tab, Escape | `role="dialog"`, `aria-modal`, `aria-labelledby` | Focus on open, focus trap, scroll lock (conditional) | ✅ |
+| `TaskModal.StatusField` | `<div role="listbox">` | ArrowUp, ArrowDown, Enter, Space, Escape | `role="listbox"`, `role="option"`, `aria-selected`, `aria-activedescendant`, `aria-haspopup`, `aria-expanded` | Focus on listbox container, `aria-activedescendant` navigation | ✅ |
+
+---
+
+## 9. Known Gaps & Future Work
+
+### Screen reader testing
+The audit above is based on code review and manual keyboard testing. No automated screen reader testing (NVDA, VoiceOver, JAWS) has been performed yet. Scheduled for Week 7's accessibility audit session.
+
+### Color contrast
+Token colors have been chosen with contrast in mind but no formal WCAG contrast ratio audit has been run. Scheduled for Week 7.
+
+### `aria-live` regions
+Currently only `role="alert"` is used for dynamic content announcements. More granular `aria-live="polite"` regions for non-urgent updates (e.g. filter results changing) are not yet implemented. Flagged for Week 7 review.
+
+### Date input accessibility
+`TaskModal`'s due date field uses a native `<input type="date">`. Browser implementations of the native date picker vary significantly in their keyboard accessibility and screen reader support. A custom date picker may be warranted in a future iteration.
+
+### Timezone handling on date fields
+Dates submitted via `input[type="date"]` are converted to ISO strings with `toISOString()`, which outputs UTC. Users in timezones behind UTC may see dates shift by one day. Flagged as a `// TODO` in `ProjectSlideOver.tsx` — requires real user testing across timezones once auth is implemented in Week 6.
+
+---
+
+*This document will be updated in Week 7 with screen reader test results, Lighthouse accessibility scores, and color contrast audit findings.*

@@ -3,11 +3,18 @@ import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/providers/ThemeContext";
 import "../styles/global.css";
 import { QueryProvider } from "@/providers/QueryProvider";
+import { ProjectProvider } from "@/providers/ProjectContext";
 
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
 });
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   title: "Atlas",
@@ -33,7 +40,9 @@ export default function RootLayout({
           }}
         />
         <ThemeProvider>
-          <QueryProvider>{children}</QueryProvider>
+          <QueryProvider>
+            <ProjectProvider>{children}</ProjectProvider>
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>

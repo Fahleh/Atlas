@@ -1,5 +1,5 @@
-const ProjectsPage = () => {
-  return <div>Project Page</div>;
-};
+import { ProjectList } from "@/features/projects/ProjectList";
 
-export default ProjectsPage;
+export default function ProjectsPage() {
+  return <ProjectList />;
+}
