@@ -160,13 +160,81 @@
 
 .stateContainer {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  gap: var(--space-2);
   padding: var(--space-16) 0;
+  text-align: center;
 }
 
-.stateText {
+.stateIcon {
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-2);
+}
+
+.stateIconDanger {
+  color: var(--color-danger);
+  
+}
+
+.stateMessage {
   margin: 0;
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+.stateSubtitle {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
+  margin: 0;
+}
+
+.retryButton {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-accent);
+  cursor: pointer;
+  transition: color 150ms ease;
+}
+
+.retryButton:hover {
+  color: var(--color-accent-hover);
+}
+
+.retryButton:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* ---- Skeleton loading cards ---- */
+
+.skeletonCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.skeletonCardHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.skeletonCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.skeletonAvatars {
+  display: flex;
+  gap: var(--space-2);
 }

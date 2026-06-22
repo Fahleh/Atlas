@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Plus } from "lucide-react";
+import { Plus, AlertCircle, Sparkles, SearchX } from "lucide-react";
 import { useProjects } from "@/hooks/useProjects";
 import { useProject } from "@/providers/ProjectContext";
+import { Skeleton } from "@/components/Skeleton";
 import type { ProjectStatus } from "@/types/atlas.types";
 import { ProjectStats } from "./ProjectStats";
 import { ProjectCard } from "./ProjectCard";
@@ -13,6 +14,8 @@ import styles from "./ProjectList.module.css";
 
 type StatusFilter = "all" | ProjectStatus;
 type ViewMode = "grid" | "list";
+
+const SKELETON_CARD_COUNT = 6;
 
 const STATUS_FILTERS: { label: string; value: StatusFilter }[] = [
   { label: "All", value: "all" },
@@ -26,7 +29,7 @@ const STATUS_FILTERS: { label: string; value: StatusFilter }[] = [
  * and slide-over panel. Orchestrates useProjects() and useProject() context.
  */
 export function ProjectList() {
-  const { data: projects = [], isLoading, isError } = useProjects();
+  const { data: projects = [], isLoading, isError, refetch } = useProjects();
   const { selectedProject, setSelectedProject } = useProject();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -50,7 +53,12 @@ export function ProjectList() {
     });
   }, [projects, searchQuery, statusFilter]);
 
-  const isEmpty = !isLoading && !isError && filteredProjects.length === 0;
+  const hasNoProjects = !isLoading && !isError && projects.length === 0;
+  const hasNoResults =
+    !isLoading &&
+    !isError &&
+    projects.length > 0 &&
+    filteredProjects.length === 0;
   const showGrid = !isLoading && !isError && filteredProjects.length > 0;
 
   return (
@@ -155,31 +163,90 @@ export function ProjectList() {
       {/* Loading state */}
       {isLoading && (
         <div
-          className={styles.stateContainer}
-          aria-live="polite"
-          aria-busy="true"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+          aria-label="Loading projects"
         >
-          <p className={styles.stateText}>Loading projects…</p>
+          {Array.from({ length: SKELETON_CARD_COUNT }).map((_, i) => (
+            <div key={i} className={styles.skeletonCard}>
+              <div className={styles.skeletonCardHeader}>
+                <Skeleton
+                  width="36px"
+                  height="36px"
+                  borderRadius="var(--radius-md)"
+                />
+                <Skeleton
+                  width="80px"
+                  height="1.25rem"
+                  borderRadius="var(--radius-pill)"
+                />
+              </div>
+              <div className={styles.skeletonCardBody}>
+                <Skeleton width="70%" height="1rem" />
+                <Skeleton width="100%" height="0.75rem" />
+                <Skeleton width="55%" height="0.75rem" />
+              </div>
+              <Skeleton
+                width="100%"
+                height="4px"
+                borderRadius="var(--radius-pill)"
+              />
+              <div className={styles.skeletonAvatars}>
+                <Skeleton
+                  width="28px"
+                  height="28px"
+                  borderRadius="var(--radius-pill)"
+                />
+                <Skeleton
+                  width="28px"
+                  height="28px"
+                  borderRadius="var(--radius-pill)"
+                />
+                <Skeleton
+                  width="28px"
+                  height="28px"
+                  borderRadius="var(--radius-pill)"
+                />
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
       {/* Error state */}
       {isError && !isLoading && (
         <div className={styles.stateContainer} role="alert">
-          <p className={styles.stateText}>
-            Failed to load projects. Please try again.
+          <AlertCircle
+            size={48}
+            className={`${styles.stateIcon} ${styles.stateIconDanger}`}
+            aria-hidden="true"
+          />
+          <p className={styles.stateMessage}>Failed to load projects.</p>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className={styles.retryButton}
+          >
+            Try again
+          </button>
+        </div>
+      )}
+
+      {/* Empty state — no projects exist */}
+      {hasNoProjects && (
+        <div className={styles.stateContainer}>
+          <Sparkles size={48} className={styles.stateIcon} aria-hidden="true" />
+          <p className={styles.stateMessage}>No projects yet.</p>
+          <p className={styles.stateSubtitle}>
+            Create your first project to get started.
           </p>
         </div>
       )}
 
-      {/* Empty state */}
-      {isEmpty && (
+      {/* Empty state — search/filter returned no results */}
+      {hasNoResults && (
         <div className={styles.stateContainer}>
-          <p className={styles.stateText}>
-            {searchQuery !== "" || statusFilter !== "all"
-              ? "No projects match your filters."
-              : "No projects yet. Create your first project to get started."}
-          </p>
+          <SearchX size={48} className={styles.stateIcon} aria-hidden="true" />
+          <p className={styles.stateMessage}>No projects match your search.</p>
         </div>
       )}
 

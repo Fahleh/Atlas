@@ -43,7 +43,7 @@
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   overflow: hidden;
-  pointer-events: auto;
+  pointer-events: none;
   transform: scale(0.95);
   opacity: 0;
   transition:
@@ -54,6 +54,7 @@
 .dialogOpen {
   transform: scale(1);
   opacity: 1;
+  pointer-events: auto;
 }
 
 /* ---- Form ---- */
