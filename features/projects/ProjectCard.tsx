@@ -2,7 +2,12 @@
 
 import { ArrowUpRight } from "lucide-react";
 import type { Project, ProjectStatus } from "@/types/atlas.types";
-import { STATUS_LABELS, getInitials, getMemberAvatarColor } from "./projectUtils";
+import {
+  DUE_DATE_FORMAT,
+  STATUS_LABELS,
+  getInitials,
+  getMemberAvatarColor,
+} from "./projectUtils";
 import styles from "./ProjectCard.module.css";
 import sharedStyles from "./projectShared.module.css";
 
@@ -85,26 +90,41 @@ export function ProjectCard({ project, onSelect }: ProjectCardProps) {
         </span>
       </div>
 
-      <div className={sharedStyles.memberAvatars} aria-label="Project members">
-        {/* TODO: wire to members data */}
-        {PLACEHOLDER_MEMBERS.map((initials) => {
-          const color = getMemberAvatarColor(initials);
-          return (
-            <span
-              key={initials}
-              style={
-                {
-                  "--avatar-bg": color.bg,
-                  "--avatar-text": color.text,
-                } as React.CSSProperties
-              }
-              className={sharedStyles.memberAvatar}
-              aria-hidden="true"
-            >
-              {initials}
-            </span>
-          );
-        })}
+      <div className={styles.cardFooter}>
+        <div
+          className={sharedStyles.memberAvatars}
+          aria-label="Project members"
+        >
+          {/* TODO: wire to members data */}
+          {PLACEHOLDER_MEMBERS.map((initials) => {
+            const color = getMemberAvatarColor(initials);
+            return (
+              <span
+                key={initials}
+                style={
+                  {
+                    "--avatar-bg": color.bg,
+                    "--avatar-text": color.text,
+                  } as React.CSSProperties
+                }
+                className={sharedStyles.memberAvatar}
+                aria-hidden="true"
+              >
+                {initials}
+              </span>
+            );
+          })}
+        </div>
+
+        <dl className={sharedStyles.detailList}>
+          <div className={sharedStyles.detailRow}>
+            <dt className={sharedStyles.detailLabel}>Due date</dt>
+            <dd className={sharedStyles.detailValue}>
+              {project.dueDate?.toLocaleDateString("en-US", DUE_DATE_FORMAT) ??
+                "—"}
+            </dd>
+          </div>
+        </dl>
       </div>
     </div>
   );

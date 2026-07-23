@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { ArrowUpRight, MoreHorizontal } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import type { Project, ProjectStatus } from "@/types/atlas.types";
 import {
+  DUE_DATE_FORMAT,
   STATUS_LABELS,
   getInitials,
   getMemberAvatarColor,
@@ -30,52 +30,34 @@ const DESCRIPTION_TRUNCATE_LENGTH = 60;
 
 /**
  * Renders the project list as a data table with five columns:
- * PROJECT, STATUS, PROGRESS, TEAM, and a per-row more-options menu.
+ * PROJECT, STATUS, PROGRESS, DUE DATE, and TEAM.
  *
  * @param projects - Filtered project list from ProjectList
  * @param onSelect - Callback fired with the project ID to open its slide-over
  */
-export function ProjectListTable({ projects, onSelect }: ProjectListTableProps) {
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-
-  // Close the more menu when Escape is pressed
-  useEffect(() => {
-    if (!openMenuId) return;
-
-    function handleEscape(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpenMenuId(null);
-    }
-
-    document.addEventListener("keydown", handleEscape);
-    return () => document.removeEventListener("keydown", handleEscape);
-  }, [openMenuId]);
-
-  // Close the more menu when the user clicks outside any menu cell
-  useEffect(() => {
-    if (!openMenuId) return;
-
-    function handleMouseDown(e: MouseEvent) {
-      const target = e.target as Element;
-      if (!target.closest("[data-menu-cell]")) {
-        setOpenMenuId(null);
-      }
-    }
-
-    document.addEventListener("mousedown", handleMouseDown);
-    return () => document.removeEventListener("mousedown", handleMouseDown);
-  }, [openMenuId]);
-
+export function ProjectListTable({
+  projects,
+  onSelect,
+}: ProjectListTableProps) {
   return (
     <div className={styles.tableWrapper}>
       <table className={styles.table}>
         <thead>
           <tr>
-            <th className={styles.th} scope="col">PROJECT</th>
-            <th className={styles.th} scope="col">STATUS</th>
-            <th className={styles.th} scope="col">PROGRESS</th>
-            <th className={styles.th} scope="col">TEAM</th>
             <th className={styles.th} scope="col">
-              <span className={styles.srOnly}>More options</span>
+              PROJECT
+            </th>
+            <th className={styles.th} scope="col">
+              STATUS
+            </th>
+            <th className={styles.th} scope="col">
+              PROGRESS
+            </th>
+            <th className={styles.th} scope="col">
+              DUE DATE
+            </th>
+            <th className={styles.th} scope="col">
+              TEAM
             </th>
           </tr>
         </thead>
@@ -95,7 +77,10 @@ export function ProjectListTable({ projects, onSelect }: ProjectListTableProps) 
                   <div className={styles.projectInfo}>
                     <span className={styles.projectName}>{project.name}</span>
                     <span className={styles.projectDescription}>
-                      {truncateDescription(project.description, DESCRIPTION_TRUNCATE_LENGTH)}
+                      {truncateDescription(
+                        project.description,
+                        DESCRIPTION_TRUNCATE_LENGTH,
+                      )}
                     </span>
                   </div>
                   <button
@@ -140,9 +125,22 @@ export function ProjectListTable({ projects, onSelect }: ProjectListTableProps) 
                 </div>
               </td>
 
+              {/* DUEDATE column */}
+              <td className={styles.td}>
+                <span className={sharedStyles.detailValue}>
+                  {project.dueDate?.toLocaleDateString(
+                    "en-US",
+                    DUE_DATE_FORMAT,
+                  ) ?? "—"}
+                </span>
+              </td>
+
               {/* TEAM column */}
               <td className={styles.td}>
-                <div className={sharedStyles.memberAvatars} aria-label="Project members">
+                <div
+                  className={sharedStyles.memberAvatars}
+                  aria-label="Project members"
+                >
                   {/* TODO: wire to members data */}
                   {PLACEHOLDER_MEMBERS.map((initials) => {
                     const color = getMemberAvatarColor(initials);
@@ -162,60 +160,6 @@ export function ProjectListTable({ projects, onSelect }: ProjectListTableProps) 
                       </span>
                     );
                   })}
-                </div>
-              </td>
-
-              {/* MORE column: stopPropagation prevents row click from firing */}
-              <td
-                className={`${styles.td} ${styles.menuTd}`}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className={styles.menuCell} data-menu-cell="true">
-                  <button
-                    type="button"
-                    aria-label={`More options for ${project.name}`}
-                    aria-expanded={openMenuId === project.id}
-                    aria-haspopup="menu"
-                    onClick={() =>
-                      setOpenMenuId(
-                        openMenuId === project.id ? null : project.id,
-                      )
-                    }
-                    className={styles.moreButton}
-                  >
-                    <MoreHorizontal size={16} />
-                  </button>
-
-                  {openMenuId === project.id && (
-                    <div
-                      role="menu"
-                      aria-label={`Actions for ${project.name}`}
-                      className={styles.dropdown}
-                    >
-                      {/* TODO: wire to project actions menu */}
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className={styles.dropdownItem}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className={styles.dropdownItem}
-                      >
-                        Archive
-                      </button>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className={`${styles.dropdownItem} ${styles.dropdownItemDanger}`}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  )}
                 </div>
               </td>
             </tr>

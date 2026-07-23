@@ -21,6 +21,13 @@ export const PROJECT_STATUS_ORDER: ProjectStatus[] = [
   "archived",
 ];
 
+export const DUE_DATE_FORMAT: Intl.DateTimeFormatOptions = {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+  timeZone: "UTC",
+};
+
 /**
  * Returns up to three capital initials from a name string.
  *
