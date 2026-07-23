@@ -6,6 +6,21 @@ export const STATUS_LABELS: Record<ProjectStatus, string> = {
   archived: "Archived",
 };
 
+export const PROJECT_STATUS_CONFIG: Record<
+  ProjectStatus,
+  { label: string; dotColor: string }
+> = {
+  active: { label: "Active", dotColor: "var(--color-success)" },
+  completed: { label: "Completed", dotColor: "var(--color-accent)" },
+  archived: { label: "Archived", dotColor: "var(--color-text-muted)" },
+};
+
+export const PROJECT_STATUS_ORDER: ProjectStatus[] = [
+  "active",
+  "completed",
+  "archived",
+];
+
 /**
  * Returns up to three capital initials from a name string.
  *

@@ -1,19 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Plus, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Pencil, Plus, X } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
-import type { Project, ProjectStatus, Task, TaskStatus } from "@/types/atlas.types";
-import { createClient } from "@/lib/supabase/client";
-import { updateTask, updateTaskStatus } from "@/lib/updateImmutable";
+import type { Project, ProjectStatus, Task } from "@/types/atlas.types";
 import styles from "./ProjectSlideOver.module.css";
 import { STATUS_LABELS } from "./projectUtils";
 import { TaskList } from "@/features/tasks/TaskList";
-import { TaskModal, type TaskFormState } from "@/features/tasks/TaskModal";
+import { TaskModal } from "@/features/tasks/TaskModal";
+import { createTaskAction } from "@/features/tasks/taskActions";
 
 type ProjectSlideOverProps = {
   project: Project | null;
   onClose: () => void;
+  /** Called when the user clicks "Edit project" — hoists modal state to ProjectList. */
+  onEditProject?: (project: Project) => void;
 };
 
 const STATUS_BADGE_CLASS: Record<ProjectStatus, string> = {
@@ -35,8 +36,13 @@ const DATE_FORMAT: Intl.DateTimeFormatOptions = {
  *
  * @param project - The selected project, or null when no project is selected
  * @param onClose - Callback to clear the selected project
+ * @param onEditProject - Optional callback to open the project edit modal
  */
-export function ProjectSlideOver({ project, onClose }: ProjectSlideOverProps) {
+export function ProjectSlideOver({
+  project,
+  onClose,
+  onEditProject,
+}: ProjectSlideOverProps) {
   const isOpen = project !== null;
   const panelRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -51,6 +57,18 @@ export function ProjectSlideOver({ project, onClose }: ProjectSlideOverProps) {
   const [modalResetKey, setModalResetKey] = useState(0);
   const queryClient = useQueryClient();
 
+  // False positive in eslint-plugin-react-hooks@7.1.1: the rule flags any ref
+  // passed to a function during render, but editingTaskRef.current is only read
+  // inside the returned async callback at form-submit time, never during the
+  // useMemo factory's synchronous execution. Open upstream bugs:
+  // https://github.com/facebook/react/issues/34954
+  // https://github.com/facebook/react/issues/35813
+  const taskAction = useMemo(
+    // eslint-disable-next-line react-hooks/refs
+    () => createTaskAction({ editingTaskRef, queryClient, setIsModalOpen }),
+    [queryClient],
+  );
+
   function openForCreate() {
     editingTaskRef.current = null;
     setEditingTask(null);
@@ -63,66 +81,6 @@ export function ProjectSlideOver({ project, onClose }: ProjectSlideOverProps) {
     setEditingTask(task);
     setModalResetKey((k) => k + 1);
     setIsModalOpen(true);
-  }
-
-  /**
-   * React 19 form action for creating and editing tasks.
-   * `projectId` and the edit/create mode come from FormData so this function
-   * closes over only stable references (queryClient, editingTaskRef, setIsModalOpen).
-   *
-   * Will 401 against live Supabase until auth is implemented in Week 6 —
-   * expected; the error surfaces in the modal's error banner.
-   */
-  async function  taskAction(
-    _prevState: TaskFormState,
-    formData: FormData,
-  ): Promise<TaskFormState> {
-    const title = (formData.get("title") as string).trim();
-    const description = (formData.get("description") as string) ?? "";
-    const status = formData.get("status") as TaskStatus;
-    const dueDateRaw = formData.get("dueDate") as string;
-    const projectId = formData.get("projectId") as string;
-    const dueDate = dueDateRaw ? new Date(dueDateRaw) : null;
-
-    if (!title) return { error: "Title is required" };
-
-    const supabase = createClient();
-    const currentTask = editingTaskRef.current;
-
-    if (currentTask) {
-      // Edit — apply general changes then status change, merge into one update.
-      const withChanges = updateTask(currentTask, { title, description, dueDate });
-      const final = updateTaskStatus(withChanges, status);
-
-      const { error } = await supabase
-        .from("tasks")
-        .update({
-          title: final.title,
-          description: final.description,
-          status: final.status,
-          due_date: final.dueDate
-            ? final.dueDate.toISOString().split("T")[0] // TODO: Confirm and handle timezones properly
-            : null,
-        })
-        .eq("id", final.id);
-
-      if (error) return { error: error.message };
-    } else {
-      // Create
-      const { error } = await supabase.from("tasks").insert({
-        project_id: projectId,
-        title,
-        description,
-        status,
-        due_date: dueDate ? dueDate.toISOString().split("T")[0] : null,
-      });
-
-      if (error) return { error: error.message };
-    }
-
-    await queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
-    setIsModalOpen(false);
-    return { error: null };
   }
 
   // ---- Slide-over effects --------------------------------------------------
@@ -230,15 +188,29 @@ export function ProjectSlideOver({ project, onClose }: ProjectSlideOverProps) {
               </div>
             )}
           </div>
-          <button
-            ref={closeButtonRef}
-            type="button"
-            onClick={onClose}
-            aria-label="Close project details"
-            className={styles.closeButton}
-          >
-            <X size={20} />
-          </button>
+
+          {/* Header actions — designed to accommodate an additional Delete button in prompt 2 */}
+          <div className={styles.headerActions}>
+            {project && onEditProject && (
+              <button
+                type="button"
+                onClick={() => onEditProject(project)}
+                aria-label="Edit project"
+                className={styles.headerActionButton}
+              >
+                <Pencil size={16} aria-hidden="true" />
+              </button>
+            )}
+            <button
+              ref={closeButtonRef}
+              type="button"
+              onClick={onClose}
+              aria-label="Close project details"
+              className={styles.closeButton}
+            >
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         {project && (
@@ -266,10 +238,7 @@ export function ProjectSlideOver({ project, onClose }: ProjectSlideOverProps) {
                   <div className={styles.detailRow}>
                     <dt className={styles.detailLabel}>Due date</dt>
                     <dd className={styles.detailValue}>
-                      {new Date(project.dueDate).toLocaleDateString(
-                        "en-US",
-                        DATE_FORMAT,
-                      )}
+                      {project.dueDate.toLocaleDateString("en-US", DATE_FORMAT)}
                     </dd>
                   </div>
                 )}

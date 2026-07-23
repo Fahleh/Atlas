@@ -1,15 +1,18 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { Plus, AlertCircle, Sparkles, SearchX } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useProjects } from "@/hooks/useProjects";
 import { useProject } from "@/providers/ProjectContext";
 import { Skeleton } from "@/components/Skeleton";
-import type { ProjectStatus } from "@/types/atlas.types";
+import type { Project, ProjectStatus } from "@/types/atlas.types";
 import { ProjectStats } from "./ProjectStats";
 import { ProjectCard } from "./ProjectCard";
 import { ProjectListTable } from "./ProjectListTable";
 import { ProjectSlideOver } from "./ProjectSlideOver";
+import { ProjectModal } from "./ProjectModal";
+import { createProjectAction } from "./projectActions";
 import styles from "./ProjectList.module.css";
 
 type StatusFilter = "all" | ProjectStatus;
@@ -30,13 +33,59 @@ const STATUS_FILTERS: { label: string; value: StatusFilter }[] = [
  */
 export function ProjectList() {
   const { data: projects = [], isLoading, isError, refetch } = useProjects();
-  const { selectedProject, setSelectedProject } = useProject();
+  const { selectedProjectId, setSelectedProjectId } = useProject();
+  const queryClient = useQueryClient();
+
+  // Derive the live Project object from the React Query cache on every render.
+  // After an edit, projectActions.ts invalidates ["projects"], useProjects()
+  // refetches, and this find() resolves against the fresh array automatically —
+  // no additional invalidation logic needed.
+  // TODO (Prompt 2 — delete): deletion is also handled here for free: when a
+  // project is removed from the cache, find() returns undefined → null →
+  // slide-over closes automatically. No special-case logic needed.
+  const selectedProject = projects.find((p) => p.id === selectedProjectId) ?? null;
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
-  // TODO: replace with create modal implementation
-  const [, setIsCreateModalOpen] = useState(false);
+
+  // ---- Project modal state -------------------------------------------------
+
+  const editingProjectRef = useRef<Project | null>(null);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [modalResetKey, setModalResetKey] = useState(0);
+
+  // False positive in eslint-plugin-react-hooks@7.1.1: the rule flags any ref
+  // passed to a function during render, but editingProjectRef.current is only
+  // read inside the returned async callback at form-submit time, never during
+  // the useMemo factory's synchronous execution. Open upstream bugs:
+  // https://github.com/facebook/react/issues/34954
+  // https://github.com/facebook/react/issues/35813
+  const projectAction = useMemo(
+    () =>
+      // eslint-disable-next-line react-hooks/refs
+      createProjectAction({
+        editingProjectRef,
+        queryClient,
+        setIsModalOpen: setIsProjectModalOpen,
+      }),
+    [queryClient],
+  );
+
+  function openProjectModalForCreate() {
+    editingProjectRef.current = null;
+    setEditingProject(null);
+    setModalResetKey((k) => k + 1);
+    setIsProjectModalOpen(true);
+  }
+
+  function openProjectModalForEdit(project: Project) {
+    editingProjectRef.current = project;
+    setEditingProject(project);
+    setModalResetKey((k) => k + 1);
+    setIsProjectModalOpen(true);
+  }
 
   const filteredProjects = useMemo(() => {
     return projects.filter((project) => {
@@ -67,7 +116,7 @@ export function ProjectList() {
       <div className="flex items-center justify-end">
         <button
           type="button"
-          onClick={() => setIsCreateModalOpen(true)}
+          onClick={openProjectModalForCreate}
           className={styles.newButton}
         >
           <Plus size={16} aria-hidden="true" />
@@ -257,7 +306,7 @@ export function ProjectList() {
             <ProjectCard
               key={project.id}
               project={project}
-              onSelect={setSelectedProject}
+              onSelect={setSelectedProjectId}
             />
           ))}
         </div>
@@ -267,14 +316,26 @@ export function ProjectList() {
       {showGrid && viewMode === "list" && (
         <ProjectListTable
           projects={filteredProjects}
-          onSelect={setSelectedProject}
+          onSelect={setSelectedProjectId}
         />
       )}
 
       {/* Slide-over panel — always in DOM, CSS-controlled visibility */}
       <ProjectSlideOver
         project={selectedProject}
-        onClose={() => setSelectedProject(null)}
+        onClose={() => setSelectedProjectId(null)}
+        onEditProject={openProjectModalForEdit}
+      />
+
+      {/* Project create/edit modal — keyed by modalResetKey so the form resets
+          on every open. disableScrollLock when the slide-over is already open. */}
+      <ProjectModal
+        key={modalResetKey}
+        open={isProjectModalOpen}
+        onOpenChange={setIsProjectModalOpen}
+        action={projectAction}
+        editingProject={editingProject}
+        disableScrollLock={selectedProjectId !== null}
       />
     </div>
   );
