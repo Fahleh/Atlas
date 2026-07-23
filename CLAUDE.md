@@ -13,7 +13,7 @@ This is a living document — it is updated as new patterns are established.
 **Atlas** is a production-grade Project Management Dashboard built as a senior-level portfolio project. It is not a prototype or a learning exercise. Every line of code must be production-ready, explainable, and defensible in a technical interview.
 
 **Stack:**
-- Next.js 15 (App Router) + TypeScript (strict mode)
+- Next.js 16 (App Router) + TypeScript (strict mode)
 - Tailwind CSS + CSS Modules (hybrid strategy)
 - Supabase (PostgreSQL, auth, real-time subscriptions)
 - TanStack React Query v5 (client-side data fetching)
@@ -23,6 +23,8 @@ This is a living document — it is updated as new patterns are established.
 - Inter (font via next/font)
 
 **Goal:** Demonstrate senior frontend engineering judgment across the full stack — not just working code, but correct, maintainable, well-documented, well-tested, and accessible code. Every file is a signal to a potential employer.
+
+> **Next.js 16 note:** the root request-interception file is `proxy.ts` (exporting `async function proxy(request: NextRequest)`), not `middleware.ts`. `middleware.ts` is deprecated on this version — do not create it, and treat any external tutorial or doc example still using `middleware.ts`/`export function middleware` as needing translation to the current convention before use.
 
 ---
 
@@ -50,7 +52,7 @@ If unsure about an implementation detail:
 - Never guess silently
 
 ### Third-Party Tools and Libraries
-Before providing any how-to steps, walkthrough, or implementation guidance for any third-party tool, library, or platform (Supabase, Next.js, Vercel, Playwright, TanStack, or any other), always search the official documentation and leading community sources to confirm the current recommended approach. Never rely on training data for third-party implementation details.
+Before providing any how-to steps, walkthrough, or implementation guidance for any third-party tool, library, or platform (Supabase, Next.js, Vercel, Playwright, TanStack, or any other), always search the official documentation and leading community sources to confirm the current recommended approach. Never rely on training data for third-party implementation details. Version numbers matter — confirm behavior against the actual installed version in `package.json`, not the latest docs by default, since APIs (e.g. `@supabase/ssr` cookie/header handling) have changed across minor versions.
 
 ---
 
@@ -64,15 +66,22 @@ Before providing any how-to steps, walkthrough, or implementation guidance for a
 - Prefer `type` for data shapes and aliases, `interface` for extension points
 - Use discriminated unions for error types and state variants
 - All exported types and interfaces must be explicitly exported
-- Named exports everywhere — default exports only where Next.js requires them (page and layout components)
+- Named exports everywhere — default exports only where Next.js requires them (page and layout components). This rule governs the export surface of a module; private, file-local helper components/functions that are never imported elsewhere (e.g. a `SubmitButton` defined and used only within one page file) are outside its scope, not exceptions to it — if such a helper is ever imported by another file, it must be converted to a named export at that point.
 
 ### Functions
 - Pure functions wherever possible — no side effects on external state
 - Input objects over individual parameters for functions with 3 or more arguments
 - Direct returns over unnecessary intermediate variable declarations for simple expressions
 - JSDoc on all exported functions — include `@param`, `@returns`, and `@template` where applicable
-- Inline comments only for non-obvious logic — never for self-explanatory code
+- Inline comments only for non-obvious logic — never for self-explanatory code. A comment should capture the *why* a reader can't infer from the code (e.g. "this component is isolated because `useSearchParams()` requires a Suspense boundary"), not restate the *what* the code already shows.
 - Static data (nav items, config arrays, status maps) defined outside the component — never inside render
+
+### Form Data Handling (all Server Actions and Route Handlers)
+- **Every `formData.get(field)` must be treated as `string | null`, never cast directly with `as string`.** HTML `required`/`type` attributes are client-side only and trivially bypassed (disabled JS, direct POST, curl). Guard for missing/empty values before using any field, regardless of client-side validation already present.
+- Distinguish presence (`null`) from emptiness (`""`) explicitly where the distinction matters; for most fields, `!value?.trim()` is sufficient to catch both.
+- Do not `.trim()` password fields — a password's leading/trailing characters are part of what the user typed and must not be silently altered (consistent with NIST guidance on password handling).
+- Prefer structured state fields for logic the UI must branch on (e.g. `accountExists: boolean`) over string-matching human-readable error messages (e.g. `error.includes("already exists")`). Substring-matching display text is fragile — any future copy change silently breaks the check with no type error and no test failure.
+- When checking Supabase Auth errors, check `error.code` against documented values (see `supabase.com/docs/guides/auth/debugging/error-codes`), never `error.message` — message strings are not a stable API contract.
 
 ### React Components
 - Client Components (`"use client"`) only when the component uses hooks, browser APIs, or event handlers
@@ -82,6 +91,7 @@ Before providing any how-to steps, walkthrough, or implementation guidance for a
 - Every `useEffect` that performs async work or attaches listeners must return a cleanup function — no exceptions
 - Never use `async` directly as a `useEffect` callback — use an inner async function
 - State updates inside `useEffect` must be guarded with a `cancelled` flag for async operations
+- Any Client Component calling `useSearchParams()` must be wrapped in `<Suspense>`, or the build will fail/force the route to de-optimize from static to dynamic. Extract the search-params-dependent piece into its own small child component and wrap only that component in `<Suspense>` — wrapping the whole page unnecessarily forces unrelated content to wait behind the fallback.
 
 ```typescript
 // Required pattern for async useEffect
@@ -105,11 +115,13 @@ Atlas targets React 19. All forms and mutation flows must use React 19's Actions
 
 - **Form submission**: use `useActionState` — `const [state, formAction, isPending] = useActionState(actionFn, initialState)`. The action signature is `(previousState, formData) => newState`.
 - **`<form action={formAction}>`** — never `onSubmit` + `preventDefault` for forms with an action function.
-- **Inputs are uncontrolled by default** — use `name` + `defaultValue`, read via `formData.get("fieldName")` inside the action. Reserve controlled `useState` for custom widgets that don't map to native form elements (custom dropdowns, date pickers) — these participate via a hidden `<input type="hidden" name="..." value={...}>`.
+- **Inputs are uncontrolled by default** — use `name` + `defaultValue`, read via `formData.get("fieldName")` inside the action (see Form Data Handling above for guarding requirements). Reserve controlled `useState` for custom widgets that don't map to native form elements (custom dropdowns, date pickers) — these participate via a hidden `<input type="hidden" name="..." value={...}>`.
 - **Pending/loading state**: use `useFormStatus()` in a child component rendered inside the `<form>` — never prop-drill `isPending`. `useFormStatus` cannot be called in the component that renders the `<form>` element itself.
-- **Validation**: HTML attributes (`required`, `type`, `minLength`, etc.) for instant client feedback; re-validate inside the action function before calling any mutation.
+- **Validation**: HTML attributes (`required`, `type`, `minLength`, etc.) for instant client feedback; re-validate inside the action function before calling any mutation — client-side attributes are not a substitute for server-side guards.
 - **Optimistic UI**: use `useOptimistic` for instant feedback on mutations where the eventual server state is predictable (e.g. marking a task done).
 - **Mutations**: the action function calls the React Query `mutateAsync` (Supabase create/update/delete) and returns `{ error: string | null }` (or similar) as the action state. On success, invalidate the relevant query key and close any modal.
+- **`redirect()` from `next/navigation`** (Server Actions only): throws an internal `NEXT_REDIRECT` signal that the framework catches upstream — never wrap it in `try/catch`, and only call it outside any `try/catch` block (i.e. after all error-returning branches have already returned).
+- **`NextResponse.redirect()`** (Route Handlers only — `route.ts` `GET`/`POST` functions): the correct primitive in this context, since a Route Handler returns a response value rather than throwing. Do not use `redirect()` from `next/navigation` in a Route Handler.
 - Before implementing any new form or mutation flow, confirm against the current React 19 docs (react.dev) that the pattern is still current — React's Actions APIs are actively evolving across minor versions.
 
 ### General
@@ -131,11 +143,24 @@ These decisions are final unless explicitly reopened for discussion.
 ### Folder Structure
 ```
 atlas/
+├── proxy.ts               — Next.js 16 request interception (session refresh, route protection)
 ├── app/
-│   ├── (auth)/           — login, signup — standalone layout, no shell
-│   └── (dashboard)/      — all authenticated pages — shell layout
-├── components/           — globally reusable UI components (Sidebar, Header)
-├── features/             — feature-specific components, styles, and utilities
+│   ├── (auth)/            — login, signup — standalone layout, no shell
+│   │   ├── layout.tsx
+│   │   ├── login/
+│   │   │   ├── page.tsx
+│   │   │   ├── login.module.css
+│   │   │   └── actions.ts
+│   │   └── signup/
+│   │       ├── page.tsx
+│   │       ├── signup.module.css
+│   │       └── actions.ts
+│   ├── auth/
+│   │   └── confirm/
+│   │       └── route.ts   — exchanges Supabase email token_hash for a session
+│   └── (dashboard)/       — all authenticated pages — shell layout
+├── components/            — globally reusable UI components (Sidebar, Header)
+├── features/              — feature-specific components, styles, and utilities
 │   └── projects/
 │       ├── ProjectList.tsx
 │       ├── ProjectList.module.css
@@ -149,8 +174,8 @@ atlas/
 │       ├── ProjectSlideOver.module.css
 │       ├── projectShared.module.css  — styles shared across feature components
 │       └── projectUtils.ts           — display utilities scoped to this feature
-├── hooks/                — custom React hooks
-├── lib/                  — shared utilities
+├── hooks/                 — custom React hooks
+├── lib/                   — shared utilities
 │   ├── asyncQueue.ts
 │   ├── createCache.ts
 │   ├── createCounter.ts
@@ -159,25 +184,25 @@ atlas/
 │   ├── errorHandler.ts
 │   ├── fetcher.ts
 │   ├── updateImmutable.ts
-│   ├── utils.ts          — shared transformation utilities (toCamelCase etc.)
+│   ├── utils.ts           — shared transformation utilities (toCamelCase etc.)
 │   ├── supabase/
-│   │   ├── client.ts     — browser client
-│   │   └── server.ts     — server client
-│   └── index.ts          — barrel file, explicit named exports only
-├── providers/            — context providers and infrastructure wrappers
+│   │   ├── client.ts      — browser client
+│   │   └── server.ts      — server client
+│   └── index.ts           — barrel file, explicit named exports only
+├── providers/             — context providers and infrastructure wrappers
 │   ├── ThemeProvider.tsx
 │   ├── QueryProvider.tsx
 │   └── ProjectContext.tsx
 ├── styles/
-│   ├── tokens.css        — single source of truth for all design tokens
-│   └── global.css        — reset, base styles, token import
+│   ├── tokens.css         — single source of truth for all design tokens
+│   └── global.css         — reset, base styles, token import
 ├── tests/
 │   ├── unit/
 │   ├── integration/
 │   └── e2e/
 ├── types/
-│   ├── atlas.types.ts    — camelCase domain types
-│   └── database.types.ts — generated from Supabase schema
+│   ├── atlas.types.ts     — camelCase domain types
+│   └── database.types.ts  — generated from Supabase schema
 └── docs/
 ```
 
@@ -192,11 +217,13 @@ atlas/
 - `lib/utils.ts` — transformation utilities used by hooks or multiple features (e.g. `toCamelCase`)
 - `features/[feature]/[feature]Utils.ts` — display utilities scoped to one feature (e.g. `getInitials`, `getMemberAvatarColor`, `STATUS_LABELS`)
 - If a feature-scoped utility is later needed by another feature, move it to `lib/utils.ts` at that point
+- Server Actions colocate with their route (`app/(auth)/login/actions.ts` next to `app/(auth)/login/page.tsx`) rather than living in a shared `authUtils.ts` — each route's actions are distinct business logic, not shared infrastructure. Shared Supabase client creation (`lib/supabase/server.ts`) remains in `lib/` because it is infrastructure, not business logic; this is the distinguishing rule between the two locations.
 
 ### Route Groups
 - `(auth)` — login, signup. No sidebar or header. Standalone layout.
 - `(dashboard)` — all authenticated pages. Shell layout with Sidebar and Header.
 - Route group folders use parentheses and do not appear in the URL.
+- `app/auth/confirm/route.ts` is deliberately **not** inside a route group — it's a Route Handler (API-style endpoint), not a page.
 
 ### Exports
 - Named exports on all utilities and components
@@ -220,13 +247,27 @@ atlas/
 - All Supabase responses transformed from snake_case to camelCase at the hook level using `toCamelCase` from `lib/utils.ts`
 - Independent async operations always run in parallel with `Promise.all` or `Promise.allSettled`
 - Hooks use `enabled: !!param` to prevent queries firing with invalid or missing parameters
-- Mock data used in hooks pending auth implementation — always marked `// TODO: remove mock data when auth is implemented`
+- Mock data used in `useProjects`/`useTasks` pending auth implementation — real Supabase query code is already written and present, commented out, directly above the mock block in each hook. Once auth/session handling is confirmed working end-to-end, swap by deleting the mock block and uncommenting the real query — do not rewrite the query logic. Do this only after `proxy.ts` and login/signup are verified working, since RLS is default-deny: uncommenting the real query before a session exists will silently return empty arrays rather than erroring.
 - Default staleTime: 60 seconds globally in `QueryProvider`, overridden per hook where appropriate
 
 ### Type System
 - Database types (`types/database.types.ts`) — snake_case, generated from Supabase, never manually edited
 - Application domain types (`types/atlas.types.ts`) — camelCase, hand-authored, used throughout the app
 - Transformation from snake_case → camelCase happens at the data fetching layer (hooks), never in components
+
+### Authentication (Supabase SSR)
+- `lib/supabase/client.ts` (browser) and `lib/supabase/server.ts` (Server Components/Actions) already implement the `@supabase/ssr` `getAll`/`setAll` cookie pattern — do not recreate or duplicate these.
+- **`proxy.ts`** (project root) is the only place that can both read and write cookies before rendering starts. Its jobs are two distinct things, not one:
+  1. **Session refresh** — calling `getClaims()` triggers a refresh if the token is expiring; when a refresh occurs, `setAll` fires and must write to *both* `request.cookies` (so Server Components rendering later in the same request see the fresh token) and `response.cookies` (so the browser receives it). The response must be rebuilt via `NextResponse.next({ request })` *after* mutating the request, not before — omitting this causes intermittent, hard-to-reproduce stale-session renders.
+  2. **Route protection / redirect** — a separate, unrelated concern from session refresh. Public-route bypass logic should only skip the redirect decision, not the `getClaims()` call itself, since session refresh benefits all requests regardless of route.
+- **Prefer `getClaims()` over `getUser()` over `getSession()`** for any server-side trust decision (middleware/proxy, protected Server Components):
+  - `getSession()` reads the JWT from storage with no verification at all — never trust it for authorization.
+  - `getClaims()` verifies the JWT signature — locally via WebCrypto/JWKS with no network call when the project uses asymmetric signing keys (Atlas uses ECC P-256, confirmed asymmetric), or via a network call if symmetric keys are ever configured. Use this by default.
+  - `getUser()` makes a network call to fetch the live user record from the Auth server. Only reach for this if something depends on data that can change *between* token refreshes but isn't in the JWT's claims (e.g. a live-updating profile field) — Atlas currently has no such requirement.
+- `setAll`'s second callback argument (`headers`) is a `Record<string, string>` (confirmed from the installed `@supabase/ssr` types) containing `Cache-Control`/`Expires`/`Pragma` values that must be applied to `response.headers` via `Object.entries(headers).forEach(...)` whenever a refresh occurs — without this, a refreshed session response can be cached by a CDN and served to a different user, leaking one user's session into another's browser.
+- **Open-redirect guard**: any user-supplied redirect destination (e.g. a `redirectTo` form field or query param) must be validated by parsing it as a URL and comparing its resolved `origin` against the app's known base origin — never by string-prefix checks like `redirectTo.startsWith("/")`, which fails to reject protocol-relative URLs (`//evil.com` starts with `/` and browsers resolve it to `https://evil.com`). Wrap the `new URL()` parse in `try/catch` (malformed input throws) and default to a safe internal route on failure. On success, redirect using the relative path (`url.pathname + url.search + url.hash`), never the full absolute URL — an absolute URL pins navigation to whatever host was used to construct it, which breaks custom domains, preview deployments, and reverse proxies where the configured base host may not match the actual incoming request host.
+- RLS policies are already written and enabled on all four tables (`profiles`, `projects`, `project_members`, `tasks`) — this was completed in Week 3, not deferred to the auth-implementation week. Do not treat "add RLS policies" as open work; the remaining auth work is proxy/session wiring, login/signup UI, and the mock-data-to-real-query swap described above.
+- Email confirmation: the Supabase dashboard template must use `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup` (not the default `{{ .ConfirmationURL }}`) so confirmation is handled server-side via `app/auth/confirm/route.ts` — this is required for App Router SSR, not optional.
 
 ### Active Link Detection
 - Use `usePathname()` from `next/navigation`
@@ -255,6 +296,7 @@ atlas/
 - Always use CSS custom properties from `styles/tokens.css` for all visual values
 - Never hardcode colors, font sizes, spacing values, border radii, or shadows
 - If no appropriate token exists: flag it, propose a new token, and wait for approval before hardcoding
+- There is currently no `--color-danger-hover` token. Do not invent a danger-family hover color for a link/element that isn't itself an error — reconsider whether the element should use `--color-accent` (and its existing `--color-accent-hover`) instead before proposing a new token.
 
 ### Token Reference
 ```css
@@ -277,7 +319,7 @@ var(--color-warning)
 
 /* Typography */
 var(--font-sans)
-var(--font-size-xs) through var(--font-size-3xl)
+var(--font-size-xs) through var(--font-size-5xl)
 var(--font-weight-normal) through var(--font-weight-bold)
 var(--line-height-tight) | var(--line-height-normal) | var(--line-height-relaxed)
 
@@ -324,6 +366,8 @@ Non-token hex colors are permitted only for UI-only accent hues with no semantic
 - Animation and transition styles always go in CSS Modules — never inline or Tailwind arbitrary values
 - All interactive states (hover, focus-visible, active) defined in the CSS Module
 - `focus-visible` with `outline: 2px solid var(--color-accent)` and `outline-offset: 2px` on every interactive element
+- When a class shares interactive states (hover/focus-visible) with another class but has a different base style, extract only the shared states into a small composable class (e.g. `.accentLink`) applied via `` className={`${styles.baseClass} ${styles.accentLink}`} `` — keep each class's own base styles under its own section heading rather than splitting a single class's definition across two unrelated sections of the file. This pattern (composed classNames via template string) is established precedent in `ProjectCard.tsx` and `Sidebar.tsx`.
+- Center a single line of text with `text-align: center` on a block-level element (or `display: block` + `text-align: center`) — not `display: flex; justify-content: center` for a single child, which works but reaches for flex machinery that isn't needed and can mislead a future reader into thinking multiple children are being arranged.
 
 ### Overlay and Transition Pattern
 - Overlays (backdrops, drawers, modals, slide-overs) are always rendered in the DOM — visibility controlled via CSS, not conditional rendering
@@ -439,6 +483,7 @@ For custom-styled select inputs (e.g. status dropdowns) that must participate in
 - React Query hooks are technical debt for Week 8 — marked with `// TODO: add tests in Week 8`
 - Integration tests live in `tests/integration/`
 - E2E tests with Playwright live in `tests/e2e/`
+- Note: `npm test` passing is not sufficient proof a change is safe for Next.js-specific concerns (e.g. `useSearchParams` Suspense requirements) — Jest does not run `next build`. Run `npm run build` after any change touching routing, Suspense boundaries, or static/dynamic rendering behavior, and confirm the relevant route's rendering mode (`○` static / `ƒ` dynamic) in the build output matches intent.
 
 ### Test Writing Standards
 - AAA pattern — Arrange, Act, Assert — every test, every time
@@ -476,6 +521,8 @@ For custom-styled select inputs (e.g. status dropdowns) that must participate in
 - No comments that restate what the code already says
 - TODO comments for planned work: `// TODO: wire to Supabase auth logout`
 - Non-token hex colors must have an inline comment explaining why they exist outside the token system
+- When a portfolio-scope simplification is deliberately made (e.g. collapsing several distinct failure modes into one generic error message), document it as a decision with a `// TODO` or comment stating what a fuller implementation would add and why it's out of scope now — this converts "looks like an oversight" into "documented, deliberate scope decision," which is the signal a reviewer should see.
+- If a file's actual behavior is broader or narrower than its own JSDoc claims (e.g. a route that generically handles multiple cases while its doc comment describes only one), fix the mismatch — either narrow the code to match the doc, or update the doc to accurately describe what the code does and why it's written that way. Documentation that contradicts the code it describes is treated as a defect, not a style nit.
 
 ### Docs Folder
 - `docs/` contains architectural documentation — not tutorials or guides
@@ -637,6 +684,27 @@ width: 480px; /* use width: 100%; max-width: 540px; instead */
 // Media query before base style it overrides
 @media (min-width: 1024px) { .button { display: none; } }
 .button { display: flex; } /* overrides the media query above */
+
+// Unguarded FormData access in a Server Action or Route Handler
+const email = formData.get("email") as string; // no null/empty guard
+const title = (formData.get("title") as string).trim(); // throws if null
+
+// String-prefix open-redirect check (fails to reject protocol-relative URLs)
+if (redirectTo.startsWith("/")) { redirect(redirectTo); } // "//evil.com" passes this check
+
+// redirect() from next/navigation inside a Route Handler (use NextResponse.redirect() instead)
+// or NextResponse.redirect() inside a Server Action (use redirect() instead)
+
+// Wrapping redirect() in try/catch, or wrapping it before all error-return branches
+try {
+  redirect(destination); // must never be caught
+} catch {}
+
+// Deciding UI logic by substring-matching a human-readable error message
+{state.error.includes("already exists") && <Link href="/login">Sign in</Link>}
+// use a structured boolean field on the action state instead
+
+// Using middleware.ts on Next.js 16 (deprecated — use proxy.ts / export function proxy)
 ```
 
 ---
