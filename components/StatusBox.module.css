@@ -1,0 +1,124 @@
+/* ---- Field container ---- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.fieldLabel {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+/* ---- Wrapper ---- */
+
+.statusWrapper {
+  position: relative;
+}
+
+/* ---- Trigger button ---- */
+
+.statusTrigger {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  height: 36px;
+  padding: 0 var(--space-3);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-sans);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 150ms ease;
+}
+
+.statusTrigger:hover {
+  border-color: var(--color-border-strong);
+}
+
+.statusTrigger:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-color: var(--color-accent);
+}
+
+.statusTriggerLabel {
+  flex: 1;
+}
+
+.statusChevron {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  transition: transform 150ms ease;
+}
+
+.statusChevronOpen {
+  transform: rotate(180deg);
+}
+
+/* ---- Status dot ---- */
+
+/* Color driven by --status-dot CSS custom property set per-item via inline style */
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--status-dot);
+  flex-shrink: 0;
+}
+
+/* ---- Options listbox ---- */
+
+.statusOptions {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  right: 0;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  z-index: 10;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease;
+}
+
+.statusOptionsOpen {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.statusOption {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: background-color 100ms ease;
+}
+
+.statusOption:hover,
+.statusOptionFocused {
+  background-color: var(--color-surface-raised);
+}
+
+.statusOption:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.statusOptionSelected {
+  color: var(--color-accent);
+  font-weight: var(--font-weight-medium);
+  background-color: var(--color-accent-subtle);
+}
