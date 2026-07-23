@@ -14,6 +14,7 @@ import {
 import Link from "next/link";
 import styles from "./Sidebar.module.css";
 import { useTheme } from "@/providers/ThemeContext";
+import { logout } from "@/app/(dashboard)/actions";
 
 type SidebarProps = {
   isOpen: boolean;
@@ -198,11 +199,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <span>{theme === "light" ? "Dark mode" : "Light mode"}</span>
           </button>
 
-          <button className={styles.logoutButton}>
-            {/* TODO: wire to Supabase auth logout */}
-            <LogOut size={20} className={styles.navIcon} />
-            <span>Logout</span>
-          </button>
+          <form action={logout}>
+            <button type="submit" className={styles.logoutButton}>
+              <LogOut size={20} className={styles.navIcon} />
+              <span>Logout</span>
+            </button>
+          </form>
         </div>
       </aside>
     </>
