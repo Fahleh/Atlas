@@ -8,7 +8,7 @@ import sharedStyles from "./projectShared.module.css";
 
 type ProjectCardProps = {
   project: Project;
-  onSelect: (project: Project) => void;
+  onSelect: (id: string) => void;
 };
 
 const STATUS_BADGE_CLASS: Record<ProjectStatus, string> = {
@@ -22,19 +22,19 @@ const PLACEHOLDER_MEMBERS = ["JD", "SK", "MR"];
 
 /**
  * Displays a single project as a clickable card.
- * Clicking or pressing Enter/Space calls onSelect with the project.
+ * Clicking or pressing Enter/Space calls onSelect with the project ID.
  *
  * @param project - The project to display
- * @param onSelect - Callback fired when the card is activated
+ * @param onSelect - Callback fired with the project ID when the card is activated
  */
 export function ProjectCard({ project, onSelect }: ProjectCardProps) {
   function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     if (e.key === "Enter") {
-      onSelect(project);
+      onSelect(project.id);
     }
     if (e.key === " ") {
       e.preventDefault();
-      onSelect(project);
+      onSelect(project.id);
     }
   }
 
@@ -43,7 +43,7 @@ export function ProjectCard({ project, onSelect }: ProjectCardProps) {
       role="button"
       tabIndex={0}
       aria-label={`Open ${project.name} details`}
-      onClick={() => onSelect(project)}
+      onClick={() => onSelect(project.id)}
       onKeyDown={handleKeyDown}
       className={styles.card}
     >

@@ -14,7 +14,7 @@ import sharedStyles from "./projectShared.module.css";
 
 type ProjectListTableProps = {
   projects: Project[];
-  onSelect: (project: Project) => void;
+  onSelect: (id: string) => void;
 };
 
 const STATUS_BADGE_CLASS: Record<ProjectStatus, string> = {
@@ -33,7 +33,7 @@ const DESCRIPTION_TRUNCATE_LENGTH = 60;
  * PROJECT, STATUS, PROGRESS, TEAM, and a per-row more-options menu.
  *
  * @param projects - Filtered project list from ProjectList
- * @param onSelect - Callback to open the slide-over for a given project
+ * @param onSelect - Callback fired with the project ID to open its slide-over
  */
 export function ProjectListTable({ projects, onSelect }: ProjectListTableProps) {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -83,7 +83,7 @@ export function ProjectListTable({ projects, onSelect }: ProjectListTableProps) 
           {projects.map((project) => (
             <tr
               key={project.id}
-              onClick={() => onSelect(project)}
+              onClick={() => onSelect(project.id)}
               className={styles.row}
             >
               {/* PROJECT column: avatar + name + description + open button */}
@@ -102,7 +102,7 @@ export function ProjectListTable({ projects, onSelect }: ProjectListTableProps) 
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onSelect(project);
+                      onSelect(project.id);
                     }}
                     aria-label={`Open ${project.name} details`}
                     className={styles.openButton}

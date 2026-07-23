@@ -1,11 +1,10 @@
 "use client";
 
-import { Project } from "@/types/atlas.types";
 import { createContext, useContext, useState, type ReactNode } from "react";
 
 type ProjectContextValue = {
-  selectedProject: Project | null;
-  setSelectedProject: (project: Project | null) => void;
+  selectedProjectId: string | null;
+  setSelectedProjectId: (id: string | null) => void;
 };
 
 type ProjectProviderProps = {
@@ -17,22 +16,25 @@ const ProjectContext = createContext<ProjectContextValue | undefined>(
 );
 
 /**
- * Provides global project state to the component tree.
+ * Provides the selected project ID to the component tree.
+ * Consumers derive the live Project object from their own query data using
+ * this ID, so the slide-over always reflects the current React Query cache
+ * rather than a stale point-in-time snapshot.
  *
  * @param children - React subtree that will have access to project context
  */
 export function ProjectProvider({ children }: ProjectProviderProps) {
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
   return (
-    <ProjectContext.Provider value={{ selectedProject, setSelectedProject }}>
+    <ProjectContext.Provider value={{ selectedProjectId, setSelectedProjectId }}>
       {children}
     </ProjectContext.Provider>
   );
 }
 
 /**
- * Returns the currently selected project and its setter function.
+ * Returns the selected project ID and its setter.
  * Must be used inside a ProjectProvider.
  * @returns ProjectContextValue
  */
