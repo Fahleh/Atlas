@@ -1,9 +1,12 @@
 "use client";
 
-import { EntityModal } from "@/components/EntityModal";
+import { useState } from "react";
+import { useFormStatus } from "react-dom";
+import { EntityModal, useEntityModalContext } from "@/components/EntityModal";
 import { StatusBox } from "@/components/StatusBox";
 import type { TaskStatus } from "@/types/atlas.types";
 import { STATUS_CONFIG } from "./taskUtils";
+import styles from "./TaskModal.module.css";
 
 // ---- Types ------------------------------------------------------------------
 
@@ -31,9 +34,69 @@ export type StatusFieldProps = {
   name: string;
 };
 
+type DeleteButtonProps = {
+  action: (formData: FormData) => Promise<{ error: string | null }>;
+};
+
 // ---- Constants --------------------------------------------------------------
 
 const STATUS_ORDER: TaskStatus[] = ["todo", "in_progress", "done"];
+
+// ---- DeleteButton -----------------------------------------------------------
+
+/**
+ * Two-step task delete button for the modal footer.
+ * First click reveals a danger confirm button; second click submits via
+ * `formAction` — bypassing the form's primary save action — and captures
+ * the returned error in local state so it surfaces below the button.
+ *
+ * Uses `useFormStatus().action` identity comparison (via EntityModalContext)
+ * to distinguish delete-pending from save-pending, avoiding the FormData
+ * pollution that the previous hidden-input approach suffered.
+ *
+ * @param action - Single-arg delete action from `createDeleteTaskAction`
+ */
+function DeleteButton({ action }: DeleteButtonProps) {
+  const { formAction } = useEntityModalContext();
+  const [confirming, setConfirming] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const status = useFormStatus();
+  // True only when capturedAction (not the form's primary taskAction) is running.
+  const isThisDeletePending = status.pending && status.action !== formAction;
+
+  async function capturedAction(formData: FormData): Promise<void> {
+    setDeleteError(null);
+    const result = await action(formData);
+    if (result.error) setDeleteError(result.error);
+  }
+
+  if (!confirming) {
+    return (
+      <button
+        type="button"
+        disabled={status.pending}
+        onClick={() => setConfirming(true)}
+        className={styles.deleteButton}
+      >
+        Delete task
+      </button>
+    );
+  }
+
+  return (
+    <>
+      {deleteError && <p className={styles.deleteError}>{deleteError}</p>}
+      <button
+        type="submit"
+        formAction={capturedAction}
+        disabled={status.pending}
+        className={styles.deleteButtonDanger}
+      >
+        {isThisDeletePending ? "Deleting…" : "Confirm delete?"}
+      </button>
+    </>
+  );
+}
 
 // ---- TaskStatusField --------------------------------------------------------
 
@@ -98,7 +161,9 @@ export const TaskModal = Object.assign(TaskModalRoot, {
   Body: EntityModal.Body,
   Field: EntityModal.Field,
   Footer: EntityModal.Footer,
+  FooterActions: EntityModal.FooterActions,
   CancelButton: EntityModal.CancelButton,
   SubmitButton: EntityModal.SubmitButton,
   StatusField: TaskStatusField,
+  DeleteButton,
 });

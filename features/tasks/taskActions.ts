@@ -1,7 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
-import { updateTask, updateTaskStatus } from "@/lib/updateImmutable";
+import { updateTask, updateTaskStatus } from "@/lib";
 import type { QueryClient } from "@tanstack/react-query";
 import type { Task, TaskStatus } from "@/types/atlas.types";
 import { STATUS_CONFIG } from "./taskUtils";
@@ -15,7 +15,49 @@ export type CreateTaskActionDeps = {
   setIsModalOpen: (open: boolean) => void;
 };
 
-// ---- Helpers ----------------------------------------------------------------
+// ---- Delete factory ---------------------------------------------------------
+
+/**
+ * Returns a single-arg form action for deleting the current task.
+ * Uses the direct `(formData: FormData) => Promise<{ error }>` signature
+ * (not the two-arg `useActionState` shape) since it is invoked via a button's
+ * `formAction` attribute rather than through `useActionState`.
+ *
+ * Reads `projectId` from FormData (always present as a hidden input in the task
+ * modal form) to scope the React Query invalidation correctly.
+ *
+ * @param deps - Same stable references as createTaskAction
+ * @returns A `(formData: FormData) => Promise<{ error: string | null }>` action
+ */
+export function createDeleteTaskAction(
+  deps: CreateTaskActionDeps,
+): (formData: FormData) => Promise<{ error: string | null }> {
+  const { editingTaskRef, queryClient, setIsModalOpen } = deps;
+
+  return async function deleteTaskAction(
+    formData: FormData,
+  ): Promise<{ error: string | null }> {
+    const currentTask = editingTaskRef.current;
+    if (!currentTask) return { error: "No task selected." };
+
+    const projectId = formData.get("projectId") as string | null;
+    if (!projectId) return { error: "Project ID is required." };
+
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("tasks")
+      .delete()
+      .eq("id", currentTask.id);
+
+    if (error) return { error: error.message };
+
+    await queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
+    setIsModalOpen(false);
+    return { error: null };
+  };
+}
+
+// ---- Save helpers -----------------------------------------------------------
 
 const VALID_STATUSES = Object.keys(STATUS_CONFIG) as readonly TaskStatus[];
 

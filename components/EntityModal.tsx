@@ -31,6 +31,10 @@ export type EntityModalProps<TFormState extends { error: string | null }> = {
 type EntityModalContextValue = {
   onOpenChange: (open: boolean) => void;
   titleId: string;
+  // The stable dispatch function from useActionState — used by SubmitButton and
+  // DeleteButton to detect non-primary formAction submissions via identity comparison
+  // against useFormStatus().action (see react-dom-client source, extractEvents$1).
+  formAction: (formData: FormData) => void;
 };
 
 export type EntityModalFieldProps = {
@@ -43,14 +47,19 @@ type HeaderProps = { children: React.ReactNode };
 type TitleProps = { children: React.ReactNode };
 type BodyProps = { children: React.ReactNode };
 type FooterProps = { children: React.ReactNode };
+type FooterActionsProps = { children: React.ReactNode };
 type CancelButtonProps = { children: React.ReactNode };
-type SubmitButtonProps = { children: React.ReactNode };
+type SubmitButtonProps = {
+  children: React.ReactNode;
+  variant?: "default" | "danger";
+  pendingLabel?: string;
+};
 
 // ---- Context ----------------------------------------------------------------
 
 const EntityModalContext = createContext<EntityModalContextValue | null>(null);
 
-function useEntityModalContext(): EntityModalContextValue {
+export function useEntityModalContext(): EntityModalContextValue {
   const ctx = useContext(EntityModalContext);
   if (!ctx)
     throw new Error(
@@ -116,6 +125,15 @@ function Footer({ children }: FooterProps) {
   return <div className={styles.footer}>{children}</div>;
 }
 
+/**
+ * Groups Cancel + Submit on the right side of Footer.
+ * Use when a destructive action (e.g. DeleteButton) occupies the left slot —
+ * the Footer's `justify-content: space-between` separates the two groups.
+ */
+function FooterActions({ children }: FooterActionsProps) {
+  return <div className={styles.footerActions}>{children}</div>;
+}
+
 function CancelButton({ children }: CancelButtonProps) {
   const { onOpenChange } = useEntityModalContext();
   return (
@@ -133,12 +151,40 @@ function CancelButton({ children }: CancelButtonProps) {
  * Submit button that derives its pending state from `useFormStatus`.
  * Must be rendered as a descendant of the `<form>` element — never in the
  * same component that renders the form.
+ *
+ * Uses `useFormStatus().action` identity comparison against the form's own
+ * `formAction` (from context) to detect when a button-level `formAction`
+ * override is running — e.g. a delete action — and suppress `pendingLabel`
+ * in that case. This avoids the FormData-pollution bug that the hidden-input
+ * approach suffered: if a user clicked Save while DeleteButton was in confirming
+ * state, the hidden `_action=delete` field would have made `isDeletePending`
+ * true during a real save. The identity check has no such edge case.
+ *
+ * @param variant - "danger" renders the button using `--color-danger`
+ * @param pendingLabel - Text shown while the form's primary action is in progress
  */
-function SubmitButton({ children }: SubmitButtonProps) {
-  const { pending } = useFormStatus();
+function SubmitButton({
+  children,
+  variant = "default",
+  pendingLabel = "Saving…",
+}: SubmitButtonProps) {
+  const { formAction } = useEntityModalContext();
+  const status = useFormStatus();
+  // True only when a button-level formAction override (not the form's primary
+  // action) is the running action. React 19 populates status.action with the
+  // button's formAction function when a formAction button triggers the submit.
+  const isNonPrimaryActionPending =
+    status.pending && status.action !== formAction;
+
   return (
-    <button type="submit" disabled={pending} className={styles.submitButton}>
-      {pending ? "Saving…" : children}
+    <button
+      type="submit"
+      disabled={status.pending}
+      className={
+        variant === "danger" ? styles.submitButtonDanger : styles.submitButton
+      }
+    >
+      {status.pending && !isNonPrimaryActionPending ? pendingLabel : children}
     </button>
   );
 }
@@ -245,7 +291,7 @@ function EntityModalRoot<TFormState extends { error: string | null }>({
   }
 
   return (
-    <EntityModalContext.Provider value={{ onOpenChange, titleId }}>
+    <EntityModalContext.Provider value={{ onOpenChange, titleId, formAction }}>
       {/* Backdrop — always in DOM, visibility via CSS */}
       <div
         role="button"
@@ -288,6 +334,7 @@ export const EntityModal = Object.assign(EntityModalRoot, {
   Body,
   Field,
   Footer,
+  FooterActions,
   CancelButton,
   SubmitButton,
 });

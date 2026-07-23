@@ -1,14 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Pencil, Plus, X } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
-import type { Project, ProjectStatus, Task } from "@/types/atlas.types";
-import styles from "./ProjectSlideOver.module.css";
-import { STATUS_LABELS } from "./projectUtils";
+import { EntityModal } from "@/components/EntityModal";
 import { TaskList } from "@/features/tasks/TaskList";
 import { TaskModal } from "@/features/tasks/TaskModal";
-import { createTaskAction } from "@/features/tasks/taskActions";
+import {
+  createDeleteTaskAction,
+  createTaskAction,
+} from "@/features/tasks/taskActions";
+import type { Project, ProjectStatus, Task } from "@/types/atlas.types";
+import { useQueryClient } from "@tanstack/react-query";
+import { Pencil, Plus, Trash2, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import styles from "./ProjectSlideOver.module.css";
+import { deleteProject, type ProjectFormState } from "./projectActions";
+import sharedStyles from "./projectShared.module.css";
+import { STATUS_LABELS } from "./projectUtils";
 
 type ProjectSlideOverProps = {
   project: Project | null;
@@ -29,6 +35,11 @@ const DATE_FORMAT: Intl.DateTimeFormatOptions = {
   day: "numeric",
 };
 
+const DUE_DATE_LONG_FORMAT: Intl.DateTimeFormatOptions = {
+  ...DATE_FORMAT,
+  timeZone: "UTC",
+};
+
 /**
  * Slide-over panel that shows full project details.
  * Always rendered in the DOM — visibility is CSS-controlled via isOpen state.
@@ -46,6 +57,13 @@ export function ProjectSlideOver({
   const isOpen = project !== null;
   const panelRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  // ---- Delete confirmation modal state ------------------------------------
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  // Incremented on every open so the EntityModal remounts and clears any
+  // previous error state — mirrors the modalResetKey pattern on TaskModal.
+  const [deleteModalResetKey, setDeleteModalResetKey] = useState(0);
 
   // ---- Task modal state ----------------------------------------------------
 
@@ -67,6 +85,31 @@ export function ProjectSlideOver({
     // eslint-disable-next-line react-hooks/refs
     () => createTaskAction({ editingTaskRef, queryClient, setIsModalOpen }),
     [queryClient],
+  );
+
+  const deleteTaskAction = useMemo(
+    () =>
+      // eslint-disable-next-line react-hooks/refs
+      createDeleteTaskAction({ editingTaskRef, queryClient, setIsModalOpen }),
+    [queryClient],
+  );
+
+  const deleteProjectAction = useMemo(
+    () =>
+      async (
+        _prevState: ProjectFormState,
+        _formData: FormData,
+      ): Promise<ProjectFormState> => {
+        if (!project) return { error: null };
+
+        const result = await deleteProject(project.id, queryClient);
+        if (result.error) return { error: result.error };
+
+        setIsDeleteModalOpen(false);
+        onClose();
+        return { error: null };
+      },
+    [project, queryClient, onClose],
   );
 
   function openForCreate() {
@@ -128,18 +171,19 @@ export function ProjectSlideOver({
     };
   }, [isOpen]);
 
-  // Escape key closes the panel — but not when the task modal is open
-  // (the modal handles its own Escape).
+  // Escape key closes the panel — but not when the task modal or delete
+  // confirmation modal is open (each handles its own Escape).
   useEffect(() => {
     function handleEscape(e: KeyboardEvent) {
-      if (e.key === "Escape" && isOpen && !isModalOpen) onClose();
+      if (e.key === "Escape" && isOpen && !isModalOpen && !isDeleteModalOpen)
+        onClose();
     }
 
     document.addEventListener("keydown", handleEscape);
     return () => {
       document.removeEventListener("keydown", handleEscape);
     };
-  }, [isOpen, isModalOpen, onClose]);
+  }, [isOpen, isModalOpen, isDeleteModalOpen, onClose]);
 
   // Body scroll lock while panel is open
   useEffect(() => {
@@ -189,7 +233,6 @@ export function ProjectSlideOver({
             )}
           </div>
 
-          {/* Header actions — designed to accommodate an additional Delete button in prompt 2 */}
           <div className={styles.headerActions}>
             {project && onEditProject && (
               <button
@@ -199,6 +242,19 @@ export function ProjectSlideOver({
                 className={styles.headerActionButton}
               >
                 <Pencil size={16} aria-hidden="true" />
+              </button>
+            )}
+            {project && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteModalResetKey((k) => k + 1);
+                  setIsDeleteModalOpen(true);
+                }}
+                aria-label="Delete project"
+                className={styles.headerActionButton}
+              >
+                <Trash2 size={16} aria-hidden="true" />
               </button>
             )}
             <button
@@ -224,10 +280,10 @@ export function ProjectSlideOver({
 
             <section className={styles.section}>
               <h3 className={styles.sectionTitle}>Details</h3>
-              <dl className={styles.detailList}>
-                <div className={styles.detailRow}>
-                  <dt className={styles.detailLabel}>Created</dt>
-                  <dd className={styles.detailValue}>
+              <dl className={sharedStyles.detailList}>
+                <div className={sharedStyles.detailRow}>
+                  <dt className={sharedStyles.detailLabel}>Created</dt>
+                  <dd className={sharedStyles.detailValue}>
                     {new Date(project.createdAt).toLocaleDateString(
                       "en-US",
                       DATE_FORMAT,
@@ -235,10 +291,13 @@ export function ProjectSlideOver({
                   </dd>
                 </div>
                 {project.dueDate && (
-                  <div className={styles.detailRow}>
-                    <dt className={styles.detailLabel}>Due date</dt>
-                    <dd className={styles.detailValue}>
-                      {project.dueDate.toLocaleDateString("en-US", DATE_FORMAT)}
+                  <div className={sharedStyles.detailRow}>
+                    <dt className={sharedStyles.detailLabel}>Due date</dt>
+                    <dd className={sharedStyles.detailValue}>
+                      {project.dueDate.toLocaleDateString(
+                        "en-US",
+                        DUE_DATE_LONG_FORMAT,
+                      )}
                     </dd>
                   </div>
                 )}
@@ -268,6 +327,36 @@ export function ProjectSlideOver({
           </div>
         )}
       </div>
+
+      {/* Project delete confirmation modal — disableScrollLock because the
+          slide-over already holds body scroll lock. */}
+      <EntityModal
+        key={deleteModalResetKey}
+        open={isDeleteModalOpen}
+        onOpenChange={setIsDeleteModalOpen}
+        action={deleteProjectAction}
+        initialState={{ error: null }}
+        disableScrollLock
+      >
+        <EntityModal.Header>
+          <EntityModal.Title>Delete project</EntityModal.Title>
+          <EntityModal.CloseButton />
+        </EntityModal.Header>
+        <EntityModal.Body>
+          <p>
+            Are you sure you want to delete <strong>{project?.name}</strong>?
+            All tasks will be permanently removed. This action cannot be undone.
+          </p>
+        </EntityModal.Body>
+        <EntityModal.Footer>
+          <EntityModal.FooterActions>
+            <EntityModal.CancelButton>Cancel</EntityModal.CancelButton>
+            <EntityModal.SubmitButton variant="danger" pendingLabel="Deleting…">
+              Delete project
+            </EntityModal.SubmitButton>
+          </EntityModal.FooterActions>
+        </EntityModal.Footer>
+      </EntityModal>
 
       {/* Task modal — disableScrollLock because the slide-over already holds
           body scroll lock. Keyed by modalResetKey so the form resets on every open. */}
@@ -323,10 +412,15 @@ export function ProjectSlideOver({
             </TaskModal.Field>
           </TaskModal.Body>
           <TaskModal.Footer>
-            <TaskModal.CancelButton>Cancel</TaskModal.CancelButton>
-            <TaskModal.SubmitButton>
-              {editingTask ? "Save changes" : "Create task"}
-            </TaskModal.SubmitButton>
+            {editingTask && (
+              <TaskModal.DeleteButton action={deleteTaskAction} />
+            )}
+            <TaskModal.FooterActions>
+              <TaskModal.CancelButton>Cancel</TaskModal.CancelButton>
+              <TaskModal.SubmitButton>
+                {editingTask ? "Save changes" : "Create task"}
+              </TaskModal.SubmitButton>
+            </TaskModal.FooterActions>
           </TaskModal.Footer>
         </TaskModal>
       )}
