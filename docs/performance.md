@@ -2,13 +2,15 @@
 
 > **Atlas Internal Documentation**
 > Week 2 — Advanced JavaScript Patterns & Performance
-> Last updated: May 2026
+> Last updated: July 2026
 
 ---
 
 ## Overview
 
-This document records the performance and memory decisions made during the construction of Atlas's utility layer. It covers allocation strategies, memory leak prevention, caching architecture, and debugging workflows. It will be updated in Week 7 with Lighthouse scores and production performance metrics.
+This document records the performance and memory decisions made during the construction of Atlas's utility layer, plus later, more consequential React render-performance findings from Week 5.
+
+**A note on currency, added during a July 2026 documentation pass:** several utilities described below (`lib/fetcher.ts`, `lib/createCache.ts`, `lib/asyncQueue.ts`) were built early, before Atlas's real data layer existed. That real data layer turned out to be the Supabase client + TanStack React Query, not these utilities — so as of this update, none of the three are called anywhere in the live application (confirmed via `grep`; each is referenced only by its own test suite and `lib/index.ts`'s barrel export). They're preserved here and in the codebase as reference implementations of real memory/async patterns, not as descriptions of Atlas's current runtime behavior. Each section below is marked accordingly. `lib/updateImmutable.ts` is **not** in this category — it's genuinely live, used throughout the real `projectActions.ts`/`taskActions.ts` mutation flows.
 
 ---
 
@@ -16,11 +18,12 @@ This document records the performance and memory decisions made during the const
 
 1. [Memory Management Principles](#1-memory-management-principles)
 2. [Common Leak Patterns & Mitigations](#2-common-leak-patterns--mitigations)
-3. [Cache Architecture](#3-cache-architecture)
+3. [Cache Architecture (reference implementation, not live)](#3-cache-architecture-reference-implementation-not-live)
 4. [Utility Allocation Decisions](#4-utility-allocation-decisions)
 5. [Async Performance](#5-async-performance)
 6. [Debugging Workflows](#6-debugging-workflows)
 7. [React & Next.js Performance Implications](#7-react--nextjs-performance-implications)
+8. [React Render Performance — Week 5 Profiling](#8-react-render-performance--week-5-profiling)
 
 ---
 
@@ -36,9 +39,13 @@ JavaScript uses automatic garbage collection — the engine reclaims memory when
 
 **3. Immutability over mutation.** Immutable updates create new object references rather than modifying existing ones. This prevents shared state corruption and makes garbage collection predictable — old references are released as soon as they go out of scope.
 
+These principles are timeless and still guide the live codebase (see `lib/updateImmutable.ts`, and every `useEffect` cleanup pattern in the real components), independent of which specific early utilities below remain in production use.
+
 ---
 
 ## 2. Common Leak Patterns & Mitigations
+
+The patterns below are general JavaScript knowledge, still accurate. Where a mitigation originally pointed at a specific Atlas utility, that's now flagged if the utility isn't live — the *pattern* being taught remains correct either way.
 
 ### Detached DOM Nodes
 Removing an element from the DOM while holding a JavaScript reference to it prevents collection.
@@ -55,7 +62,7 @@ document.body.removeChild(button);
 button = null;
 ```
 
-**Atlas mitigation:** No direct DOM references are stored in module scope. Component-level refs are scoped to React components and released on unmount.
+**Atlas mitigation:** No direct DOM references are stored in module scope. Component-level refs are scoped to React components and released on unmount. This remains true and current across every component built through Week 6.
 
 ---
 
@@ -80,7 +87,7 @@ function setup() {
 }
 ```
 
-**Atlas mitigation:** All `useEffect` hooks that attach listeners return cleanup functions. This is a non-negotiable convention in Atlas — no exceptions.
+**Atlas mitigation:** All `useEffect` hooks that attach listeners return cleanup functions. This is a non-negotiable convention in Atlas — no exceptions. Still enforced, and now exercised across a much larger surface than Week 2 — every modal's focus trap, every slide-over's Escape handler, `AuthListenerProvider`'s `onAuthStateChange` subscription.
 
 ---
 
@@ -97,16 +104,16 @@ function getData(key: string) {
 }
 ```
 
-**Atlas mitigation:** See [Cache Architecture](#3-cache-architecture).
+**Atlas's actual mitigation for this, in the live app, is TanStack React Query** — not `lib/createCache.ts` (see below). React Query's own cache handles TTL-style staleness (`staleTime`, configured per-hook — see `useProjects`, `useTasks`, `useCurrentUserProfile`, `useMembersByProject`) and garbage-collects unused query data automatically. `lib/createCache.ts` remains in the codebase as a hand-built demonstration of the same underlying problem and a valid general-purpose solution to it — just not the mechanism actually protecting Atlas today.
 
 ---
 
-## 3. Cache Architecture
+## 3. Cache Architecture (reference implementation, not live)
 
-Atlas uses `lib/createCache.ts` — a typed, closure-based in-memory cache with three layers of memory protection:
+Atlas's `lib/createCache.ts` is a typed, closure-based in-memory cache with three layers of memory protection. **It is not called anywhere in the live application** — confirmed via `grep`, referenced only by its own test suite and the `lib/index.ts` barrel. It's kept as a demonstration of a real caching strategy (TTL + LRU eviction + lazy expiration), and the reasoning below is preserved because the tradeoffs it documents are genuinely instructive, not because this code is running in production.
 
 ### TTL (Time To Live)
-Every cache entry has a `createdAt` timestamp. On access, the entry's age is checked against the configured `ttl`. Stale entries are deleted and `undefined` is returned, triggering a fresh fetch from Supabase.
+Every cache entry has a `createdAt` timestamp. On access, the entry's age is checked against the configured `ttl`. Stale entries are deleted and `undefined` is returned, triggering a fresh fetch.
 
 ```typescript
 type CacheEntry<T> = {
@@ -124,7 +131,7 @@ LRU is implemented using JavaScript's `Map` insertion order:
 - On capacity breach, the front entry is evicted
 
 ### Lazy Expiration
-Expiry is checked **on access**, not on a background timer. This avoids the overhead of a running interval and the complexity of timer cleanup. The tradeoff is that stale entries occupy memory until they are next accessed — acceptable for Atlas's data access patterns.
+Expiry is checked **on access**, not on a background timer. This avoids the overhead of a running interval and the complexity of timer cleanup. The tradeoff is that stale entries occupy memory until they are next accessed.
 
 ### Configuration
 
@@ -137,28 +144,33 @@ const notificationCache = createCache<Notification[]>(50, 60 * 1000);
 ```
 
 ### Decision: TTL + Max Size over TTL alone
-A pure TTL cache can grow large before entries expire if data is written faster than the TTL window. The max size cap provides a hard memory ceiling, making memory consumption predictable regardless of write frequency. This directly reduces hosting costs at scale.
+A pure TTL cache can grow large before entries expire if data is written faster than the TTL window. The max size cap provides a hard memory ceiling, making memory consumption predictable regardless of write frequency.
+
+**What Atlas actually uses instead:** React Query's built-in cache, configured per-hook via `staleTime`. It solves the same class of problem this file was originally built to solve, with framework-level integration (automatic refetch-on-invalidate, request deduplication, garbage collection of unused queries) that a hand-rolled cache would have to reimplement.
 
 ---
 
 ## 4. Utility Allocation Decisions
 
-### `lib/entityFactory.ts`
-- Uses `crypto.randomUUID()` for ID generation — native, no dependency, cryptographically unique, no allocation overhead compared to third-party UUID libraries
+### `lib/entityFactory.ts` (not live — see `docs/decisions.md`)
+- Uses `crypto.randomUUID()` for ID generation — native, no dependency, no allocation overhead compared to third-party UUID libraries
 - `new Date()` for `createdAt` — allocated once per entity, not retained
+- Not used in any live data-fetching path; superseded by the Supabase-backed `projectActions.ts`/`taskActions.ts`. Its hardcoded `ownerId: "user-123"` is safe only because nothing in the live app calls it.
 
-### `lib/updateImmutable.ts`
+### `lib/updateImmutable.ts` (live — used throughout the real app)
 - Uses object spread (`{ ...entity, ...changes }`) for immutable updates — creates a shallow copy
-- **Shallow copy tradeoff:** Nested objects are shared by reference, not deeply cloned. For Atlas's flat entity shapes (`Project`, `Task`), this is safe. If deeply nested entities are introduced, this decision must be revisited and documented here.
+- **Shallow copy tradeoff:** Nested objects are shared by reference, not deeply cloned. For Atlas's flat entity shapes (`Project`, `Task`), this is safe.
+- `updateProjectStatus`/`updateTaskStatus` are deliberately kept separate from the general `updateProject`/`updateTask` functions, so status changes never pass through the generic `Partial<...>` changes path — this is a real, current architectural rule (see CLAUDE.md's Immutable Updates section), not a historical note.
 
-### `lib/createStore.ts`
+### `lib/createStore.ts` (not live — see `js-execution.md`, `docs/decisions.md`)
 - Returns `{ ...state }` copies from `getState()` to prevent external mutation of the closure scope
 - `login` and `logout` spread from `initialState` to ensure a clean baseline on every state transition
+- Built as a closures study exercise; never wired to real Supabase auth. Real session/current-user identity uses `useCurrentUser()` (React Query) — see CLAUDE.md's Authentication section.
 
-### `lib/asyncQueue.ts`
-- Internal queue is a plain `Array` — O(1) `push`, O(n) `shift`. Acceptable for Atlas's queue depths
-- If queue depth regularly exceeds ~1000 items, consider a linked list implementation for O(1) dequeue
+### `lib/asyncQueue.ts` (not live)
+- Internal queue is a plain `Array` — O(1) `push`, O(n) `shift`
 - `.finally()` is used for slot release — guaranteed to run on both resolve and reject, preventing concurrency slot leaks
+- Not called anywhere in the live application (confirmed via `grep`). Kept as a demonstration of controlled-concurrency task execution — the pattern is real and would be genuinely useful for, e.g., rate-limiting a batch of API calls, but Atlas hasn't yet had a use case requiring it.
 
 ---
 
@@ -183,10 +195,10 @@ const [projects, notifications] = await Promise.all([
 ]);
 ```
 
-**Atlas convention:** Always fetch independent data in parallel with `Promise.all`. Use `Promise.allSettled` when partial data is acceptable (e.g. dashboard where notifications failing shouldn't block project display).
+**Atlas convention, still current:** fetch independent data in parallel with `Promise.all`. This is exercised for real in the live codebase — e.g. `removeMember`'s and `deleteProject`'s cache invalidations, and `useMembersByProject`'s batched query design (fetching all currently-loaded projects' members in one round trip rather than one query per project card).
 
-### Retry Backoff
-`lib/fetcher.ts` uses a simple linear backoff: `500 * attempt` ms between retries. This avoids hammering a struggling server while keeping retry latency predictable. For production, exponential backoff with jitter would be more robust — flagged for Week 7 review.
+### Retry Backoff (reference — `lib/fetcher.ts` is not live)
+`lib/fetcher.ts` uses a simple linear backoff: `500 * attempt` ms between retries, avoiding hammering a struggling server while keeping retry latency predictable. This utility isn't called anywhere in the live app — Supabase's client handles its own request behavior — but the backoff reasoning remains valid general knowledge, and would apply if Atlas ever added a raw `fetch`-based integration outside Supabase.
 
 ---
 
@@ -200,6 +212,8 @@ All bugs in Atlas must be approached with this process — no exceptions:
 3. **Hypothesize** — form one specific, testable guess about the cause
 4. **Verify** — prove or disprove with a tool, not intuition
 
+This process is still exactly how real bugs in Atlas have been diagnosed — e.g. the `project_members` RLS infinite-recursion bug and the due-date UTC display bug were both found this way, not by guessing.
+
 ### Tool Selection by Bug Type
 
 | Bug Type | Primary Tool | Secondary Tool |
@@ -211,7 +225,7 @@ All bugs in Atlas must be approached with this process — no exceptions:
 | Re-render issues | React DevTools Profiler | Chrome Performance tab |
 
 ### Heap Snapshot Workflow (Three-Snapshot Technique)
-Used for identifying memory leaks once the UI is built (Week 3+):
+Used for identifying memory leaks once the UI is built:
 
 1. Take **Snapshot 1** — baseline before any interaction
 2. Perform the action suspected of leaking (navigate, open modal, trigger fetch)
@@ -219,8 +233,6 @@ Used for identifying memory leaks once the UI is built (Week 3+):
 4. Take **Snapshot 2** — compare size delta with Snapshot 1
 5. Repeat the action
 6. Take **Snapshot 3** — if memory grows consistently between snapshots, a leak exists
-
-Scheduled debugging sessions: **end of Week 3**, **end of Week 5**, **end of Week 7**.
 
 ---
 
@@ -238,7 +250,7 @@ setState(state); // same reference
 setState({ ...state, title: "New Title" }); // new reference
 ```
 
-All Atlas state updates use `lib/updateImmutable.ts` to guarantee new references on every change.
+All Atlas state updates use `lib/updateImmutable.ts` to guarantee new references on every change — still accurate and current.
 
 ### useEffect Cleanup
 Every `useEffect` in Atlas that performs async work or attaches listeners returns a cleanup function:
@@ -248,7 +260,7 @@ useEffect(() => {
   let cancelled = false;
 
   async function load() {
-    const data = await fetcher("/api/projects");
+    const data = await fetcher("/api/projects"); // illustrative — the live app uses Supabase client + React Query, not this raw fetcher
     if (cancelled) return; // guard against stale updates
     if ("type" in data) { handleError(data); return; }
     setProjects(data);
@@ -259,7 +271,7 @@ useEffect(() => {
 }, []);
 ```
 
-The `cancelled` flag prevents `setState` calls on unmounted components — a common source of memory leaks and React warnings.
+The `cancelled` flag prevents `setState` calls on unmounted components — a common source of memory leaks and React warnings. **In practice, React Query's `useQuery` handles this internally** for every real data-fetching hook in Atlas (`useProjects`, `useTasks`, `useCurrentUser`, `useCurrentUserProfile`, `useMembersByProject`) — none of them need to hand-write this pattern themselves. The example above is retained because the underlying problem (stale updates on unmounted components) and its manual fix are still correct, general React knowledge.
 
 ### Next.js Server Components
 Server Components execute per-request in Node.js. Module-level mutable state is shared across concurrent requests — a critical memory and correctness issue:
@@ -270,16 +282,16 @@ let cachedData = [];
 
 // Safe — scoped per request
 export default async function Page() {
-  const data = await fetcher("/api/projects");
+  const data = await fetcher("/api/projects"); // illustrative
   return <ProjectList projects={data} />;
 }
 ```
 
-Atlas uses request-scoped data fetching in all Server Components. The `createCache` utility is used only in Client Components and API routes where per-session scoping is guaranteed.
+This guidance is still directly relevant: `proxy.ts` and `lib/supabase/server.ts` are both careful to avoid module-level mutable state, for exactly this reason.
 
 ---
 
-## React Render Performance — Week 5 Profiling
+## 8. React Render Performance — Week 5 Profiling
 
 ### TaskList re-render analysis (June 2026)
 
@@ -301,6 +313,8 @@ Profiled using React DevTools Profiler during modal open/close cycle on the Proj
 
 **Revisit if:** `TaskList` grows to render 50+ items, or profiling in a future session reveals a meaningful regression.
 
+**Still current as of this update** — `ProjectSlideOver` has grown substantially since this finding (delete actions, add/remove member forms, `isOwner` gating), but `openForEdit`'s reference-identity behavior and its cost are unchanged, and no regression has been observed or profiled since.
+
 ---
 
-*This document will be updated in Week 7 with Lighthouse audit scores, bundle size analysis, and production performance benchmarks.*
+*This document is a living reference. Update it as the codebase evolves — including flagging utilities that stop being live, the way the July 2026 pass above did for `fetcher.ts`, `createCache.ts`, and `asyncQueue.ts`.*

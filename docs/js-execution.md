@@ -2,7 +2,7 @@
 
 > **Atlas Internal Documentation**
 > Week 1 — Foundational Concepts
-> Last updated: April 2026
+> Last updated: July 2026
 
 ---
 
@@ -327,7 +327,10 @@ useEffect(() => {
 | `lib/asyncQueue.ts` | Controlled concurrent async task execution | Event loop, microtask scheduling, Promise chaining |
 | `lib/createCounter.ts` | Closure-based stateful counter with controlled interface | Closures, private state, immutable initial value |
 | `lib/createCache.ts` | Generic typed key-value cache | Closures, generics, `Map` for O(1) lookup |
-| `lib/createStore.ts` | Closure-based auth/session state store | Closures, state encapsulation, object reference safety |
+| `lib/createStore.ts` | Closure-based state store — built as a study exercise for the closures concepts above; never wired to real Supabase auth. Kept in the codebase as a reference pattern, not live infrastructure. Real session/current-user state uses `useCurrentUser()` (React Query) instead — see CLAUDE.md's Authentication section for why. | Closures, state encapsulation, object reference safety |
+| `lib/entityFactory.ts` | Local/offline entity construction (`createProject`, `createTask`) — not used in any live data-fetching path; superseded by the Supabase-backed create/edit actions (`projectActions.ts`/`taskActions.ts`). Kept for its test coverage as a reference pattern. Its hardcoded `ownerId: "user-123"` is safe only because nothing in the live app calls it — see `docs/decisions.md`. | Pure functions (not closures), `crypto.randomUUID()`, immutable object construction |
+| `lib/updateImmutable.ts` | Immutable update helpers for `Project`/`Task` — `updateProject`/`updateTask` for general field changes via `Partial<...>`, `updateProjectStatus`/`updateTaskStatus` kept as deliberately separate, narrower functions so status changes never pass through the generic changes path | Object spread, immutability, reference equality (see Section 5's React re-render note) |
+| `lib/utils.ts` | Data transformation utilities — `toCamelCase<T>` (snake_case→camelCase key transform), `parseDates` (Postgres timestamp strings → real `Date` instances), plus display helpers `getInitials`, `getMemberAvatarColor`, `isValidEmail` | Pure functions, generics, string/regex processing |
 | `lib/fetcher.ts` | Fetch utility with retries and normalized errors | Async/await, Promise error propagation, discriminated unions |
 | `lib/errorHandler.ts` | Centralized error handling by type and status | Error normalization, switch exhaustiveness |
 | `lib/index.ts` | Barrel file — public API for the lib module | ES Modules, named exports, tree shaking awareness |
