@@ -47,6 +47,48 @@ export async function deleteProject(
   return { error: null };
 }
 
+// ---- Members ------------------------------------------------------------------
+
+/**
+ * Adds a project member by looking up their user ID from an email address
+ * via the `lookup_user_id_by_email` RPC, then inserting a `project_members`
+ * row with the `collaborator` role. Invalidates the members query on success.
+ *
+ * @param projectId - ID of the project to add the member to
+ * @param email - Email address of the Atlas account to add
+ * @param queryClient - TanStack QueryClient for cache invalidation
+ * @returns `{ error: string | null }` — null on success, message string on failure
+ */
+export async function addMember(
+  projectId: string,
+  email: string,
+  queryClient: QueryClient,
+): Promise<{ error: string | null }> {
+  const supabase = createClient();
+
+  const { data: userId, error: lookupError } = await supabase.rpc(
+    "lookup_user_id_by_email",
+    { _email: email },
+  );
+
+  if (lookupError) return { error: lookupError.message };
+  if (!userId) return { error: "No Atlas account found with that email." };
+
+  const { error: insertError } = await supabase
+    .from("project_members")
+    .insert({ project_id: projectId, user_id: userId, role: "collaborator" });
+
+  if (insertError) {
+    if (insertError.code === "23505") {
+      return { error: "This person is already a member of this project." };
+    }
+    return { error: insertError.message };
+  }
+
+  await queryClient.invalidateQueries({ queryKey: ["projectMembers"] });
+  return { error: null };
+}
+
 // ---- Save helpers -----------------------------------------------------------
 
 const VALID_PROJECT_STATUSES = Object.keys(

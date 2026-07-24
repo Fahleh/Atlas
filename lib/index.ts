@@ -5,4 +5,4 @@ export { createStore } from "./createStore";
 export { createProject, createTask } from "./entityFactory";
 export { handleError } from "./errorHandler";
 export { updateProject, updateProjectStatus, updateTask, updateTaskStatus  } from "./updateImmutable";
-export { toCamelCase, parseDates, getInitials, getMemberAvatarColor } from "./utils";
+export { toCamelCase, parseDates, getInitials, getMemberAvatarColor, isValidEmail } from "./utils";

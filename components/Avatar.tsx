@@ -34,6 +34,8 @@ export function Avatar({
   if (avatarUrl) {
     return (
       <span style={style} className={styles.avatar}>
+        {/* Requires next.config.ts remotePatterns for the real storage domain — 
+        configure when the avatar-upload feature lands, or this throws. */}
         <Image
           src={avatarUrl}
           alt={name}

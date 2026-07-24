@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { isValidEmail } from "@/lib/utils";
 
 export type SignupFormState = {
   error: string | null;
@@ -51,8 +52,7 @@ export async function signup(
     };
   }
 
-  const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
-  if (!EMAIL_REGEX.test(email)) {
+  if (!isValidEmail(email)) {
     return {
       error: "Please enter a valid email address.",
       accountExists: false,

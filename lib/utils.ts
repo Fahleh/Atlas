@@ -77,3 +77,17 @@ export function getMemberAvatarColor(initials: string): AvatarColor {
     .reduce((acc, char) => acc + char.charCodeAt(0), 0);
   return MEMBER_AVATAR_PALETTE[hash % MEMBER_AVATAR_PALETTE.length];
 }
+
+const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+
+/**
+ * Checks whether a string is a plausibly valid email address format.
+ * This is a UX check only — it catches obviously malformed input before
+ * a network round-trip, not a security or deliverability guarantee.
+ *
+ * @param value - Candidate email string
+ * @returns True if the string matches a standard email format
+ */
+export function isValidEmail(value: string): boolean {
+  return EMAIL_REGEX.test(value);
+}

@@ -8,14 +8,37 @@ import {
   createDeleteTaskAction,
   createTaskAction,
 } from "@/features/tasks/taskActions";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { isValidEmail } from "@/lib/utils";
 import type { Member, Project, ProjectStatus, Task } from "@/types/atlas.types";
 import { useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import { useFormStatus } from "react-dom";
 import styles from "./ProjectSlideOver.module.css";
-import { deleteProject, type ProjectFormState } from "./projectActions";
+import {
+  addMember,
+  deleteProject,
+  type ProjectFormState,
+} from "./projectActions";
 import sharedStyles from "./projectShared.module.css";
 import { STATUS_LABELS } from "./projectUtils";
+
+type AddMemberFormState = { error: string | null; email: string };
+
+/**
+ * Submit button for the add-member form. Must be a descendant of the form
+ * element, since `useFormStatus` cannot be called in the component that
+ * renders the `<form>` itself.
+ */
+function AddMemberSubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" disabled={pending} className={styles.addMemberSubmit}>
+      {pending ? "Adding…" : "Add"}
+    </button>
+  );
+}
 
 type ProjectSlideOverProps = {
   project: Project | null;
@@ -66,6 +89,9 @@ export function ProjectSlideOver({
   const isOpen = project !== null;
   const panelRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  const { data: currentUser } = useCurrentUser();
+  const isOwner = currentUser?.id === project?.ownerId;
 
   // ---- Delete confirmation modal state ------------------------------------
 
@@ -119,6 +145,37 @@ export function ProjectSlideOver({
         return { error: null };
       },
     [project, queryClient, onClose],
+  );
+
+  // ---- Add-member form -------------------------------------------------------
+
+  const addMemberAction = useMemo(
+    () =>
+      async (
+        _prevState: AddMemberFormState,
+        formData: FormData,
+      ): Promise<AddMemberFormState> => {
+        if (!project) return { error: null, email: "" };
+
+        const emailRaw = formData.get("email") as string | null;
+        const email = emailRaw?.trim();
+
+        if (!email) return { error: "Email is required.", email: email ?? "" };
+        if (!isValidEmail(email)) {
+          return { error: "Please enter a valid email address.", email };
+        }
+
+        const result = await addMember(project.id, email, queryClient);
+        if (result.error) return { error: result.error, email };
+
+        return { error: null, email: "" };
+      },
+    [project, queryClient],
+  );
+
+  const [addMemberState, addMemberFormAction] = useActionState(
+    addMemberAction,
+    { error: null, email: "" },
   );
 
   function openForCreate() {
@@ -243,7 +300,7 @@ export function ProjectSlideOver({
           </div>
 
           <div className={styles.headerActions}>
-            {project && onEditProject && (
+            {project && onEditProject && isOwner && (
               <button
                 type="button"
                 onClick={() => onEditProject(project)}
@@ -253,7 +310,7 @@ export function ProjectSlideOver({
                 <Pencil size={16} aria-hidden="true" />
               </button>
             )}
-            {project && (
+            {project && isOwner && (
               <button
                 type="button"
                 onClick={() => {
@@ -330,6 +387,41 @@ export function ProjectSlideOver({
 
             <section className={styles.section}>
               <h3 className={styles.sectionTitle}>Members</h3>
+
+              {isOwner && (
+                <>
+                  <form
+                    action={addMemberFormAction}
+                    className={styles.addMemberForm}
+                  >
+                    <label htmlFor="add-member-email" className={styles.srOnly}>
+                      Add member by email
+                    </label>
+                    <input
+                      /** 
+                       * No key/remount needed: defaultValue re-syncs to the DOM attribute on every render regardless
+                       * of key, and React 19's auto-reset (observed, not documented as a guaranteed ordering) applies
+                       * after that re-render — so the field always reflects addMemberState.email correctly. Verified manually
+                       * across repeated failures. Revisit if a future React upgrade changes this.
+                      */
+                      id="add-member-email"
+                      type="email"
+                      name="email"
+                      placeholder="Add member by email"
+                      defaultValue={addMemberState.email}
+                      required
+                      className={styles.addMemberInput}
+                    />
+                    <AddMemberSubmitButton />
+                  </form>
+                  {addMemberState.error && (
+                    <p role="alert" className={styles.addMemberError}>
+                      {addMemberState.error}
+                    </p>
+                  )}
+                </>
+              )}
+
               {members.length === 0 ? (
                 <p className={styles.emptyText}>No members yet.</p>
               ) : (
@@ -342,9 +434,7 @@ export function ProjectSlideOver({
                         size={36}
                       />
                       <div className={styles.memberInfo}>
-                        <span className={styles.memberName}>
-                          {member.name}
-                        </span>
+                        <span className={styles.memberName}>{member.name}</span>
                         <span className={styles.memberRole}>
                           {MEMBER_ROLE_LABELS[member.role]}
                         </span>

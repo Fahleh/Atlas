@@ -191,6 +191,7 @@ export type Database = {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
       }
+      lookup_user_id_by_email: { Args: { _email: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never
