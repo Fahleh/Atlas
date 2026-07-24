@@ -2,7 +2,7 @@
 
 > **Atlas Internal Documentation**
 > Week 3 — CSS Architecture, Layout & Design System
-> Last updated: June 2026
+> Last updated: July 2026
 
 ---
 
@@ -76,6 +76,7 @@ The palette was chosen for its clean, minimal aesthetic with a distinctive warm 
 --color-text-muted: #a1a1aa;       /* Placeholders, timestamps */
 
 --color-accent: #ea8c00;           /* Brand — buttons, active states, links */
+--color-text-on-accent: #ffffff;   /* Text/icon color on accent-colored backgrounds (buttons) */
 --color-accent-hover: #c97a00;     /* Brand hover state */
 --color-accent-subtle: #fef3c7;    /* Accent backgrounds, active nav */
 
@@ -148,7 +149,7 @@ Dark mode is implemented via a `[data-theme="dark"]` attribute on the `<html>` e
   --color-text-muted: #71717a;
   --color-accent: #fbbf24;
   --color-accent-hover: #f59e0b;
-  --color-accent-subtle: #292524;
+  --color-accent-subtle: #3a2e1a; /* corrected Week 4 — was #292524 */
   --color-danger: #f87171;
   --color-success: #4ade80;
   --color-warning: #fb923c;
@@ -341,6 +342,29 @@ lg:   18px (1.125rem)  — Page titles, emphasized text
 xl:   20px (1.25rem)   — Section headings
 2xl:  24px (1.5rem)    — Page headings
 3xl:  30px (1.875rem)  — Hero text
+4xl:  36px (2.25rem)   — Auth layout wordmark (see app/(auth)/layout.module.css)
+5xl:  48px (3rem)      — Defined in tokens.css, not yet used by any component
+```
+
+### Font Family
+```
+`--font-sans` (Inter, via `next/font/google`) - is used throughout — see Section 1. 
+`--font-mono` (`"JetBrains Mono", monospace`) - is defined in `tokens.css` but not yet consumed anywhere in the codebase.
+```
+
+### Font Weight
+```
+normal:   400 — Body text, secondary content
+medium:   500 — Labels, nav links, form field labels, button text
+semibold: 600 — Headings, card titles, emphasized UI text (the most common weight for anything that needs to stand out without being a heading)
+bold:     700 — Reserved for the rare case that needs stronger emphasis than semibold; not heavily used
+```
+
+### Line Height
+```
+tight:   1.25 — Headings, titles, anything where lines shouldn't feel loose
+normal:  1.5  — Default body text — the CSS reset's baseline
+relaxed: 1.75 — Longer-form text blocks (e.g. modal body copy, description text) where extra breathing room aids readability
 ```
 
 ### Heading Defaults (set in `global.css`)
@@ -353,6 +377,11 @@ h5 — base, semibold, tight line height
 h6 — sm,  semibold, tight line height
 ```
 
+### Link Defaults (set in `global.css`)
+```
+a       — color: var(--color-accent), no underline
+a:hover — color: var(--color-accent-hover)
+```
 ---
 
 ## 7. Layout System
@@ -462,7 +491,7 @@ left: -240px; /* triggers layout reflow on every frame */
 - `left: var(--sidebar-width)` on desktop, `left: 0` on mobile
 - Left: menu button (mobile only) + page title (`<h1>`)
 - Right: username (desktop only) + avatar (always visible)
-- Avatar: 32×32, `border-radius: var(--radius-pill)`, initials-based placeholder
+- Avatar: 32×32 via the shared `Avatar` component — renders real profile photo when `profiles.avatar_url` is set, falling back to initials otherwise (not a permanent placeholder; wired to `useCurrentUserProfile()` as of Week 6). Skeleton shown while loading, with `role="status"`/`aria-live="polite"` on the loading branch — see `docs/a11y.md`.
 
 ### Dashboard Layout (`app/(dashboard)/layout.module.css`)
 - Shell: `min-height: 100vh`
