@@ -1,5 +1,6 @@
 "use client";
 
+import { Avatar } from "@/components/Avatar";
 import { EntityModal } from "@/components/EntityModal";
 import { TaskList } from "@/features/tasks/TaskList";
 import { TaskModal } from "@/features/tasks/TaskModal";
@@ -7,7 +8,7 @@ import {
   createDeleteTaskAction,
   createTaskAction,
 } from "@/features/tasks/taskActions";
-import type { Project, ProjectStatus, Task } from "@/types/atlas.types";
+import type { Member, Project, ProjectStatus, Task } from "@/types/atlas.types";
 import { useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -21,6 +22,12 @@ type ProjectSlideOverProps = {
   onClose: () => void;
   /** Called when the user clicks "Edit project" — hoists modal state to ProjectList. */
   onEditProject?: (project: Project) => void;
+  members: Member[];
+};
+
+const MEMBER_ROLE_LABELS: Record<Member["role"], string> = {
+  owner: "Owner",
+  collaborator: "Collaborator",
 };
 
 const STATUS_BADGE_CLASS: Record<ProjectStatus, string> = {
@@ -48,11 +55,13 @@ const DUE_DATE_LONG_FORMAT: Intl.DateTimeFormatOptions = {
  * @param project - The selected project, or null when no project is selected
  * @param onClose - Callback to clear the selected project
  * @param onEditProject - Optional callback to open the project edit modal
+ * @param members - Members of the selected project
  */
 export function ProjectSlideOver({
   project,
   onClose,
   onEditProject,
+  members,
 }: ProjectSlideOverProps) {
   const isOpen = project !== null;
   const panelRef = useRef<HTMLDivElement>(null);
@@ -321,8 +330,29 @@ export function ProjectSlideOver({
 
             <section className={styles.section}>
               <h3 className={styles.sectionTitle}>Members</h3>
-              {/* TODO: wire to members data */}
-              <p className={styles.emptyText}>No members yet.</p>
+              {members.length === 0 ? (
+                <p className={styles.emptyText}>No members yet.</p>
+              ) : (
+                <ul className={styles.memberList}>
+                  {members.map((member) => (
+                    <li key={member.id} className={styles.memberRow}>
+                      <Avatar
+                        name={member.name}
+                        avatarUrl={member.avatarUrl}
+                        size={36}
+                      />
+                      <div className={styles.memberInfo}>
+                        <span className={styles.memberName}>
+                          {member.name}
+                        </span>
+                        <span className={styles.memberRole}>
+                          {MEMBER_ROLE_LABELS[member.role]}
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
           </div>
         )}
@@ -331,7 +361,7 @@ export function ProjectSlideOver({
       {/* Project delete confirmation modal — disableScrollLock because the
           slide-over already holds body scroll lock. */}
       <EntityModal
-        key={deleteModalResetKey}
+        key={`delete-${deleteModalResetKey}`}
         open={isDeleteModalOpen}
         onOpenChange={setIsDeleteModalOpen}
         action={deleteProjectAction}
@@ -362,7 +392,7 @@ export function ProjectSlideOver({
           body scroll lock. Keyed by modalResetKey so the form resets on every open. */}
       {project && (
         <TaskModal
-          key={modalResetKey}
+          key={`task-${modalResetKey}`}
           open={isModalOpen}
           onOpenChange={setIsModalOpen}
           action={taskAction}

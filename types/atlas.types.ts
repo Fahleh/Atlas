@@ -1,5 +1,13 @@
 export type ProjectStatus = "active" | "completed" | "archived";
 export type TaskStatus = "todo" | "in_progress" | "done";
+export type MemberRole = "owner" | "collaborator";
+
+export type Member = {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+  role: MemberRole;
+};
 
 export type Project = {
   id: string;

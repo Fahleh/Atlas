@@ -1,20 +1,17 @@
 "use client";
 
 import { ArrowUpRight } from "lucide-react";
-import type { Project, ProjectStatus } from "@/types/atlas.types";
-import {
-  DUE_DATE_FORMAT,
-  STATUS_LABELS,
-  getInitials,
-  getMemberAvatarColor,
-  truncateDescription,
-} from "./projectUtils";
+import { Avatar, AvatarOverflow } from "@/components/Avatar";
+import { getInitials } from "@/lib/utils";
+import type { Member, Project, ProjectStatus } from "@/types/atlas.types";
+import { DUE_DATE_FORMAT, STATUS_LABELS, truncateDescription } from "./projectUtils";
 import styles from "./ProjectListTable.module.css";
 import sharedStyles from "./projectShared.module.css";
 
 type ProjectListTableProps = {
   projects: Project[];
   onSelect: (id: string) => void;
+  membersByProject: Record<string, Member[]>;
 };
 
 const STATUS_BADGE_CLASS: Record<ProjectStatus, string> = {
@@ -23,8 +20,7 @@ const STATUS_BADGE_CLASS: Record<ProjectStatus, string> = {
   archived: sharedStyles.statusArchived,
 };
 
-// TODO: wire to members data
-const PLACEHOLDER_MEMBERS = ["JD", "SK", "MR"];
+const MAX_VISIBLE_MEMBERS = 4;
 
 const DESCRIPTION_TRUNCATE_LENGTH = 60;
 
@@ -34,10 +30,12 @@ const DESCRIPTION_TRUNCATE_LENGTH = 60;
  *
  * @param projects - Filtered project list from ProjectList
  * @param onSelect - Callback fired with the project ID to open its slide-over
+ * @param membersByProject - Members for each project, keyed by project ID
  */
 export function ProjectListTable({
   projects,
   onSelect,
+  membersByProject,
 }: ProjectListTableProps) {
   return (
     <div className={styles.tableWrapper}>
@@ -62,12 +60,17 @@ export function ProjectListTable({
           </tr>
         </thead>
         <tbody>
-          {projects.map((project) => (
-            <tr
-              key={project.id}
-              onClick={() => onSelect(project.id)}
-              className={styles.row}
-            >
+          {projects.map((project) => {
+            const members = membersByProject[project.id] ?? [];
+            const visibleMembers = members.slice(0, MAX_VISIBLE_MEMBERS);
+            const overflowCount = members.length - visibleMembers.length;
+
+            return (
+              <tr
+                key={project.id}
+                onClick={() => onSelect(project.id)}
+                className={styles.row}
+              >
               {/* PROJECT column: avatar + name + description + open button */}
               <td className={styles.td}>
                 <div className={styles.projectCell}>
@@ -139,31 +142,30 @@ export function ProjectListTable({
               <td className={styles.td}>
                 <div
                   className={sharedStyles.memberAvatars}
-                  aria-label="Project members"
+                  aria-label={`Project members (${members.length})`}
                 >
-                  {/* TODO: wire to members data */}
-                  {PLACEHOLDER_MEMBERS.map((initials) => {
-                    const color = getMemberAvatarColor(initials);
-                    return (
-                      <span
-                        key={initials}
-                        style={
-                          {
-                            "--avatar-bg": color.bg,
-                            "--avatar-text": color.text,
-                          } as React.CSSProperties
-                        }
-                        className={sharedStyles.memberAvatar}
-                        aria-hidden="true"
-                      >
-                        {initials}
-                      </span>
-                    );
-                  })}
+                  {visibleMembers.map((member) => (
+                    <span
+                      key={member.id}
+                      className={sharedStyles.memberAvatar}
+                      aria-hidden="true"
+                    >
+                      <Avatar name={member.name} avatarUrl={member.avatarUrl} />
+                    </span>
+                  ))}
+                  {overflowCount > 0 && (
+                    <span
+                      className={sharedStyles.memberOverflowSpacing}
+                      aria-hidden="true"
+                    >
+                      <AvatarOverflow count={overflowCount} />
+                    </span>
+                  )}
                 </div>
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>

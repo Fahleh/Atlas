@@ -1,19 +1,17 @@
 "use client";
 
 import { ArrowUpRight } from "lucide-react";
-import type { Project, ProjectStatus } from "@/types/atlas.types";
-import {
-  DUE_DATE_FORMAT,
-  STATUS_LABELS,
-  getInitials,
-  getMemberAvatarColor,
-} from "./projectUtils";
+import { Avatar, AvatarOverflow } from "@/components/Avatar";
+import { getInitials } from "@/lib/utils";
+import type { Member, Project, ProjectStatus } from "@/types/atlas.types";
+import { DUE_DATE_FORMAT, STATUS_LABELS } from "./projectUtils";
 import styles from "./ProjectCard.module.css";
 import sharedStyles from "./projectShared.module.css";
 
 type ProjectCardProps = {
   project: Project;
   onSelect: (id: string) => void;
+  members: Member[];
 };
 
 const STATUS_BADGE_CLASS: Record<ProjectStatus, string> = {
@@ -22,8 +20,7 @@ const STATUS_BADGE_CLASS: Record<ProjectStatus, string> = {
   archived: sharedStyles.statusArchived,
 };
 
-// TODO: wire to members data
-const PLACEHOLDER_MEMBERS = ["JD", "SK", "MR"];
+const MAX_VISIBLE_MEMBERS = 4;
 
 /**
  * Displays a single project as a clickable card.
@@ -31,8 +28,11 @@ const PLACEHOLDER_MEMBERS = ["JD", "SK", "MR"];
  *
  * @param project - The project to display
  * @param onSelect - Callback fired with the project ID when the card is activated
+ * @param members - Project members to render as an avatar strip
  */
-export function ProjectCard({ project, onSelect }: ProjectCardProps) {
+export function ProjectCard({ project, onSelect, members }: ProjectCardProps) {
+  const visibleMembers = members.slice(0, MAX_VISIBLE_MEMBERS);
+  const overflowCount = members.length - visibleMembers.length;
   function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     if (e.key === "Enter") {
       onSelect(project.id);
@@ -93,27 +93,25 @@ export function ProjectCard({ project, onSelect }: ProjectCardProps) {
       <div className={styles.cardFooter}>
         <div
           className={sharedStyles.memberAvatars}
-          aria-label="Project members"
+          aria-label={`Project members (${members.length})`}
         >
-          {/* TODO: wire to members data */}
-          {PLACEHOLDER_MEMBERS.map((initials) => {
-            const color = getMemberAvatarColor(initials);
-            return (
-              <span
-                key={initials}
-                style={
-                  {
-                    "--avatar-bg": color.bg,
-                    "--avatar-text": color.text,
-                  } as React.CSSProperties
-                }
-                className={sharedStyles.memberAvatar}
-                aria-hidden="true"
-              >
-                {initials}
-              </span>
-            );
-          })}
+          {visibleMembers.map((member) => (
+            <span
+              key={member.id}
+              className={sharedStyles.memberAvatar}
+              aria-hidden="true"
+            >
+              <Avatar name={member.name} avatarUrl={member.avatarUrl} />
+            </span>
+          ))}
+          {overflowCount > 0 && (
+            <span
+              className={sharedStyles.memberOverflowSpacing}
+              aria-hidden="true"
+            >
+              <AvatarOverflow count={overflowCount} />
+            </span>
+          )}
         </div>
 
         <dl className={sharedStyles.detailList}>

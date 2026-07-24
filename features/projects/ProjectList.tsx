@@ -4,6 +4,7 @@ import { useState, useMemo, useRef } from "react";
 import { Plus, AlertCircle, Sparkles, SearchX } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useProjects } from "@/hooks/useProjects";
+import { useMembersByProject } from "@/hooks/useMembersByProject";
 import { useProject } from "@/providers/ProjectContext";
 import { Skeleton } from "@/components/Skeleton";
 import type { Project, ProjectStatus } from "@/types/atlas.types";
@@ -35,6 +36,11 @@ export function ProjectList() {
   const { data: projects = [], isLoading, isError, refetch } = useProjects();
   const { selectedProjectId, setSelectedProjectId } = useProject();
   const queryClient = useQueryClient();
+
+  // Full unfiltered project ID list — member data shouldn't refetch on every
+  // search/filter change, only when the underlying project set changes.
+  const projectIds = useMemo(() => projects.map((p) => p.id), [projects]);
+  const { data: membersByProject = {} } = useMembersByProject(projectIds);
 
   // Derive the live Project object from the React Query cache on every render.
   // After an edit, projectActions.ts invalidates ["projects"], useProjects()
@@ -307,6 +313,7 @@ export function ProjectList() {
               key={project.id}
               project={project}
               onSelect={setSelectedProjectId}
+              members={membersByProject[project.id] ?? []}
             />
           ))}
         </div>
@@ -317,6 +324,7 @@ export function ProjectList() {
         <ProjectListTable
           projects={filteredProjects}
           onSelect={setSelectedProjectId}
+          membersByProject={membersByProject}
         />
       )}
 
@@ -325,6 +333,7 @@ export function ProjectList() {
         project={selectedProject}
         onClose={() => setSelectedProjectId(null)}
         onEditProject={openProjectModalForEdit}
+        members={selectedProject ? (membersByProject[selectedProject.id] ?? []) : []}
       />
 
       {/* Project create/edit modal — keyed by modalResetKey so the form resets
