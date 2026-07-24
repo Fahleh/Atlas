@@ -89,6 +89,34 @@ export async function addMember(
   return { error: null };
 }
 
+/**
+ * Removes a member from a project. RLS ("project_members: owner can delete")
+ * already enforces owner-only at the database layer — no additional
+ * server-side check needed here.
+ *
+ * @param projectId - ID of the project to remove the member from
+ * @param userId - ID of the member to remove
+ * @param queryClient - TanStack QueryClient for cache invalidation
+ * @returns `{ error: string | null }` — null on success, message string on failure
+ */
+export async function removeMember(
+  projectId: string,
+  userId: string,
+  queryClient: QueryClient,
+): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("project_members")
+    .delete()
+    .eq("project_id", projectId)
+    .eq("user_id", userId);
+
+  if (error) return { error: error.message };
+
+  await queryClient.invalidateQueries({ queryKey: ["projectMembers"] });
+  return { error: null };
+}
+
 // ---- Save helpers -----------------------------------------------------------
 
 const VALID_PROJECT_STATUSES = Object.keys(

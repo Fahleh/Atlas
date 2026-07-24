@@ -12,13 +12,14 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { isValidEmail } from "@/lib/utils";
 import type { Member, Project, ProjectStatus, Task } from "@/types/atlas.types";
 import { useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, Trash2, X } from "lucide-react";
+import { Check, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import styles from "./ProjectSlideOver.module.css";
 import {
   addMember,
   deleteProject,
+  removeMember,
   type ProjectFormState,
 } from "./projectActions";
 import sharedStyles from "./projectShared.module.css";
@@ -177,6 +178,48 @@ export function ProjectSlideOver({
     addMemberAction,
     { error: null, email: "" },
   );
+
+  // ---- Remove-member confirm state -------------------------------------------
+
+  const [confirmingMemberId, setConfirmingMemberId] = useState<string | null>(
+    null,
+  );
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
+  const [removeMemberError, setRemoveMemberError] = useState<string | null>(
+    null,
+  );
+
+  // Reset remove-member confirm state on project switch or slide-over close.
+  // ProjectSlideOver is a persistent overlay that never remounts (unlike
+  // TaskModal, which resets via a key), so without this the confirm UI would
+  // stay visibly stuck across an unrelated project.id change. Done during
+  // render (React's documented pattern for "adjusting state when a prop
+  // changes"), not in an effect — an effect would call setState
+  // unconditionally on every project.id change, including mount, causing an
+  // extra cascading render even when these values are already null.
+  const currentProjectId = project?.id ?? null;
+  const [resetProjectId, setResetProjectId] = useState(currentProjectId);
+  if (currentProjectId !== resetProjectId) {
+    setResetProjectId(currentProjectId);
+    setConfirmingMemberId(null);
+    setRemovingMemberId(null);
+    setRemoveMemberError(null);
+  }
+
+  async function handleRemoveMember(memberId: string) {
+    if (!project) return;
+    setRemovingMemberId(memberId);
+    setRemoveMemberError(null);
+
+    const result = await removeMember(project.id, memberId, queryClient);
+    setRemovingMemberId(null);
+
+    if (result.error) {
+      setRemoveMemberError(result.error);
+      return;
+    }
+    setConfirmingMemberId(null);
+  }
 
   function openForCreate() {
     editingTaskRef.current = null;
@@ -398,12 +441,12 @@ export function ProjectSlideOver({
                       Add member by email
                     </label>
                     <input
-                      /** 
+                      /**
                        * No key/remount needed: defaultValue re-syncs to the DOM attribute on every render regardless
                        * of key, and React 19's auto-reset (observed, not documented as a guaranteed ordering) applies
                        * after that re-render — so the field always reflects addMemberState.email correctly. Verified manually
                        * across repeated failures. Revisit if a future React upgrade changes this.
-                      */
+                       */
                       id="add-member-email"
                       type="email"
                       name="email"
@@ -439,6 +482,62 @@ export function ProjectSlideOver({
                           {MEMBER_ROLE_LABELS[member.role]}
                         </span>
                       </div>
+
+                      {isOwner && member.role !== "owner" && (
+                        <div className={styles.removeMemberWrapper}>
+                          {confirmingMemberId === member.id ? (
+                            <div className={styles.removeConfirmGroup}>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmingMemberId(null)}
+                                disabled={removingMemberId === member.id}
+                                aria-label="Cancel remove"
+                                className={styles.removeMemberButton}
+                              >
+                                <X size={14} aria-hidden="true" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={removingMemberId === member.id}
+                                onClick={() => handleRemoveMember(member.id)}
+                                aria-label={`Confirm remove ${member.name}`}
+                                className={styles.removeMemberButtonDanger}
+                              >
+                                {removingMemberId === member.id ? (
+                                  <Loader2
+                                    size={14}
+                                    className={styles.spinning}
+                                    aria-hidden="true"
+                                  />
+                                ) : (
+                                  <Check size={14} aria-hidden="true" />
+                                )}
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRemoveMemberError(null);
+                                setConfirmingMemberId(member.id);
+                              }}
+                              aria-label={`Remove ${member.name}`}
+                              className={styles.removeMemberButton}
+                            >
+                              <Trash2 size={14} aria-hidden="true" />
+                            </button>
+                          )}
+                          {removeMemberError &&
+                            confirmingMemberId === member.id && (
+                              <p
+                                role="alert"
+                                className={styles.removeMemberError}
+                              >
+                                {removeMemberError}
+                              </p>
+                            )}
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>
