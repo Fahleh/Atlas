@@ -26,7 +26,12 @@ export function TaskList({ projectId, onTaskSelect }: TaskListProps) {
 
   if (isLoading) {
     return (
-      <ul className={styles.list} aria-label="Loading tasks">
+      <ul
+        className={styles.list}
+        role="status"
+        aria-live="polite"
+        aria-label="Loading tasks"
+      >
         {Array.from({ length: SKELETON_ROW_COUNT }).map((_, i) => (
           <li key={i} className={styles.skeletonRow}>
             <Skeleton width="65%" height="1rem" />

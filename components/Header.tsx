@@ -48,20 +48,28 @@ export function Header({ onMenuClick }: HeaderProps) {
         <h1 className={styles.pageTitle}>{pageTitle}</h1>
       </div>
 
-      <div className="flex items-center gap-3">
-        <span className={styles.userName}>
-          {profile ? profile.name : <Skeleton width="70px" height="0.875rem" />}
-        </span>
-        {profile ? (
+      {profile ? (
+        <div className="flex items-center gap-3">
+          <span className={styles.userName}>{profile.name}</span>
           <Avatar name={profile.name} avatarUrl={profile.avatarUrl} size={32} />
-        ) : (
+        </div>
+      ) : (
+        <div
+          className="flex items-center gap-3"
+          role="status"
+          aria-live="polite"
+          aria-label="Loading user profile"
+        >
+          <span className={styles.userName}>
+            <Skeleton width="70px" height="0.875rem" />
+          </span>
           <Skeleton
             width="32px"
             height="32px"
             borderRadius="var(--radius-pill)"
           />
-        )}
-      </div>
+        </div>
+      )}
     </header>
   );
 }

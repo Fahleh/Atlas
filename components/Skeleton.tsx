@@ -25,6 +25,7 @@ export function Skeleton({
   return (
     <div
       className={styles.skeleton}
+      aria-busy={true}
       style={
         {
           "--skeleton-width": width,
