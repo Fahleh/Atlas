@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/providers/ThemeContext";
 import "../styles/global.css";
 import { QueryProvider } from "@/providers/QueryProvider";
+import { AuthListenerProvider } from "@/providers/AuthListenerProvider";
 import { ProjectProvider } from "@/providers/ProjectContext";
 
 const inter = Inter({
@@ -41,7 +42,9 @@ export default function RootLayout({
         />
         <ThemeProvider>
           <QueryProvider>
-            <ProjectProvider>{children}</ProjectProvider>
+            <AuthListenerProvider>
+              <ProjectProvider>{children}</ProjectProvider>
+            </AuthListenerProvider>
           </QueryProvider>
         </ThemeProvider>
       </body>
