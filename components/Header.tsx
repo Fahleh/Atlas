@@ -2,6 +2,9 @@
 
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
+import { Avatar } from "@/components/Avatar";
+import { Skeleton } from "@/components/Skeleton";
+import { useCurrentUserProfile } from "@/hooks/useCurrentUserProfile";
 import styles from "./Header.module.css";
 
 type HeaderProps = {
@@ -30,6 +33,7 @@ function getPageTitle(pathname: string): string {
 export function Header({ onMenuClick }: HeaderProps) {
   const pathname = usePathname();
   const pageTitle = getPageTitle(pathname);
+  const { data: profile } = useCurrentUserProfile();
 
   return (
     <header className={styles.header} aria-label="Page header">
@@ -45,11 +49,18 @@ export function Header({ onMenuClick }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-3">
-        {/* TODO: replace initials and name with authenticated user data from Supabase */}
-        <span className={styles.userName}>Fahleh</span>
-        <div className={styles.avatar} aria-hidden="true">
-          FA
-        </div>
+        <span className={styles.userName}>
+          {profile ? profile.name : <Skeleton width="70px" height="0.875rem" />}
+        </span>
+        {profile ? (
+          <Avatar name={profile.name} avatarUrl={profile.avatarUrl} size={32} />
+        ) : (
+          <Skeleton
+            width="32px"
+            height="32px"
+            borderRadius="var(--radius-pill)"
+          />
+        )}
       </div>
     </header>
   );

@@ -168,11 +168,6 @@ export function createProjectAction(
       status = statusRaw;
     }
 
-    // TODO: persist due_date once the projects table migration adds the column.
-    // The database.types.ts Row/Insert/Update for projects currently has no
-    // due_date field, so we read and validate the value in the form but do not
-    // pass it to Supabase yet.
-
     const supabase = createClient();
     const currentProject = editingProjectRef.current;
 

@@ -112,7 +112,11 @@ export function createTaskAction(
 
     if (currentTask) {
       // Edit — apply general changes then status change, merge into one update.
-      const withChanges = updateTask(currentTask, { title, description, dueDate });
+      const withChanges = updateTask(currentTask, {
+        title,
+        description,
+        dueDate,
+      });
       const final = updateTaskStatus(withChanges, status);
 
       const { error } = await supabase
@@ -122,7 +126,7 @@ export function createTaskAction(
           description: final.description,
           status: final.status,
           due_date: final.dueDate
-            ? final.dueDate.toISOString().split("T")[0] // TODO: Confirm and handle timezones properly
+            ? final.dueDate.toISOString().split("T")[0]
             : null,
         })
         .eq("id", final.id);

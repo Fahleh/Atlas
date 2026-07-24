@@ -37,19 +37,21 @@ export function ProjectList() {
   const { selectedProjectId, setSelectedProjectId } = useProject();
   const queryClient = useQueryClient();
 
-  // Full unfiltered project ID list — member data shouldn't refetch on every
-  // search/filter change, only when the underlying project set changes.
+  /** Full unfiltered project ID list — member data shouldn't refetch on every
+   * search/filter change, only when the underlying project set changes.
+   */
   const projectIds = useMemo(() => projects.map((p) => p.id), [projects]);
   const { data: membersByProject = {} } = useMembersByProject(projectIds);
 
-  // Derive the live Project object from the React Query cache on every render.
-  // After an edit, projectActions.ts invalidates ["projects"], useProjects()
-  // refetches, and this find() resolves against the fresh array automatically —
-  // no additional invalidation logic needed.
-  // TODO (Prompt 2 — delete): deletion is also handled here for free: when a
-  // project is removed from the cache, find() returns undefined → null →
-  // slide-over closes automatically. No special-case logic needed.
-  const selectedProject = projects.find((p) => p.id === selectedProjectId) ?? null;
+  /** Derive the live Project object from the React Query cache on every render.
+   * After an edit, projectActions.ts invalidates ["projects"], useProjects()
+   * refetches, and this find() resolves against the fresh array automatically —
+   *no additional invalidation logic needed. deletion is also handled here for free:
+   * when a project is removed from the cache, find() returns undefined → null →
+   * slide-over closes automatically. No special-case logic needed.
+   */
+  const selectedProject =
+    projects.find((p) => p.id === selectedProjectId) ?? null;
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -333,7 +335,9 @@ export function ProjectList() {
         project={selectedProject}
         onClose={() => setSelectedProjectId(null)}
         onEditProject={openProjectModalForEdit}
-        members={selectedProject ? (membersByProject[selectedProject.id] ?? []) : []}
+        members={
+          selectedProject ? (membersByProject[selectedProject.id] ?? []) : []
+        }
       />
 
       {/* Project create/edit modal — keyed by modalResetKey so the form resets
