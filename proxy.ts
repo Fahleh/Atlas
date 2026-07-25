@@ -10,6 +10,14 @@ function isPublicRoute(pathname: string) {
   );
 }
 
+const AUTH_ENTRY_PATHS = ["/login", "/signup"];
+
+function isAuthEntryRoute(pathname: string) {
+  return AUTH_ENTRY_PATHS.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
+  );
+}
+
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -54,11 +62,21 @@ export async function proxy(request: NextRequest) {
   if (!isAuthenticated && !isPublicRoute(pathname)) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirectTo", pathname + request.nextUrl.search);
-    
+
     return NextResponse.redirect(loginUrl);
   }
 
-  // User is authenticated, continue to requested page
+  // If an already-authenticated user lands on /login or /signup, send them
+  // to the dashboard instead — closes the entry point where a still-logged-in
+  // user could reach the login form and a different user could sign in from
+  // the same tab, producing an ambiguous auth state before any cache-clearing
+  // logic ever gets a chance to run. Scoped to /login and /signup only —
+  // /auth/confirm must stay reachable regardless of auth state.
+  if (isAuthenticated && isAuthEntryRoute(pathname)) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  // User is authenticated (or route is public), continue to requested page
   return response;
 }
 

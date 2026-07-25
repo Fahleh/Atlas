@@ -21,7 +21,15 @@ own plan.
    pattern rather than a per-card fetch — decide the exact aggregate shape
    when this is designed, not defaulted into.
 
-2. **Profile page** — new route. Includes:
+2. **Comment cleanup pass (repo-wide)** — several recent JSDocs/inline comments
+   have drifted from CLAUDE.md's own Documentation Standards rule ("a short
+   in-code comment... and a corresponding entry in `docs/decisions.md`").
+   Some comments now duplicate full incident write-ups (bug mechanics, issue
+   numbers, debugging evidence) at length inline, rather than a short pointer
+   to `docs/decisions.md`. Sweep the codebase, trim these to short references,
+   consolidate the full narratives into `docs/decisions.md` once each.
+
+3. **Profile page** — new route. Includes:
    - Edit display name
    - Avatar upload — `profiles.avatar_url` and `Avatar.tsx`'s photo-render
      branch already exist and are wired correctly; only the upload UI,
@@ -32,7 +40,7 @@ own plan.
      adds real complexity; decide when this page is actually designed,
      not before.
 
-3. **Dashboard design** — `/` (formerly conflated with a non-existent
+4. **Dashboard design** — `/` (formerly conflated with a non-existent
    `/dashboard` route — see CLAUDE.md's Route Groups section) is currently
    a bare placeholder. Likely candidates: move `ProjectStats` cards here
    from `/projects`, decide what else belongs (recent activity, upcoming

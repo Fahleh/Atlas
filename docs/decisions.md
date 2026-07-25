@@ -78,3 +78,47 @@ rule the live forms are violating. If these are ever intentionally unified
 (e.g. by retiring `entityFactory.ts` or extending its input types), that's
 a deliberate product decision to make explicitly — not a discovered bug to
 silently "fix" by removing the status field from either surface.
+
+---
+
+## Clearing the React Query cache on `(auth)`/`(dashboard)` layout mount, not just on `onAuthStateChange`
+
+**Decision:** `components/ClearQueryCacheOnMount.tsx` — a small Client
+Component that calls `queryClient.clear()` once, on mount, returning `null` —
+is rendered inside both `app/(auth)/layout.tsx` and
+`app/(dashboard)/layout.tsx`. This is the **primary** mechanism preventing
+cross-user cache leaks (one user's cached `projects`/`tasks`/`members`/profile
+data rendering for a different, newly-logged-in user in the same tab).
+`providers/AuthListenerProvider.tsx`'s `onAuthStateChange`-based `clear()` is
+kept as a secondary path, not removed, but is no longer the thing this
+correctness property actually depends on.
+
+**Why `onAuthStateChange` wasn't sufficient:** Atlas's login/signup/logout
+all run as Server Actions against the *server* Supabase client. The
+*browser* client's `onAuthStateChange` — which `AuthListenerProvider`
+listens on — is never itself told a server-side sign-in/sign-out happened.
+This is a confirmed, Supabase-team-acknowledged limitation
+(supabase-js#1618), not a bug in Atlas's usage of it, and explains the
+intermittent behavior observed in manual two-browser testing before this fix.
+
+**Why layout mount is a reliable substitute:** Next.js fully remounts a
+nested layout on every crossing between separate route groups, and does
+*not* remount it on navigation within the same group. Since `(auth)` and
+`(dashboard)` are sibling nested layouts under the single root
+`app/layout.tsx` (which is what makes this a client-side transition rather
+than a hard page reload), mounting `ClearQueryCacheOnMount` in both is a
+deterministic "a real transition just occurred" signal, independent of
+whichever Supabase client happened to run the auth call.
+
+**The assumption this correctness depends on — read before adding any new
+auth-adjacent feature:** this only works because, in Atlas's current
+single-account auth model, *every* path from one user's identity to a
+different one necessarily crosses the `(auth)` route group boundary (you
+cannot reach a different user's dashboard session without passing through
+`/login` first). If a future feature ever allowed switching identity
+*without* crossing that boundary — e.g. an account-switcher or impersonation
+feature that swaps the active user via an API call while staying on a
+dashboard route — this mechanism would **not** fire, and the cache leak this
+fix closes would reopen for that new code path. Any such feature must
+either trigger `queryClient.clear()` directly itself, or be designed to
+route through a layout boundary the same way login/logout already do.
