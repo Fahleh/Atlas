@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { Header } from "@/components/Header";
+import { ClearQueryCacheOnMount } from "@/components/ClearQueryCacheOnMount";
 import styles from "./layout.module.css";
 
 type DashboardLayoutProps = {
@@ -20,6 +21,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <div className={styles.shell}>
+      <ClearQueryCacheOnMount />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <Header onMenuClick={() => setSidebarOpen(true)} />
