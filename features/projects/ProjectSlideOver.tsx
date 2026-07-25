@@ -188,6 +188,17 @@ export function ProjectSlideOver({
   const [removeMemberError, setRemoveMemberError] = useState<string | null>(
     null,
   );
+  
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Move focus to the Cancel button when the trash icon swaps to the
+  // Cancel/Confirm pair — otherwise focus falls back to browser-default
+  // behavior (reverts toward body, Tab resumes from DOM order) rather than
+  // being explicitly managed.
+  useEffect(() => {
+    if (!confirmingMemberId) return;
+    cancelButtonRef.current?.focus();
+  }, [confirmingMemberId]);
 
   // Reset remove-member confirm state on project switch or slide-over close.
   // ProjectSlideOver is a persistent overlay that never remounts (unlike
@@ -488,6 +499,7 @@ export function ProjectSlideOver({
                           {confirmingMemberId === member.id ? (
                             <div className={styles.removeConfirmGroup}>
                               <button
+                                ref={cancelButtonRef}
                                 type="button"
                                 onClick={() => setConfirmingMemberId(null)}
                                 disabled={removingMemberId === member.id}
