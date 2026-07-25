@@ -1,5 +1,7 @@
 # Architectural Decisions
 
+> Last updated: July 2026
+
 This document explains *why* certain choices were made where the reasoning
 isn't obvious from the code alone — not a changelog, and not a tutorial.
 Update it when a deliberate decision is made that a future reader (including

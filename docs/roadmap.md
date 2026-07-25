@@ -1,5 +1,7 @@
 # Atlas Roadmap
 
+> Last updated: July 2026
+
 This document tracks what's intentionally *not* built yet, split into two
 genuinely different categories — conflating them was an earlier mistake in
 this file's drafting, worth naming so it doesn't happen again: "not built
