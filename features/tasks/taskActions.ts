@@ -88,9 +88,6 @@ function isTaskStatus(value: string): value is TaskStatus {
  * The returned action reads `projectId` and the edit/create mode from FormData
  * and derives the current task from `editingTaskRef`, avoiding stale closures.
  *
- * Will 401 against live Supabase until auth is wired end-to-end — expected;
- * the error surfaces in the modal's error banner.
- *
  * @param deps - Stable references: editingTaskRef, queryClient, setIsModalOpen
  * @returns A `(prevState, formData) => Promise<TaskFormState>` action function
  */

@@ -7,15 +7,8 @@ import { Database } from "@/types/database.types";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-// The browser disk-cache mechanism this same override fixes in client.ts
-// doesn't apply server-side, but Next.js patches the global `fetch` to add
-// its own Data Cache layer by default in Server Components — a structurally
-// similar risk, where a cached response from one request context could leak
-// into another. Not independently confirmed as an active bug here, but this
-// is the second cross-user caching leak found in one session; "not yet
-// observed" isn't sufficient grounds to leave the server client unfixed
-// while the browser client is. Same override, for consistency and
-// defense-in-depth.
+// Defense-in-depth against Next.js's Data Cache — see docs/decisions.md
+// ("Bypassing fetch caching in both Supabase clients").
 const fetchWithoutCache = (url: RequestInfo | URL, init?: RequestInit) =>
   fetch(url, { ...init, cache: "no-store" });
 

@@ -122,3 +122,38 @@ dashboard route — this mechanism would **not** fire, and the cache leak this
 fix closes would reopen for that new code path. Any such feature must
 either trigger `queryClient.clear()` directly itself, or be designed to
 route through a layout boundary the same way login/logout already do.
+
+---
+
+## Bypassing fetch caching in both Supabase clients (`cache: "no-store"`)
+
+**Decision:** Both `lib/supabase/client.ts` and `lib/supabase/server.ts`
+override the `fetch` implementation passed to their Supabase client with
+`cache: "no-store"`.
+
+**Why (browser client):** PostgREST responses carry `Cache-Control: public,
+max-age=600` with no `Authorization` in `Vary`, so the browser's HTTP disk
+cache treats identical request URLs as interchangeable regardless of which
+user's bearer token made the request. Confirmed via manual two-user
+testing: after logging out User A and logging in as User B, the same URL
+could be served from disk cache with User A's data.
+
+**Why (server client):** The browser disk cache doesn't apply server-side,
+but Next.js patches the global `fetch` to add its own Data Cache layer by
+default in Server Components — a structurally similar leak risk. Not
+independently confirmed as active here, but this was the second cross-user
+caching leak found in one session, so the server client got the same fix
+for consistency and defense-in-depth rather than waiting for confirmation.
+
+---
+
+## Redirecting already-authenticated users away from `/login`/`/signup`
+
+**Decision:** `proxy.ts` redirects an authenticated user who lands on
+`/login` or `/signup` straight to `/`. Scoped to `AUTH_ENTRY_PATHS` only —
+`/auth/confirm` stays reachable regardless of auth state.
+
+**Why:** Without this, a still-logged-in user could reach the login form
+in the same tab, and a different user could sign in from it — producing an
+ambiguous auth state before `ClearQueryCacheOnMount` gets a chance to run
+on the next layout mount.

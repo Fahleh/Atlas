@@ -31,9 +31,7 @@ export type EntityModalProps<TFormState extends { error: string | null }> = {
 type EntityModalContextValue = {
   onOpenChange: (open: boolean) => void;
   titleId: string;
-  // The stable dispatch function from useActionState — used by SubmitButton and
-  // DeleteButton to detect non-primary formAction submissions via identity comparison
-  // against useFormStatus().action (see react-dom-client source, extractEvents$1).
+  // Stable action reference used by SubmitButton/DeleteButton for action-identity comparison against useFormStatus().action.
   formAction: (formData: FormData) => void;
 };
 
@@ -152,13 +150,8 @@ function CancelButton({ children }: CancelButtonProps) {
  * Must be rendered as a descendant of the `<form>` element — never in the
  * same component that renders the form.
  *
- * Uses `useFormStatus().action` identity comparison against the form's own
- * `formAction` (from context) to detect when a button-level `formAction`
- * override is running — e.g. a delete action — and suppress `pendingLabel`
- * in that case. This avoids the FormData-pollution bug that the hidden-input
- * approach suffered: if a user clicked Save while DeleteButton was in confirming
- * state, the hidden `_action=delete` field would have made `isDeletePending`
- * true during a real save. The identity check has no such edge case.
+ * Uses action-identity comparison to detect non-primary (e.g. delete)
+ * submissions and suppress `pendingLabel` accordingly — see docs/decisions.md.
  *
  * @param variant - "danger" renders the button using `--color-danger`
  * @param pendingLabel - Text shown while the form's primary action is in progress
@@ -170,9 +163,7 @@ function SubmitButton({
 }: SubmitButtonProps) {
   const { formAction } = useEntityModalContext();
   const status = useFormStatus();
-  // True only when a button-level formAction override (not the form's primary
-  // action) is the running action. React 19 populates status.action with the
-  // button's formAction function when a formAction button triggers the submit.
+  // True when a button-level formAction (not this form's primary action) is running.
   const isNonPrimaryActionPending =
     status.pending && status.action !== formAction;
 

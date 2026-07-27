@@ -93,6 +93,8 @@ export function ProjectSlideOver({
 
   const { data: currentUser } = useCurrentUser();
   const isOwner = currentUser?.id === project?.ownerId;
+  // Gates Edit/Delete/add-member/remove-member controls below — owner-only
+  // by design; RLS is the actual enforcement boundary, this is UI-only.
 
   // ---- Delete confirmation modal state ------------------------------------
 
@@ -200,14 +202,8 @@ export function ProjectSlideOver({
     cancelButtonRef.current?.focus();
   }, [confirmingMemberId]);
 
-  // Reset remove-member confirm state on project switch or slide-over close.
-  // ProjectSlideOver is a persistent overlay that never remounts (unlike
-  // TaskModal, which resets via a key), so without this the confirm UI would
-  // stay visibly stuck across an unrelated project.id change. Done during
-  // render (React's documented pattern for "adjusting state when a prop
-  // changes"), not in an effect — an effect would call setState
-  // unconditionally on every project.id change, including mount, causing an
-  // extra cascading render even when these values are already null.
+  // Resets remove-member confirm state on project switch/close. Adjusted
+  // during render, not in an effect — see CLAUDE.md's React Components section.
   const currentProjectId = project?.id ?? null;
   const [resetProjectId, setResetProjectId] = useState(currentProjectId);
   if (currentProjectId !== resetProjectId) {
@@ -452,10 +448,8 @@ export function ProjectSlideOver({
                       Add member by email
                     </label>
                     <input
-                      // No key/remount needed: defaultValue re-syncs to the DOM attribute on every render regardless
-                      // of key, and React 19's auto-reset (observed, not documented as a guaranteed ordering) applies
-                      // after that re-render — so the field always reflects addMemberState.email correctly. Verified manually
-                      // across repeated failures. Revisit if a future React upgrade changes this.
+                      // defaultValue re-syncs on every render; no key/remount needed — see
+                      // CLAUDE.md's Form Data Handling section (React 19 reset-on-submission).
                       id="add-member-email"
                       type="email"
                       name="email"
