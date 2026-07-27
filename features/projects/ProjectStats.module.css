@@ -39,6 +39,10 @@
   color: var(--color-accent);
 }
 
+.valueDanger {
+  color: var(--color-danger);
+}
+
 .denominator {
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-normal);
