@@ -3,6 +3,7 @@
 import { ArrowUpRight } from "lucide-react";
 import { Avatar, AvatarOverflow } from "@/components/Avatar";
 import { getInitials } from "@/lib/utils";
+import type { TaskCounts } from "@/hooks/useTaskCountsByProject";
 import type { Member, Project, ProjectStatus } from "@/types/atlas.types";
 import { DUE_DATE_FORMAT, STATUS_LABELS } from "./projectUtils";
 import styles from "./ProjectCard.module.css";
@@ -12,6 +13,7 @@ type ProjectCardProps = {
   project: Project;
   onSelect: (id: string) => void;
   members: Member[];
+  taskCounts: TaskCounts;
 };
 
 const STATUS_BADGE_CLASS: Record<ProjectStatus, string> = {
@@ -30,9 +32,18 @@ const MAX_VISIBLE_MEMBERS = 4;
  * @param onSelect - Callback fired with the project ID when the card is activated
  * @param members - Project members to render as an avatar strip
  */
-export function ProjectCard({ project, onSelect, members }: ProjectCardProps) {
+export function ProjectCard({
+  project,
+  onSelect,
+  members,
+  taskCounts,
+}: ProjectCardProps) {
   const visibleMembers = members.slice(0, MAX_VISIBLE_MEMBERS);
   const overflowCount = members.length - visibleMembers.length;
+  const progressPercent =
+    taskCounts.total === 0
+      ? 0
+      : Math.round((taskCounts.done / taskCounts.total) * 100);
   function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     if (e.key === "Enter") {
       onSelect(project.id);
@@ -76,17 +87,18 @@ export function ProjectCard({ project, onSelect, members }: ProjectCardProps) {
         <div
           className={styles.progressTrack}
           role="progressbar"
-          aria-valuenow={0}
+          aria-valuenow={progressPercent}
           aria-valuemin={0}
           aria-valuemax={100}
           aria-label="Project progress"
         >
-          {/* TODO: wire progress percentage to tasks data */}
-          <div className={styles.progressFill} />
+          <div
+            className={styles.progressFill}
+            style={{ width: `${progressPercent}%` }}
+          />
         </div>
         <span className={styles.taskCount}>
-          {/* TODO: wire to tasks data */}
-          0/0 tasks
+          {taskCounts.done}/{taskCounts.total} tasks
         </span>
       </div>
 

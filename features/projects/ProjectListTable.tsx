@@ -3,6 +3,7 @@
 import { ArrowUpRight } from "lucide-react";
 import { Avatar, AvatarOverflow } from "@/components/Avatar";
 import { getInitials } from "@/lib/utils";
+import type { TaskCounts } from "@/hooks/useTaskCountsByProject";
 import type { Member, Project, ProjectStatus } from "@/types/atlas.types";
 import { DUE_DATE_FORMAT, STATUS_LABELS, truncateDescription } from "./projectUtils";
 import styles from "./ProjectListTable.module.css";
@@ -12,6 +13,7 @@ type ProjectListTableProps = {
   projects: Project[];
   onSelect: (id: string) => void;
   membersByProject: Record<string, Member[]>;
+  taskCountsByProject: Record<string, TaskCounts>;
 };
 
 const STATUS_BADGE_CLASS: Record<ProjectStatus, string> = {
@@ -36,6 +38,7 @@ export function ProjectListTable({
   projects,
   onSelect,
   membersByProject,
+  taskCountsByProject,
 }: ProjectListTableProps) {
   return (
     <div className={styles.tableWrapper}>
@@ -64,6 +67,14 @@ export function ProjectListTable({
             const members = membersByProject[project.id] ?? [];
             const visibleMembers = members.slice(0, MAX_VISIBLE_MEMBERS);
             const overflowCount = members.length - visibleMembers.length;
+            const taskCounts = taskCountsByProject[project.id] ?? {
+              total: 0,
+              done: 0,
+            };
+            const progressPercent =
+              taskCounts.total === 0
+                ? 0
+                : Math.round((taskCounts.done / taskCounts.total) * 100);
 
             return (
               <tr
@@ -116,15 +127,19 @@ export function ProjectListTable({
                   <div
                     className={styles.progressTrack}
                     role="progressbar"
-                    aria-valuenow={0}
+                    aria-valuenow={progressPercent}
                     aria-valuemin={0}
                     aria-valuemax={100}
                     aria-label="Project progress"
                   >
-                    {/* TODO: wire progress to tasks data */}
-                    <div className={styles.progressFill} />
+                    <div
+                      className={styles.progressFill}
+                      style={{ width: `${progressPercent}%` }}
+                    />
                   </div>
-                  <span className={styles.progressLabel}>0%</span>
+                  <span className={styles.progressLabel}>
+                    {progressPercent}%
+                  </span>
                 </div>
               </td>
 
