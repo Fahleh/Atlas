@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { updateTask, updateTaskStatus } from "@/lib";
-import type { QueryClient } from "@tanstack/react-query";
+import type { QueryClient, QueryKey } from "@tanstack/react-query";
 import type { Task, TaskStatus } from "@/types/atlas.types";
 import { STATUS_CONFIG } from "./taskUtils";
 import type { TaskFormState } from "./TaskModal";
@@ -14,6 +14,19 @@ export type CreateTaskActionDeps = {
   queryClient: QueryClient;
   setIsModalOpen: (open: boolean) => void;
 };
+
+// ---- Invalidation helper -----------------------------------------------------
+
+// Runs both invalidations in parallel — they're independent of each other.
+async function invalidateTaskQueries(
+  queryClient: QueryClient,
+  taskQueryKey: QueryKey,
+) {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: taskQueryKey }),
+    queryClient.invalidateQueries({ queryKey: ["taskCountsByProject"] }),
+  ]);
+}
 
 // ---- Delete factory ---------------------------------------------------------
 
@@ -51,7 +64,7 @@ export function createDeleteTaskAction(
 
     if (error) return { error: error.message };
 
-    await queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
+    await invalidateTaskQueries(queryClient, ["tasks", projectId]);
     setIsModalOpen(false);
     return { error: null };
   };
@@ -145,7 +158,7 @@ export function createTaskAction(
       if (error) return { error: error.message };
     }
 
-    await queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
+    await invalidateTaskQueries(queryClient, ["tasks", projectId]);
     setIsModalOpen(false);
     return { error: null };
   };
