@@ -188,7 +188,7 @@ export function ProjectSlideOver({
   const [removeMemberError, setRemoveMemberError] = useState<string | null>(
     null,
   );
-  
+
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
 
   // Move focus to the Cancel button when the trash icon swaps to the
@@ -452,12 +452,10 @@ export function ProjectSlideOver({
                       Add member by email
                     </label>
                     <input
-                      /**
-                       * No key/remount needed: defaultValue re-syncs to the DOM attribute on every render regardless
-                       * of key, and React 19's auto-reset (observed, not documented as a guaranteed ordering) applies
-                       * after that re-render — so the field always reflects addMemberState.email correctly. Verified manually
-                       * across repeated failures. Revisit if a future React upgrade changes this.
-                       */
+                      // No key/remount needed: defaultValue re-syncs to the DOM attribute on every render regardless
+                      // of key, and React 19's auto-reset (observed, not documented as a guaranteed ordering) applies
+                      // after that re-render — so the field always reflects addMemberState.email correctly. Verified manually
+                      // across repeated failures. Revisit if a future React upgrade changes this.
                       id="add-member-email"
                       type="email"
                       name="email"
