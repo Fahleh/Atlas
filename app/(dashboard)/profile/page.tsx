@@ -1,5 +1,10 @@
-const ProfilePage = () => {
-  return <div>Profile Page</div>;
-};
+import { ProfileForm } from "@/features/profile/ProfileForm";
+import styles from "./page.module.css";
 
-export default ProfilePage;
+export default function ProfilePage() {
+  return (
+    <div className={styles.pageContainer}>
+      <ProfileForm />
+    </div>
+  );
+}
