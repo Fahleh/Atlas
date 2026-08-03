@@ -25,8 +25,6 @@ import {
 import sharedStyles from "./projectShared.module.css";
 import { STATUS_LABELS } from "./projectUtils";
 
-type AddMemberFormState = { error: string | null; email: string };
-
 /**
  * Submit button for the add-member form. Must be a descendant of the form
  * element, since `useFormStatus` cannot be called in the component that
@@ -38,6 +36,75 @@ function AddMemberSubmitButton() {
     <button type="submit" disabled={pending} className={styles.addMemberSubmit}>
       {pending ? "Adding…" : "Add"}
     </button>
+  );
+}
+
+type AddMemberFormState = { error: string | null; email: string };
+type AddMemberFormProps = {
+  project: Project;
+};
+
+/**
+ * Add-member form, extracted so it can be keyed by project.id.
+ * ProjectSlideOver itself never unmounts, so without this, useActionState's error/email state
+ * would persist across project switches. See docs/decisions.md.
+ */
+function AddMemberForm({ project }: AddMemberFormProps) {
+  const queryClient = useQueryClient();
+
+  const addMemberAction = useMemo(
+    () =>
+      async (
+        _prevState: AddMemberFormState,
+        formData: FormData,
+      ): Promise<AddMemberFormState> => {
+        const emailRaw = formData.get("email") as string | null;
+        const email = emailRaw?.trim();
+
+        if (!email) return { error: "Email is required.", email: email ?? "" };
+        if (!isValidEmail(email)) {
+          return { error: "Please enter a valid email address.", email };
+        }
+
+        const result = await addMember(project.id, email, queryClient);
+        if (result.error) return { error: result.error, email };
+
+        return { error: null, email: "" };
+      },
+    [project, queryClient],
+  );
+
+  const [addMemberState, addMemberFormAction] = useActionState(
+    addMemberAction,
+    {
+      error: null,
+      email: "",
+    },
+  );
+
+  return (
+    <>
+      <form action={addMemberFormAction} className={styles.addMemberForm}>
+        <label htmlFor="add-member-email" className={styles.srOnly}>
+          Add member by email
+        </label>
+        <input
+          id="add-member-email"
+          type="email"
+          name="email"
+          placeholder="Add member by email"
+          defaultValue={addMemberState.email}
+          required
+          className={styles.addMemberInput}
+        />
+        <AddMemberSubmitButton />
+      </form>
+      {addMemberState.error && (
+        <p role="alert" className={styles.addMemberError}>
+          {addMemberState.error}
+        </p>
+      )}
+    </>
   );
 }
 
@@ -148,37 +215,6 @@ export function ProjectSlideOver({
         return { error: null };
       },
     [project, queryClient, onClose],
-  );
-
-  // ---- Add-member form -------------------------------------------------------
-
-  const addMemberAction = useMemo(
-    () =>
-      async (
-        _prevState: AddMemberFormState,
-        formData: FormData,
-      ): Promise<AddMemberFormState> => {
-        if (!project) return { error: null, email: "" };
-
-        const emailRaw = formData.get("email") as string | null;
-        const email = emailRaw?.trim();
-
-        if (!email) return { error: "Email is required.", email: email ?? "" };
-        if (!isValidEmail(email)) {
-          return { error: "Please enter a valid email address.", email };
-        }
-
-        const result = await addMember(project.id, email, queryClient);
-        if (result.error) return { error: result.error, email };
-
-        return { error: null, email: "" };
-      },
-    [project, queryClient],
-  );
-
-  const [addMemberState, addMemberFormAction] = useActionState(
-    addMemberAction,
-    { error: null, email: "" },
   );
 
   // ---- Remove-member confirm state -------------------------------------------
@@ -438,35 +474,7 @@ export function ProjectSlideOver({
             <section className={styles.section}>
               <h3 className={styles.sectionTitle}>Members</h3>
 
-              {isOwner && (
-                <>
-                  <form
-                    action={addMemberFormAction}
-                    className={styles.addMemberForm}
-                  >
-                    <label htmlFor="add-member-email" className={styles.srOnly}>
-                      Add member by email
-                    </label>
-                    <input
-                      // defaultValue re-syncs on every render; no key/remount needed — see
-                      // CLAUDE.md's Form Data Handling section (React 19 reset-on-submission).
-                      id="add-member-email"
-                      type="email"
-                      name="email"
-                      placeholder="Add member by email"
-                      defaultValue={addMemberState.email}
-                      required
-                      className={styles.addMemberInput}
-                    />
-                    <AddMemberSubmitButton />
-                  </form>
-                  {addMemberState.error && (
-                    <p role="alert" className={styles.addMemberError}>
-                      {addMemberState.error}
-                    </p>
-                  )}
-                </>
-              )}
+              {isOwner && <AddMemberForm key={project.id} project={project} />}
 
               {members.length === 0 ? (
                 <p className={styles.emptyText}>No members yet.</p>
