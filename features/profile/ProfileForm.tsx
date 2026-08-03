@@ -98,15 +98,8 @@ export function ProfileForm() {
   // whatever timeout is currently pending without needing it in a dependency array.
   const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Shows the success banner and (re)starts its dismiss timer. Called directly
-  // from the action's success branch below — not from a useEffect keyed on
-  // state.success — because the action returns a new object literal on every
-  // dispatch, so this runs on every successful save, including back-to-back
-  // successes where the `success` boolean value itself never changes (an
-  // effect keyed on that boolean would see true -> true as "no change" and
-  // fail to reset the timer on the second save). Clearing any existing timeout
-  // first also means a second save arriving mid-countdown restarts the full
-  // duration rather than being cut short by the first timer.
+  // Called from the action's success branch, not a useEffect on state.success
+  // — see docs/decisions.md ("Triggering the success-banner side effect...").
   function triggerSuccessBanner() {
     if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
     setShowSuccess(true);

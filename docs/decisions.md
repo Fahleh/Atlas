@@ -157,3 +157,39 @@ for consistency and defense-in-depth rather than waiting for confirmation.
 in the same tab, and a different user could sign in from it — producing an
 ambiguous auth state before `ClearQueryCacheOnMount` gets a chance to run
 on the next layout mount.
+
+---
+
+## Triggering the success-banner side effect imperatively, not via `useEffect` on a boolean
+
+**Decision:** `ProfileForm.tsx`'s `triggerSuccessBanner()` is called directly
+from the save action's success branch, not from a `useEffect` watching
+`state.success`.
+
+**Why:** `useActionState` returns a new state object on every dispatch, but
+`state.success` itself can be `true` on two consecutive successful saves —
+React's effect dependency comparison (`Object.is`) sees `true → true` as no
+change, so an effect keyed on that boolean wouldn't re-fire on the second
+save, and the dismiss timer wouldn't reset. Calling the trigger imperatively,
+inside the action itself, fires on every dispatch regardless of whether the
+resulting value changed — the correct behavior for "react to an event having
+happened," which a value-comparison-based effect can't reliably express.
+
+---
+
+## Keeping `avatars: anyone can view` despite Supabase's own "clients can list all files" warning
+
+**Decision:** The Storage SELECT policy on the `avatars` bucket is kept as
+originally written, despite Supabase's dashboard flagging that it allows
+bucket-wide listing/enumeration.
+
+**Why:** Confirmed (via a Supabase maintainer's own answer, and by directly
+testing both configurations) that `list` and single-file access share the
+same RLS SELECT policy — there is no way to grant one without the other.
+Removing the policy was tested and found to break `upsert: true` re-uploads
+(Postgres/the client needs read access to determine whether a row already
+exists before deciding insert vs. overwrite). The actual exposure from
+keeping it is narrow — avatar storage paths are `{userId}/avatar.ext`, so
+the only information enumerable is which user IDs have uploaded a photo,
+not any other data. Accepted as a documented tradeoff, same reasoning as
+`lookup_user_id_by_email`'s deliberate scope decision.

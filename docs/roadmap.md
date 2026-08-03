@@ -1,6 +1,6 @@
 # Atlas Roadmap
 
-> Last updated: July 2026
+> Last updated: August 2026
 
 This document tracks what's intentionally _not_ built yet, split into two
 genuinely different categories — conflating them was an earlier mistake in
@@ -14,33 +14,7 @@ own plan.
 
 ## Current version — remaining work (in planned order)
 
-1. **Task progress / completion percentage** — `ProjectCard` and
-   `ProjectListTable` currently show a hardcoded `0%` / `0 tasks`. Needs a
-   tasks-completed query. Given the N+1 concern already solved once for
-   member data (`useMembersByProject`), this should follow the same batched
-   pattern rather than a per-card fetch — decide the exact aggregate shape
-   when this is designed, not defaulted into.
-
-2. **Comment cleanup pass (repo-wide)** — several recent JSDocs/inline comments
-   have drifted from CLAUDE.md's own Documentation Standards rule ("a short
-   in-code comment... and a corresponding entry in `docs/decisions.md`").
-   Some comments now duplicate full incident write-ups (bug mechanics, issue
-   numbers, debugging evidence) at length inline, rather than a short pointer
-   to `docs/decisions.md`. Sweep the codebase, trim these to short references,
-   consolidate the full narratives into `docs/decisions.md` once each.
-
-3. **Profile page** — new route. Includes:
-   - Edit display name
-   - Avatar upload — `profiles.avatar_url` and `Avatar.tsx`'s photo-render
-     branch already exist and are wired correctly; only the upload UI,
-     storage bucket, and `next.config.ts` `remotePatterns` (for the real
-     storage domain) are missing.
-   - Email change — not yet decided whether in scope for this pass.
-     Supabase Auth's email-change flow has its own confirmation step and
-     adds real complexity; decide when this page is actually designed,
-     not before.
-
-4. **Dashboard design** — `/` (formerly conflated with a non-existent
+1. **Dashboard design** — `/` (formerly conflated with a non-existent
    `/dashboard` route — see CLAUDE.md's Route Groups section) is currently
    a bare placeholder. Likely candidates: move `ProjectStats` cards here
    from `/projects`, decide what else belongs (recent activity, upcoming
