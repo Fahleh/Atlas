@@ -47,6 +47,12 @@ own plan.
   management approach distinct from the current form-action-based
   mutations.
 
+- **Project pagination.** `useProjects()` fetches the complete, unpaginated
+  project list for the current user. Fine at Atlas's current review scale;
+  would need real pagination (or virtualization) at genuine scale. Deferred
+  since building pagination UI now would solve a scale problem the app
+  doesn't currently have.
+
 ---
 
 Update this document whenever a deliberate scope decision is made, either
