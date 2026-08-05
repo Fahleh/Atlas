@@ -1,0 +1,44 @@
+/* ---- Stats error row — compact horizontal replacement for ProjectStats ---- */
+
+.statsError {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.statsErrorIcon {
+  flex-shrink: 0;
+  color: var(--color-danger);
+}
+
+.statsErrorMessage {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.statsErrorRetry {
+  margin-left: auto;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-accent);
+  cursor: pointer;
+  transition: color 150ms ease;
+}
+
+.statsErrorRetry:hover {
+  color: var(--color-accent-hover);
+}
+
+.statsErrorRetry:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}

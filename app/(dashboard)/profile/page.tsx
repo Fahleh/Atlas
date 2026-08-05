@@ -1,9 +1,9 @@
 import { ProfileForm } from "@/features/profile/ProfileForm";
-import styles from "./page.module.css";
+import layoutStyles from "@/styles/layout.module.css";
 
 export default function ProfilePage() {
   return (
-    <div className={styles.pageContainer}>
+    <div className={layoutStyles.pageContainer}>
       <ProfileForm />
     </div>
   );

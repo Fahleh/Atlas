@@ -16,6 +16,7 @@ import { ProjectSlideOver } from "./ProjectSlideOver";
 import { ProjectModal } from "./ProjectModal";
 import { createProjectAction } from "./projectActions";
 import styles from "./ProjectList.module.css";
+import layoutStyles from "@/styles/layout.module.css";
 
 type StatusFilter = "all" | ProjectStatus;
 type ViewMode = "grid" | "list";
@@ -121,7 +122,7 @@ export function ProjectList() {
   const showGrid = !isLoading && !isError && filteredProjects.length > 0;
 
   return (
-    <div className={styles.pageContainer}>
+    <div className={layoutStyles.pageContainer}>
       {/* Page header */}
       <div className="flex items-center justify-end">
         <button
