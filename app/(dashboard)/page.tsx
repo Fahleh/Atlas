@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AlertCircle, FolderPlus, ListChecks } from "lucide-react";
@@ -8,9 +8,11 @@ import { useProjects } from "@/hooks/useProjects";
 import { useTaskCountsByProject } from "@/hooks/useTaskCountsByProject";
 import { useMembersByProject } from "@/hooks/useMembersByProject";
 import { useTasks } from "@/hooks/useTasks";
+import { useDueSoonTaskCount } from "@/hooks/useDueSoonTaskCount";
 import { Skeleton } from "@/components/Skeleton";
 import { ProjectStats } from "@/features/projects/ProjectStats";
 import { ProjectCard } from "@/features/projects/ProjectCard";
+import { VelocityStatus } from "@/features/projects/VelocityStatus";
 import { DUE_DATE_FORMAT } from "@/features/projects/projectUtils";
 import { STATUS_CONFIG } from "@/features/tasks/taskUtils";
 import layoutStyles from "@/styles/layout.module.css";
@@ -22,6 +24,10 @@ const TASK_SKELETON_ROW_COUNT = 5;
 
 export default function DashboardPage() {
   const router = useRouter();
+  // Fixes "now" as of dashboard mount, not a live clock — required so
+  // rendering stays pure (react-hooks/purity forbids calling Date.now()
+  // directly during render or inside a useMemo body).
+  const [now] = useState(() => Date.now());
   const { data: projects = [], isLoading, isError, refetch } = useProjects();
 
   const projectIds = useMemo(() => projects.map((p) => p.id), [projects]);
@@ -68,6 +74,9 @@ export default function DashboardPage() {
     () => upcomingTasksData.slice(0, UPCOMING_TASKS_COUNT),
     [upcomingTasksData],
   );
+
+  const { data: dueSoonTaskCount = 0, isLoading: isDueSoonLoading } =
+    useDueSoonTaskCount(now);
 
   // Cross-route navigation from the dashboard: push, not replace, so Back
   // returns here rather than skipping past it. See docs/decisions.md.
@@ -269,6 +278,11 @@ export default function DashboardPage() {
               </div>
             )}
           </section>
+
+          <VelocityStatus
+            dueSoonTaskCount={dueSoonTaskCount}
+            isLoading={isDueSoonLoading}
+          />
         </div>
       </div>
     </div>

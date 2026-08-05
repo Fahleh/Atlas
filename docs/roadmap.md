@@ -31,6 +31,11 @@ own plan.
    was chosen for aesthetic and brand reasons (see `docs/decisions.md`),
    not verified against AA contrast minimums.
 
+4. **Singular/plural copy convention.** No consistent handling of
+   count-based copy exists app-wide: `ProjectCard`'s task count is
+   hardcoded plural, while the new `VelocityStatus` card has a real
+   singular guard. Worth reconciling into one convention later.
+
 ---
 
 ## Deferred to v2 (out of scope for the current version)
