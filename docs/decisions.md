@@ -2,7 +2,7 @@
 
 > Last updated: August 2026
 
-This document explains *why* certain choices were made where the reasoning
+This document explains _why_ certain choices were made where the reasoning
 is not obvious from the code alone. It is not a changelog, and not a
 tutorial. Update it when a deliberate decision is made that a future reader
 (including a reviewer or interviewer) might otherwise mistake for an
@@ -29,8 +29,8 @@ caller-driven composition at all.
 **Why they're different on purpose:**
 
 The compound pattern (the lineage this codebase draws from: Radix,
-Reach UI, shadcn) exists to solve one specific problem: *unknown, variable
-composition*, where a consumer might need to nest arbitrary content inside
+Reach UI, shadcn) exists to solve one specific problem: _unknown, variable
+composition_, where a consumer might need to nest arbitrary content inside
 a shared shell in ways the component author cannot fully predict up front.
 
 `TaskModal` is compound because it predates the later `EntityModal`
@@ -44,7 +44,7 @@ because task editing genuinely requires that flexibility.
 equivalent legacy shape to preserve. Its fields are fixed and no caller
 needs to compose it differently. Applying the compound pattern here anyway
 would mean reaching for machinery designed to solve a problem that does not
-exist in this case. That would demonstrate not understanding *why* the
+exist in this case. That would demonstrate not understanding _why_ the
 compound pattern exists, not consistency for its own sake.
 
 **Takeaway for future modals:** default to a single-block component. Only
@@ -103,7 +103,7 @@ below, is now deliberately narrower than it once was.
 
 **Why `onAuthStateChange` wasn't sufficient. Incident: confirmed via manual
 two-browser testing.** Atlas's login/signup/logout all run as Server
-Actions against the *server* Supabase client. The *browser* client's
+Actions against the _server_ Supabase client. The _browser_ client's
 `onAuthStateChange`, which `AuthListenerProvider` listens on, is never
 itself told a server-side sign-in/sign-out happened. This is a confirmed,
 Supabase-team-acknowledged limitation (supabase-js#1618), not a bug in
@@ -114,7 +114,7 @@ data and sometimes didn't, depending on incidental timing).
 
 **Why layout mount is a reliable substitute:** Next.js fully remounts a
 nested layout on every crossing between separate route groups, and does
-*not* remount it on navigation within the same group. Since `(auth)` and
+_not_ remount it on navigation within the same group. Since `(auth)` and
 `(dashboard)` are sibling nested layouts under the single root
 `app/layout.tsx` (which is what makes this a client-side transition rather
 than a hard page reload), mounting `ClearQueryCacheOnMount` in both is a
@@ -125,7 +125,7 @@ whichever Supabase client happened to run the auth call.
 `SIGNED_OUT` only. Incident: confirmed via React Query Devtools.** An
 earlier version of `AuthListenerProvider` also cleared on `SIGNED_IN`. This
 caused a real, reproduced bug: `onAuthStateChange` fires `SIGNED_IN` on
-*any* fresh client initialization that finds an existing valid session,
+_any_ fresh client initialization that finds an existing valid session,
 including an ordinary page refresh by the same, still-logged-in user, not
 just a genuine new login. Clearing on that event raced against every other
 query mounting in the same commit, orphaning their in-flight fetches. This
@@ -138,11 +138,11 @@ positive is inherent to what the event means, not fixable by better timing.
 
 **The assumption this correctness depends on. Read before adding any new
 auth-adjacent feature:** this only works because, in Atlas's current
-single-account auth model, *every* path from one user's identity to a
+single-account auth model, _every_ path from one user's identity to a
 different one necessarily crosses the `(auth)` route group boundary (you
 cannot reach a different user's dashboard session without passing through
 `/login` first). If a future feature ever allowed switching identity
-*without* crossing that boundary, for example an account-switcher or
+_without_ crossing that boundary, for example an account-switcher or
 impersonation feature that swaps the active user via an API call while
 staying on a dashboard route, this mechanism would **not** fire, and the
 cache leak this fix closes would reopen for that new code path. Any such
@@ -219,3 +219,85 @@ exposure from keeping it is narrow: avatar storage paths are
 have uploaded a photo, not any other data. Accepted as a documented
 tradeoff, same reasoning as `lookup_user_id_by_email`'s deliberate scope
 decision.
+
+---
+
+## No memoization on `ProjectSlideOver`'s `openForEdit`/`openForCreate`
+
+**Decision:** `openForEdit` and `openForCreate` are defined as plain inline
+functions in `ProjectSlideOver`'s component body, not wrapped in
+`useCallback`, even though this causes `TaskList` to re-render on every
+modal open and close.
+
+**Why, measured, not assumed.** Profiled with React DevTools Profiler
+during a modal open and close cycle. `TaskList` re-renders twice per cycle,
+once per state change, because `openForEdit`'s reference changes on every
+render and `TaskList` receives it as `onTaskSelect`. Measured cost: roughly
+0.8ms per extra commit. `openForCreate` also gets a new reference every
+render but is never passed to a child component, so it causes no
+downstream re-renders at all. `useCallback` would eliminate the two
+`TaskList` re-renders, but at this render budget the memoization overhead
+(maintaining a dependency array, the comparison cost itself) likely exceeds
+the roughly 1.6ms saved per cycle. Revisit if `TaskList` grows to render
+50 or more items, or if profiling in a future session reveals a real
+regression. This finding predates the delete/add-member/remove-member
+features later added to `ProjectSlideOver`; the reference-identity behavior
+and its cost are structurally unchanged by that growth, since none of it
+touches `openForEdit` itself.
+
+---
+
+## Placing `aria-busy` and the live region on the loading group, not on `Skeleton` itself
+
+**Decision:** `Skeleton.tsx` carries `aria-busy={true}` on every instance,
+but `role="status"`/`aria-live="polite"` are placed on the _container_
+wrapping each group of skeletons, `ProjectList.tsx`'s loading grid,
+`TaskList.tsx`'s loading list, and `Header.tsx`'s loading branch
+specifically, not on `Skeleton` itself and not on `Header`'s loaded-content
+branch.
+
+**Why:** Putting the live region on `Skeleton` directly would cause
+redundant, spammy announcements when several skeletons render together,
+for example the project grid rendering six placeholder cards at once would
+announce six times instead of once. Grouping the live region at the
+container level means each loading state announces exactly once,
+regardless of how many individual skeleton elements it contains. Scoping
+it to `Header`'s loading branch only, not its loaded branch, avoids a
+live region lingering in the DOM and causing a spurious announcement after
+the real profile data has already loaded.
+
+---
+
+## Explicit `.focus()` on the remove-member Cancel button, not browser-default behavior
+
+**Decision:** When a user clicks the trash icon on a project member row, it
+is replaced in place by a Cancel and Confirm icon-button pair. A `useRef`
+plus a `useEffect` keyed on `confirmingMemberId` explicitly calls `.focus()`
+on the Cancel button whenever this confirm state opens, for any row.
+
+**Why:** The initial version left this to browser-default focus-reversion
+behavior. It happened to work, in testing, only because of an incidental
+`document.body` fallback, not because any browser reliably guarantees that
+behavior across implementations. Explicit management removes that
+uncertainty entirely, and Cancel, not Confirm, is the button that receives
+focus by design, since it is the safe, non-destructive action, matching
+standard destructive-action UX conventions such as browser "leave page"
+dialogs defaulting focus away from the destructive choice.
+
+---
+
+## Zinc over slate, and a separate accent color from the warning color
+
+**Decision:** Atlas's design tokens use the Zinc gray scale, not Slate, and
+define `--color-accent` (`#ea8c00`, golden-orange) as a distinct token from
+`--color-warning` (`#f97316`), even though both are visually in the same
+orange family.
+
+**Why:** Zinc reads warmer than Slate, which avoids the sterile, overly
+clinical feel common in productivity dashboards, and better complements a
+warm accent color. Keeping the brand accent and the system warning color as
+two separate tokens, despite their visual similarity, prevents a real
+category of confusion: a warning-colored element should never be
+mistakable for a branded, interactive one, and vice versa. A future
+palette change to either color should preserve this separation rather than
+consolidating them for token-count convenience.

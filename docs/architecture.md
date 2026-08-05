@@ -107,10 +107,7 @@ atlas/
     ├── deployment.md
     ├── decisions.md
     ├── roadmap.md
-    ├── a11y.md
-    ├── performance.md
-    ├── styles.md
-    └── js-execution.md
+    └── a11y.md
 ```
 
 The tree shows location, not full responsibility. A file's detailed role should
