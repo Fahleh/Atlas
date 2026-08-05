@@ -18,6 +18,7 @@ import {
 
 export function createProject(input: CreateProjectInput): Project {
   const { name, description, dueDate } = input;
+  const now = new Date();
 
   const newProject: Project = {
     id: crypto.randomUUID(),
@@ -26,7 +27,8 @@ export function createProject(input: CreateProjectInput): Project {
     description,
     status: "active",
     dueDate,
-    createdAt: new Date(),
+    createdAt: now,
+    updatedAt: now,
   };
 
   return newProject;

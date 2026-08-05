@@ -28,7 +28,7 @@ export function useProjects() {
       if (error) throw error;
 
       const transformedData: Project[] = data.map((project) =>
-        parseDates(toCamelCase(project), ["createdAt", "dueDate"]),
+        parseDates(toCamelCase(project), ["createdAt", "dueDate", "updatedAt"]),
       );
 
       return transformedData;

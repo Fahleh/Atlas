@@ -17,6 +17,7 @@ export type Project = {
   status: ProjectStatus;
   dueDate: Date | null;
   createdAt: Date;
+  updatedAt: Date;
 };
 
 export type Task = {

@@ -1,6 +1,7 @@
-/* ---- Stats error row — compact horizontal replacement for ProjectStats ---- */
+/* ---- Combined error row — covers stats + recent projects, both derived
+   from the same useProjects() call, so one failure means one error state ---- */
 
-.statsError {
+.dashboardError {
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -10,18 +11,18 @@
   border-radius: var(--radius-lg);
 }
 
-.statsErrorIcon {
+.dashboardErrorIcon {
   flex-shrink: 0;
   color: var(--color-danger);
 }
 
-.statsErrorMessage {
+.dashboardErrorMessage {
   margin: 0;
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
 }
 
-.statsErrorRetry {
+.dashboardErrorRetry {
   margin-left: auto;
   flex-shrink: 0;
   background: none;
@@ -34,11 +35,116 @@
   transition: color 150ms ease;
 }
 
-.statsErrorRetry:hover {
+.dashboardErrorRetry:hover {
   color: var(--color-accent-hover);
 }
 
-.statsErrorRetry:focus-visible {
+.dashboardErrorRetry:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
+}
+
+/* ---- Recent projects section ---- */
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4)
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.viewAllLink {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-accent);
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.viewAllLink:hover {
+  color: var(--color-accent-hover);
+}
+
+.viewAllLink:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.recentProjectsGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-6);
+}
+
+@media (min-width: 640px) {
+  .recentProjectsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ---- Empty state ---- */
+
+.stateContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-16) 0;
+  text-align: center;
+}
+
+.stateIcon {
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-2);
+}
+
+.stateMessage {
+  margin: 0;
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+.stateSubtitle {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+/* ---- Skeleton loading cards — mirrors ProjectList.module.css's pattern;
+   duplicated rather than shared per docs/frontend.md's third-use threshold ---- */
+
+.skeletonCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.skeletonCardHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.skeletonCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.skeletonAvatars {
+  display: flex;
+  gap: var(--space-2);
 }
