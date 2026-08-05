@@ -301,3 +301,35 @@ category of confusion: a warning-colored element should never be
 mistakable for a branded, interactive one, and vice versa. A future
 palette change to either color should preserve this separation rather than
 consolidating them for token-count convenience.
+
+---
+
+## URL-derived project selection instead of `ProjectContext`
+
+**Decision:** `ProjectList.tsx`'s slide-over selection is read directly from
+`useSearchParams().get("project")` on `/projects?project=<id>`, not from a
+Context provider. `providers/ProjectContext.tsx` was deleted, along with
+`ProjectProvider` in `app/layout.tsx`, since selection was its only
+responsibility. Opening a project from a card, and closing the slide-over,
+both call `router.replace` (same-route selection change, not a new
+destination — keeps one history entry for "being on /projects"). Navigating
+to a project from the dashboard's Recent Projects section calls `router.push`
+instead, since that's a real cross-route navigation and Back should return to
+the dashboard, not skip past it.
+
+**Why:** Context state and the URL were two independent sources of truth for
+"which project is selected." Context persists across client-side navigation
+and was cleared only by the slide-over's explicit close, so a user who opened
+a project, navigated away without closing it, and later returned to
+`/projects` would see that same project's slide-over silently reopen,
+unrelated to anything on that visit. Making the URL the sole source of truth
+removes the second copy of the state entirely rather than patching the
+symptom, and as a side effect makes an open project genuinely shareable and
+bookmarkable. `ProjectList` calling `useSearchParams()` makes it depend on
+`/projects` at build time; per Next's docs, a statically-prerendered page
+calling `useSearchParams` from a Client Component must be wrapped in
+`<Suspense>` or the production build fails — `app/(dashboard)/projects/page.tsx`
+wraps `<ProjectList />` in `<Suspense fallback={null}>` for this reason. The
+`null` fallback is invisible in practice since all of `ProjectList`'s real
+content is already fetched client-side via React Query with its own loading
+skeletons, independent of prerendering.

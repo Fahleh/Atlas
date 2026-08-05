@@ -7,7 +7,6 @@ import { AlertCircle, FolderPlus } from "lucide-react";
 import { useProjects } from "@/hooks/useProjects";
 import { useTaskCountsByProject } from "@/hooks/useTaskCountsByProject";
 import { useMembersByProject } from "@/hooks/useMembersByProject";
-import { useProject } from "@/providers/ProjectContext";
 import { Skeleton } from "@/components/Skeleton";
 import { ProjectStats } from "@/features/projects/ProjectStats";
 import { ProjectCard } from "@/features/projects/ProjectCard";
@@ -18,7 +17,6 @@ const RECENT_PROJECTS_COUNT = 2;
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { setSelectedProjectId } = useProject();
   const { data: projects = [], isLoading, isError, refetch } = useProjects();
 
   const projectIds = useMemo(() => projects.map((p) => p.id), [projects]);
@@ -39,9 +37,10 @@ export default function DashboardPage() {
   const { data: membersByProject = {} } =
     useMembersByProject(recentProjectIds);
 
+  // Cross-route navigation from the dashboard — push, not replace, so Back
+  // returns here rather than skipping past it. See docs/decisions.md.
   function handleSelectProject(id: string) {
-    setSelectedProjectId(id);
-    router.push("/projects");
+    router.push(`/projects?project=${id}`);
   }
 
   if (isError) {

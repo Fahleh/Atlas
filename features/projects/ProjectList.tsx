@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useMemo, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, AlertCircle, Sparkles, SearchX } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useProjects } from "@/hooks/useProjects";
 import { useMembersByProject } from "@/hooks/useMembersByProject";
 import { useTaskCountsByProject } from "@/hooks/useTaskCountsByProject";
-import { useProject } from "@/providers/ProjectContext";
 import { Skeleton } from "@/components/Skeleton";
 import type { Project, ProjectStatus } from "@/types/atlas.types";
 import { ProjectCard } from "./ProjectCard";
@@ -31,12 +31,26 @@ const STATUS_FILTERS: { label: string; value: StatusFilter }[] = [
 
 /**
  * Full projects page content: stats, search/filter toolbar, card grid,
- * and slide-over panel. Orchestrates useProjects() and useProject() context.
+ * and slide-over panel. Orchestrates useProjects() and the URL's `project`
+ * search param, which is the sole source of truth for slide-over selection.
  */
 export function ProjectList() {
   const { data: projects = [], isLoading, isError, refetch } = useProjects();
-  const { selectedProjectId, setSelectedProjectId } = useProject();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const selectedProjectId = searchParams.get("project");
   const queryClient = useQueryClient();
+
+  // Same-route selection change, not a new destination — replace so Back
+  // leaves /projects immediately instead of stepping through each
+  // previously-opened project. See docs/decisions.md.
+  function selectProject(id: string) {
+    router.replace(`/projects?project=${id}`);
+  }
+
+  function closeProject() {
+    router.replace("/projects");
+  }
 
   // Full unfiltered project ID list — member data shouldn't refetch on every
   // search/filter change, only when the underlying project set changes.
@@ -314,7 +328,7 @@ export function ProjectList() {
             <ProjectCard
               key={project.id}
               project={project}
-              onSelect={setSelectedProjectId}
+              onSelect={selectProject}
               members={membersByProject[project.id] ?? []}
               taskCounts={
                 taskCountsByProject[project.id] ?? {
@@ -331,7 +345,7 @@ export function ProjectList() {
       {showGrid && viewMode === "list" && (
         <ProjectListTable
           projects={filteredProjects}
-          onSelect={setSelectedProjectId}
+          onSelect={selectProject}
           membersByProject={membersByProject}
           taskCountsByProject={taskCountsByProject}
         />
@@ -340,7 +354,7 @@ export function ProjectList() {
       {/* Slide-over panel — always in DOM, CSS-controlled visibility */}
       <ProjectSlideOver
         project={selectedProject}
-        onClose={() => setSelectedProjectId(null)}
+        onClose={closeProject}
         onEditProject={openProjectModalForEdit}
         members={
           selectedProject ? (membersByProject[selectedProject.id] ?? []) : []

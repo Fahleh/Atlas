@@ -4,7 +4,6 @@ import { ThemeProvider } from "@/providers/ThemeContext";
 import "../styles/global.css";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { AuthListenerProvider } from "@/providers/AuthListenerProvider";
-import { ProjectProvider } from "@/providers/ProjectContext";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -42,9 +41,7 @@ export default function RootLayout({
         />
         <ThemeProvider>
           <QueryProvider>
-            <AuthListenerProvider>
-              <ProjectProvider>{children}</ProjectProvider>
-            </AuthListenerProvider>
+            <AuthListenerProvider>{children}</AuthListenerProvider>
           </QueryProvider>
         </ThemeProvider>
       </body>

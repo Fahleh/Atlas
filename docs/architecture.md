@@ -84,8 +84,7 @@ atlas/
 ├── providers/
 │   ├── ThemeProvider.tsx
 │   ├── QueryProvider.tsx
-│   ├── AuthListenerProvider.tsx
-│   └── ProjectContext.tsx
+│   └── AuthListenerProvider.tsx
 ├── styles/
 │   ├── tokens.css
 │   └── global.css
@@ -238,12 +237,12 @@ a visually similar component is compound.
 
 ### Store IDs, not cached entity snapshots
 
-When React Query owns an entity, Context or lifted state must store only its
-identifier:
+When React Query owns an entity, Context, lifted state, or the URL must store
+only its identifier:
 
 ```typescript
-const [selectedProjectId, setSelectedProjectId] =
-  useState<string | null>(null);
+const searchParams = useSearchParams();
+const selectedProjectId = searchParams.get("project");
 
 const selectedProject =
   projects.find((project) => project.id === selectedProjectId) ?? null;
@@ -254,6 +253,10 @@ the cache and becomes stale after invalidation/refetch.
 
 This also makes deletion safe: `.find()` naturally returns `undefined`, which
 normalizes to `null`.
+
+`ProjectList.tsx`'s slide-over selection is URL-derived (`/projects?project=<id>`)
+rather than Context-derived, specifically so the URL is the single source of
+truth for "which project is open." See docs/decisions.md.
 
 ### Reference-only store
 
