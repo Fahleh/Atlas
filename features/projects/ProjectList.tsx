@@ -9,7 +9,6 @@ import { useTaskCountsByProject } from "@/hooks/useTaskCountsByProject";
 import { useProject } from "@/providers/ProjectContext";
 import { Skeleton } from "@/components/Skeleton";
 import type { Project, ProjectStatus } from "@/types/atlas.types";
-import { ProjectStats } from "./ProjectStats";
 import { ProjectCard } from "./ProjectCard";
 import { ProjectListTable } from "./ProjectListTable";
 import { ProjectSlideOver } from "./ProjectSlideOver";
@@ -43,8 +42,7 @@ export function ProjectList() {
   // search/filter change, only when the underlying project set changes.
   const projectIds = useMemo(() => projects.map((p) => p.id), [projects]);
   const { data: membersByProject = {} } = useMembersByProject(projectIds);
-  const { data: taskCountsByProject = {} } =
-    useTaskCountsByProject(projectIds);
+  const { data: taskCountsByProject = {} } = useTaskCountsByProject(projectIds);
 
   // Derive the live Project object from the React Query cache on every render.
   // After an edit, projectActions.ts invalidates ["projects"], useProjects()
@@ -134,15 +132,6 @@ export function ProjectList() {
           New project
         </button>
       </div>
-
-      {/* Stats bar — shown only after successful load */}
-      {!isError && (
-        <ProjectStats
-          projects={projects}
-          taskCounts={taskCountsByProject}
-          isLoading={isLoading}
-        />
-      )}
 
       {/* Toolbar: search, status filter, view toggle */}
       <div className="flex items-center gap-4 flex-wrap">
@@ -327,10 +316,12 @@ export function ProjectList() {
               project={project}
               onSelect={setSelectedProjectId}
               members={membersByProject[project.id] ?? []}
-              taskCounts={taskCountsByProject[project.id] ?? {
-                total: 0,
-                done: 0,
-              }}
+              taskCounts={
+                taskCountsByProject[project.id] ?? {
+                  total: 0,
+                  done: 0,
+                }
+              }
             />
           ))}
         </div>
