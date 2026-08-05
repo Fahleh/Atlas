@@ -31,7 +31,7 @@ export default function DashboardPage() {
   const { data: projects = [], isLoading, isError, refetch } = useProjects();
 
   const projectIds = useMemo(() => projects.map((p) => p.id), [projects]);
-  const { data: taskCountsByProject = {} } =
+  const { data: taskCountsByProject = {}, isLoading: isTaskCountsLoading } =
     useTaskCountsByProject(projectIds);
 
   const recentProjects = useMemo(
@@ -210,7 +210,7 @@ export default function DashboardPage() {
               <h2 className={styles.sectionTitle}>Upcoming Tasks</h2>
             </div>
 
-            {isLoading || isTasksLoading ? (
+            {isLoading || isTaskCountsLoading || isTasksLoading ? (
               <div className={styles.taskCard}>
                 <div
                   className={styles.taskList}
