@@ -44,6 +44,27 @@
   outline-offset: 2px;
 }
 
+/* ---- Two-column dashboard layout ---- */
+
+.dashboardGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-10);
+  margin-top: var(--space-6);
+}
+
+@media (min-width: 1024px) {
+  .dashboardGrid {
+    grid-template-columns: 4fr 2fr;
+  }
+}
+
+.dashboardColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
 /* ---- Recent projects section ---- */
 
 .sectionHeader {
@@ -51,7 +72,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-  margin-bottom: var(--space-4)
+  margin-bottom: var(--space-4);
 }
 
 .sectionTitle {
@@ -147,4 +168,101 @@
 .skeletonAvatars {
   display: flex;
   gap: var(--space-2);
+}
+
+/* ---- Upcoming tasks card ---- */
+
+/* Fixed height for exactly 5 .taskRows + .taskCardFooter + the card's own
+   border, so the loading skeleton and the real content occupy identical
+   space. Derivation (all values from tokens.css):
+   - .taskRow: --space-3 padding top+bottom (12px + 12px = 24px)
+     + title line (--font-size-sm 14px * --line-height-normal 1.5 = 21px)
+     + --space-1 gap (4px)
+     + due-date line (--font-size-xs 12px * --line-height-normal 1.5 = 18px)
+     = 24 + 21 + 4 + 18 = 67px per row
+   - 5 rows + 4 inter-row borders (.taskRow:not(:last-child) border-bottom,
+     1px each): 5 * 67 + 4 * 1 = 335 + 4 = 339px
+   - .taskCardFooter: --space-3 padding top+bottom (24px)
+     + link text line (--font-size-sm 14px * --line-height-normal 1.5 = 21px)
+     + its own border-top (1px)
+     = 24 + 21 + 1 = 46px
+   - .taskCard's own border-top + border-bottom: 1px + 1px = 2px
+   Total: 339 + 46 + 2 = 387px */
+.taskCard {
+  display: flex;
+  flex-direction: column;
+  height: 387px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.taskList {
+  display: flex;
+  flex-direction: column;
+}
+
+.taskRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.taskRow:last-child {
+  border-bottom: none;
+}
+
+.taskRowHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Small decorative status indicator, not a spacing token; matches the
+   hardcoded-px precedent set by ProjectSlideOver.module.css's .statusDot. */
+.taskStatusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--task-dot-color);
+  flex-shrink: 0;
+}
+
+.taskTitle {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 80%;
+}
+
+.taskDueDate {
+  /* Aligns under the title text, past the status dot + header gap. */
+  margin-left: var(--space-4);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.taskCardFooter {
+  display: flex;
+  justify-content: center;
+  margin-top: auto;
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-surface-raised);
+  border-top: 1px solid var(--color-border);
+}
+
+.taskSkeletonRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+}
+
+.taskSkeletonRow:not(:last-child) {
+  border-bottom: 1px solid var(--color-border);
 }

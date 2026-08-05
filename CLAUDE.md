@@ -161,6 +161,10 @@ Examples:
   history, rejected alternatives, upstream issue references, and other long
   rationale belong in `docs/decisions.md` instead, with a short pointer left
   in the code, not the full explanation inline.
+- Exception: derivation math for a computed value (e.g. token-arithmetic
+  pixel heights) may exceed 2 lines if it must stay next to the value to
+  remain useful. Rationale and incidents still go to `docs/decisions.md`
+  regardless of length.
 - Fix documentation that contradicts the code.
 - A deliberate architectural asymmetry needs:
   - a short comment at the divergence point; and
