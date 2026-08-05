@@ -24,14 +24,15 @@ export function VelocityStatus({
   const narrative =
     dueSoonTaskCount === 0 ? (
       <>
-        <strong className={styles.emphasis}>Nothing due</strong> in the next
-        7 days. <strong className={styles.emphasis}>No!</strong>, that does not mean{" "}
-        ignore responsibilities.
+        <strong className={styles.emphasis}>Nothing due</strong> in the next 7
+        days. <strong className={styles.emphasis}>No!</strong> That does not
+        mean ignore responsibilities.
       </>
     ) : dueSoonTaskCount === 1 ? (
       <>
         <strong className={styles.emphasis}>1 task</strong> is due within the
-        next 7 days. <strong className={styles.emphasis}>Time to lock in!</strong>
+        next 7 days.{" "}
+        <strong className={styles.emphasis}>Time to lock in!</strong>
       </>
     ) : (
       <>

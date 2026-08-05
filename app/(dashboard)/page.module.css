@@ -62,7 +62,7 @@
 .dashboardColumn {
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--space-12);
 }
 
 /* ---- Recent projects section ---- */
@@ -180,8 +180,9 @@
      + --space-1 gap (4px)
      + due-date line (--font-size-xs 12px * --line-height-normal 1.5 = 18px)
      = 24 + 21 + 4 + 18 = 67px per row
-   - 5 rows + 4 inter-row borders (.taskRow:not(:last-child) border-bottom,
-     1px each): 5 * 67 + 4 * 1 = 335 + 4 = 339px
+   - 5 rows + 4 inter-row borders (.taskRow:last-child sets border-bottom: none
+     so 4 of the 5 rows keep their default border-bottom, 1px each):
+     5 * 67 + 4 * 1 = 335 + 4 = 339px
    - .taskCardFooter: --space-3 padding top+bottom (24px)
      + link text line (--font-size-sm 14px * --line-height-normal 1.5 = 21px)
      + its own border-top (1px)
@@ -209,6 +210,11 @@
   gap: var(--space-1);
   padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--color-border);
+  cursor: default;
+}
+
+.taskRow:hover {
+  background-color: var(--color-surface-raised);
 }
 
 .taskRow:last-child {
