@@ -157,9 +157,10 @@ Examples:
 - Add JSDoc to exported functions, including `@param`, `@returns`, and
   `@template` where applicable.
 - Comments explain the non-obvious **why**, never the obvious **what**.
-- Keep comments short.
-- Put incident history, rejected alternatives, upstream issue references, and
-  long rationale in `docs/decisions.md`, with a short code reference.
+- Inline comments (`//` or CSS `/* */`) are 1-2 lines maximum. Incident
+  history, rejected alternatives, upstream issue references, and other long
+  rationale belong in `docs/decisions.md` instead, with a short pointer left
+  in the code, not the full explanation inline.
 - Fix documentation that contradicts the code.
 - A deliberate architectural asymmetry needs:
   - a short comment at the divergence point; and
