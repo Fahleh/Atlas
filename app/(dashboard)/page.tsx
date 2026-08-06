@@ -18,7 +18,7 @@ import { STATUS_CONFIG } from "@/features/tasks/taskUtils";
 import layoutStyles from "@/styles/layout.module.css";
 import styles from "./page.module.css";
 
-const RECENT_PROJECTS_COUNT = 2;
+const RECENT_PROJECTS_COUNT = 4;
 const UPCOMING_TASKS_COUNT = 5;
 const TASK_SKELETON_ROW_COUNT = 5;
 
