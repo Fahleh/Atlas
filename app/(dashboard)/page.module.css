@@ -50,7 +50,7 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--space-10);
-  margin-top: var(--space-6);
+  margin-top: var(--space-2);
 }
 
 @media (min-width: 1024px) {
@@ -62,7 +62,7 @@
 .dashboardColumn {
   display: flex;
   flex-direction: column;
-  gap: var(--space-12);
+  gap: var(--space-8);
 }
 
 /* ---- Recent projects section ---- */
