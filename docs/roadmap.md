@@ -58,6 +58,19 @@ own plan.
   since building pagination UI now would solve a scale problem the app
   doesn't currently have.
 
+- **Task assignment.** `tasks.assignee_id` exists in the schema but is
+  never set by any UI. No task form has an assignee field. Needed before
+  any "assigned to me" style view is meaningful, deferred because it
+  needs its own design pass (assignee picker, likely sourced from
+  `useMembersByProject`'s already-fetched project members).
+
+- **Activity/audit log.** A real event feed ("Priya moved X to Review",
+  "Jonas opened a PR") needs a new `activity_log` table, instrumentation
+  on every mutation site across `projectActions.ts`/`taskActions.ts`, and
+  its own RLS scoping. Deferred in favor of the dashboard's lighter
+  `updated_at`-based "Recent Projects"/"Upcoming Tasks" substitutes,
+  which needed no new schema.
+
 ---
 
 Update this document whenever a deliberate scope decision is made, either
