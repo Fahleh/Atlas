@@ -333,3 +333,36 @@ wraps `<ProjectList />` in `<Suspense fallback={null}>` for this reason. The
 `null` fallback is invisible in practice since all of `ProjectList`'s real
 content is already fetched client-side via React Query with its own loading
 skeletons, independent of prerendering.
+
+---
+
+## Velocity Status counts tasks due soon, not projects
+
+**Decision:** `VelocityStatus` aggregates not-done tasks with a due date
+in the next 7 days, across all projects, via a dedicated
+`useDueSoonTaskCount` query, not a count of projects with a near due date.
+
+**Why:** "Velocity" is an Agile/Scrum term for task/story throughput, not
+project-level deadlines. A project-level count would be measuring
+something the card's own title doesn't describe, and is also a blunter
+signal: a project's own due date can be weeks out while it has tasks due
+tomorrow, or the reverse. Task-level counting required a new query (no
+existing hook returned cross-project task due dates), a deliberate scope
+increase over the cheaper project-level alternative, accepted for domain
+accuracy.
+
+---
+
+## Upcoming Tasks project-selection algorithm
+
+**Decision:** The dashboard's Upcoming Tasks panel picks one project to
+show tasks from: sort by soonest `dueDate` first (nulls last), tiebreak
+by most-recently-updated among null-due-date projects, then walk that
+order and select the first project with `taskCountsByProject[id].total > 0`.
+
+**Why:** A project with the soonest due date but zero tasks has nothing
+useful to show under a panel titled "Upcoming Tasks." Filtering by
+existing `taskCountsByProject` (already fetched for `ProjectStats`, no
+new query) before selection avoids that dead-end. Done-only tasks are
+excluded from `useDueSoonTaskCount`'s count for the same honesty reason
+`ProjectStats`'s Overdue figure excludes completed projects.

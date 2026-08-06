@@ -14,24 +14,18 @@ own plan.
 
 ## Current version, remaining work (in planned order)
 
-1. **Dashboard design.** `/` (formerly conflated with a non-existent
-   `/dashboard` route, see `docs/auth.md`'s routing section) is currently
-   a bare placeholder. Likely candidates: move `ProjectStats` cards here
-   from `/projects`, decide what else belongs (recent activity, upcoming
-   due dates). Undesigned as of this entry, no layout decisions made yet.
-
-2. **Screen reader testing.** No automated or manual screen reader testing
+1. **Screen reader testing.** No automated or manual screen reader testing
    (NVDA, VoiceOver, JAWS) has been performed against any part of the app.
    Every ARIA pattern in `docs/a11y.md` and `docs/frontend.md` has been
    built to the documented WAI-ARIA specification, but none of it has been
    verified against a real assistive-technology tool.
 
-3. **Color contrast audit.** No formal WCAG contrast ratio check has been
+2. **Color contrast audit.** No formal WCAG contrast ratio check has been
    run against the token palette in either light or dark mode. The palette
    was chosen for aesthetic and brand reasons (see `docs/decisions.md`),
    not verified against AA contrast minimums.
 
-4. **Singular/plural copy convention.** No consistent handling of
+3. **Singular/plural copy convention.** No consistent handling of
    count-based copy exists app-wide: `ProjectCard`'s task count is
    hardcoded plural, while the new `VelocityStatus` card has a real
    singular guard. Worth reconciling into one convention later.

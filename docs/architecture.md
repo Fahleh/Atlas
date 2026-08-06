@@ -25,14 +25,21 @@ atlas/
 │   │   └── confirm/
 │   │       └── route.ts
 │   └── (dashboard)/
+│       ├── layout.tsx
+│       ├── layout.module.css
 │       ├── actions.ts
-│       └── profile/
-│           ├── page.tsx
-│           └── page.module.css
+│       ├── page.tsx
+│       ├── page.module.css
+│       ├── profile/
+│       │   ├── page.tsx
+│       │   └── page.module.css
+│       └── projects/
+│           └── page.tsx
 ├── components/
 │   ├── EntityModal.tsx
 │   ├── StatusBox.tsx
 │   ├── Avatar.tsx
+│   ├── Skeleton.tsx
 │   └── ClearQueryCacheOnMount.tsx
 ├── features/
 │   ├── projects/
@@ -44,6 +51,8 @@ atlas/
 │   │   ├── ProjectListTable.module.css
 │   │   ├── ProjectStats.tsx
 │   │   ├── ProjectStats.module.css
+│   │   ├── VelocityStatus.tsx
+│   │   ├── VelocityStatus.module.css
 │   │   ├── ProjectSlideOver.tsx
 │   │   ├── ProjectSlideOver.module.css
 │   │   ├── ProjectModal.tsx
@@ -53,6 +62,7 @@ atlas/
 │   │   └── projectUtils.ts
 │   ├── tasks/
 │   │   ├── TaskList.tsx
+│   │   ├── TaskList.module.css
 │   │   ├── TaskItem.tsx
 │   │   ├── TaskModal.tsx
 │   │   ├── TaskModal.module.css
@@ -65,8 +75,11 @@ atlas/
 ├── hooks/
 │   ├── useCurrentUser.ts
 │   ├── useCurrentUserProfile.ts
+│   ├── useProjects.ts
+│   ├── useTasks.ts
 │   ├── useMembersByProject.ts
-│   └── useTaskCountsByProject.ts
+│   ├── useTaskCountsByProject.ts
+│   └── useDueSoonTaskCount.ts
 ├── lib/
 │   ├── asyncQueue.ts
 │   ├── createCache.ts
@@ -87,7 +100,8 @@ atlas/
 │   └── AuthListenerProvider.tsx
 ├── styles/
 │   ├── tokens.css
-│   └── global.css
+│   ├── global.css
+│   └── layout.module.css
 ├── tests/
 │   ├── unit/
 │   ├── integration/
