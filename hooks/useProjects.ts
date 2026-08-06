@@ -9,8 +9,8 @@ import { useQuery } from "@tanstack/react-query";
  * Custom hook for fetching projects from the supabase database.
  *
  * Utilizes React Query for data fetching.
- * Projects are ordered by creation date with the most recent first and,
- * snake_case properties are transformed to camelCase.
+ * Projects are ordered by most recently updated first, snake_case
+ * properties are transformed to camelCase.
  *
  * @returns React Query result with `data: Project[]`, `isLoading`, and `isError` state.
  */
@@ -23,7 +23,7 @@ export function useProjects() {
       const { data, error } = await supabase
         .from("projects")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("updated_at", { ascending: false });
 
       if (error) throw error;
 
