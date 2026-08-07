@@ -30,6 +30,10 @@ own plan.
    hardcoded plural, while the new `VelocityStatus` card has a real
    singular guard. Worth reconciling into one convention later.
 
+4. **`app/global-error.tsx`.** Deferred; a throw inside root `app/layout.tsx`
+   itself currently falls through to Next's default unstyled error UI. See
+   `docs/decisions.md`.
+
 ---
 
 ## Deferred to v2 (out of scope for the current version)
