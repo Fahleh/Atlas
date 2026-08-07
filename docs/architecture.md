@@ -11,8 +11,14 @@ flow, state-management rules, and established utility patterns.
 atlas/
 ├── proxy.ts
 ├── app/
+│   ├── error.tsx
+│   ├── error.module.css
+│   ├── not-found.tsx
+│   ├── not-found.module.css
 │   ├── (auth)/
 │   │   ├── layout.tsx
+│   │   ├── error.tsx
+│   │   ├── error.module.css
 │   │   ├── login/
 │   │   │   ├── page.tsx
 │   │   │   ├── login.module.css
@@ -27,6 +33,8 @@ atlas/
 │   └── (dashboard)/
 │       ├── layout.tsx
 │       ├── layout.module.css
+│       ├── error.tsx
+│       ├── error.module.css
 │       ├── actions.ts
 │       ├── page.tsx
 │       ├── page.module.css
@@ -270,7 +278,8 @@ normalizes to `null`.
 
 `ProjectList.tsx`'s slide-over selection is URL-derived (`/projects?project=<id>`)
 rather than Context-derived, specifically so the URL is the single source of
-truth for "which project is open." See docs/decisions.md.
+truth for "which project is open." providers/ProjectContext.tsx was deleted entirely,
+selection was its only responsibility. See docs/decisions.md.
 
 ### Reference-only store
 

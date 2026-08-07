@@ -391,6 +391,86 @@ excluded from `useDueSoonTaskCount`'s count for the same honesty reason
 
 ---
 
+## Three-tier error boundary structure, not root-only or global-error
+
+**Decision:** Atlas has three `error.tsx` files, not one: `app/(dashboard)/error.tsx`,
+`app/(auth)/error.tsx`, and root `app/error.tsx`, plus `app/not-found.tsx`.
+`app/global-error.tsx` is deliberately not built; see the separate entry below.
+
+**Why three, not a single root-level boundary.** `error.js`'s documented
+semantics: it wraps a route segment's nested children (nested layouts, pages)
+but never the `layout.js` sitting in its own segment. A single root-only
+`app/error.tsx` would sit above `(dashboard)/layout.tsx` and `(auth)/layout.tsx`
+entirely, blanking out Sidebar/Header (or the auth wordmark/card) on every
+error, leaving the user with no way to navigate elsewhere except "try again."
+Atlas already has exactly two route groups with meaningfully different
+persistent chrome worth preserving, so `(dashboard)/error.tsx` and
+`(auth)/error.tsx` each catch errors in their own group's pages while their
+own layout (and its Sidebar/Header, or wordmark/card) stays mounted.
+
+**Why a third, root-level `app/error.tsx` is also needed, not just the two
+per-group ones.** The same "doesn't wrap its own segment's layout" rule means
+the two per-group boundaries cannot catch a throw inside `(dashboard)/layout.tsx`
+or `(auth)/layout.tsx` themselves, for example a bug in `Sidebar.tsx` or
+`Header.tsx`. Root `app/error.tsx` sits in the root segment alongside root
+`app/layout.tsx`; by the identical rule applied one level up, it does not wrap
+root `app/layout.tsx` itself (that stays global-error's territory), but it
+does wrap `(dashboard)/layout.tsx` and `(auth)/layout.tsx` as nested children
+of the root segment, so it catches exactly that gap. It renders no persistent
+chrome of its own (not even a styled "safe" version) since it cannot assume
+Sidebar/Header are safe to render, given they may be what's throwing.
+
+**Headings:** `(dashboard)/error.tsx` uses `<h2>`, not `<h1>`, because
+`Header.tsx` unconditionally renders an `<h1>{pageTitle}</h1>` in the
+persistent chrome that stays mounted above it. `(auth)/error.tsx` and root
+`app/error.tsx` use `<h1>`, since neither has a competing heading in their
+persisting chrome (the auth wordmark is a `<span>`, and root `app/error.tsx`
+renders no chrome at all).
+
+**Why none of these catch Atlas's normal error paths.** Failed
+mutations/fetches already surface through structured action state
+(`useActionState`) or React Query error states, handled declaratively, not by
+`throw`. These boundaries only fire for genuine unexpected render-time bugs,
+so their copy says "Try again" without implying recovery from a data error it
+can't actually resolve.
+
+---
+
+## Deferring `app/global-error.tsx`
+
+**Decision:** `app/global-error.tsx` is not built. A throw inside root
+`app/layout.tsx` itself (its font setup, theme-flash script, or the three
+providers it mounts) currently falls through to Next's default, unstyled
+error UI.
+
+**Why.** `global-error.tsx` must define its own `<html>`/`<body>` and does not
+inherit Atlas's global styles, fonts, or theme — building one properly means
+hand-duplicating the Inter font setup and the theme-flash-prevention script,
+real cost against a genuinely low-risk surface, especially now that root
+`app/error.tsx` (see the entry above) already catches everything nested below
+root layout, including a throw in `Sidebar.tsx`/`Header.tsx`. What's left
+uncovered is narrowly root `app/layout.tsx`'s own minimal code. Tracked in
+`docs/roadmap.md` rather than silently dropped.
+
+---
+
+## Scoped `console.error` exception in error boundaries
+
+**Decision:** Every `error.tsx` calls `console.error(error)` inside a
+`useEffect` keyed on `[error]`, despite root `CLAUDE.md`'s no-`console.log`
+rule.
+
+**Why.** Atlas has no error-reporting service (Sentry or similar) yet, and
+Next's own documented convention for `error.tsx` is to log the caught error
+for observability, normally the only signal available in production once the
+fallback UI is showing. This is a narrow, explicitly-scoped exception:
+`console.error` only, only inside `error.tsx` boundaries logging a genuinely
+caught render exception, never `console.log`, and not a general carve-out
+from the forbidden-patterns rule elsewhere in the codebase. Revisit if a real
+error-reporting service is ever integrated.
+
+---
+
 ### Branch workflow: PR-based merges from Production Readiness onward
 
 **Why:** Earlier work merged branches to `develop` locally, a solo,

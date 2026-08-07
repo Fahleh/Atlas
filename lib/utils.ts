@@ -91,3 +91,10 @@ const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 export function isValidEmail(value: string): boolean {
   return EMAIL_REGEX.test(value);
 }
+
+/**
+ * Icon size (px) for full-page state icons: not-found and error boundaries.
+ * Deliberately larger than any inline empty-state icon elsewhere in the app
+ * (e.g. ProjectList.tsx's 48px), since these render alone on a full page.
+ */
+export const ERROR_STATE_ICON_SIZE = 64;
