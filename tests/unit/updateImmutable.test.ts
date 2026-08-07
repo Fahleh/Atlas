@@ -6,6 +6,8 @@ import {
   updateTaskStatus,
 } from "@/lib/updateImmutable";
 
+const now = new Date();
+
 const project: Project = {
   id: crypto.randomUUID(),
   ownerId: "user-123",
@@ -13,7 +15,8 @@ const project: Project = {
   description: "A PM tool",
   dueDate: null,
   status: "active",
-  createdAt: new Date(),
+  createdAt: now,
+  updatedAt: now,
 };
 const projectChange = { description: "An updated PM tool" };
 
