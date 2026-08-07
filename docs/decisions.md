@@ -179,6 +179,28 @@ client was fixed.
 
 ---
 
+## `useCurrentUser()`'s finite `staleTime`, not `Infinity`
+
+**Decision:** `useCurrentUser()` uses a five-minute `staleTime`, not
+`Infinity`, even though `getClaims()` is cheap enough that cost isn't the
+constraint.
+
+**Why:** `getClaims()` verifies the JWT signature locally via WebCrypto/
+JWKS against Atlas's asymmetric ECC P-256 setup, no network call, so a
+short staleTime costs little. The actual reason against `Infinity` is
+correctness, not cost: explicit invalidation is the primary mechanism
+keeping this query current, but this project has already found one real,
+confirmed bug where an invalidation call was missed entirely
+(`taskCountsByProject` after a task edit). A finite staleTime is a
+deliberate self-correction backstop against that same failure class,
+human error in remembering to invalidate, not a substitute for
+invalidation. Do not change this to `Infinity` without reopening the
+decision, since doing so removes that backstop entirely.
+
+
+---
+
+
 ## Triggering the success-banner side effect imperatively, not via `useEffect` on a boolean
 
 **Decision:** `ProfileForm.tsx`'s `triggerSuccessBanner()` is called directly
