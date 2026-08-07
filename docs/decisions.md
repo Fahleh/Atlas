@@ -366,3 +366,16 @@ existing `taskCountsByProject` (already fetched for `ProjectStats`, no
 new query) before selection avoids that dead-end. Done-only tasks are
 excluded from `useDueSoonTaskCount`'s count for the same honesty reason
 `ProjectStats`'s Overdue figure excludes completed projects.
+
+---
+
+### Branch workflow: PR-based merges from Production Readiness onward
+
+**Why:** Earlier work merged branches to `develop` locally, a solo,
+low-ceremony shortcut with no reviewer involved. From Production
+Readiness onward, branches are pushed and merged via GitHub PRs
+instead, still solo, no second reviewer. This is to display the 
+ability to work in small, review-ready increments (real branch
+boundaries, a written PR description explaining what and why)
+Earlier history stays as local merges, not retrofitted; this is 
+forward-only.
