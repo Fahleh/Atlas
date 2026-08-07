@@ -435,6 +435,9 @@ Transform database shapes at the hook layer, never in pages or components.
 
 - `projects.due_date` mirrors `tasks.due_date`: nullable
   `timestamp with time zone`.
+- `projects.updated_at` and `tasks.updated_at` exist (added via a
+  `set_updated_at()` trigger, see `docs/database.md`), used for
+  recency-based sorting.
 - `project_members` uses composite primary key `(project_id, user_id)`.
 - Member roles are constrained to `'owner' | 'collaborator'`.
 - Project owners receive an owner member row through
