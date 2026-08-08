@@ -119,6 +119,8 @@ atlas/
 │   └── database.types.ts
 ├── supabase/
 │   └── migrations/
+├── scripts/
+│   └── get-auth-cookie.ts
 └── docs/
     ├── architecture.md
     ├── testing.md
