@@ -481,3 +481,24 @@ ability to work in small, review-ready increments (real branch
 boundaries, a written PR description explaining what and why)
 Earlier history stays as local merges, not retrofitted; this is 
 forward-only.
+
+---
+
+## Playwright for `scripts/get-auth-cookie.ts`, not Puppeteer or Lighthouse's User Flow API
+
+**Decision:** `scripts/get-auth-cookie.ts` uses Playwright to log into Atlas
+and capture a real cookie set for Lighthouse's `--extra-headers`, replacing
+a manual DevTools copy-paste approach.
+
+**Why. Incident: confirmed via a Lighthouse baseline run, then a real
+login.** `--extra-headers` injects a raw header onto requests; it never
+touches the browser's actual cookie store. SSR saw the session, client-side
+code never did, producing a hydration error and REST 401s on every
+authenticated route, both absent once logged in normally. `docs/testing.md`
+already commits to Playwright for E2E, so it's used here too rather than
+adding Puppeteer or the User Flow API for the same job. `context.cookies()`
+reads the real post-login cookie jar, `HttpOnly` and any chunked
+`sb-<ref>-auth-token.0/.1/.2` included.
+
+**Not scope creep.** Close to, likely reusable as, the login fixture the
+future `tests/e2e/` suite will need anyway.
