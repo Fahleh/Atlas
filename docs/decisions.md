@@ -541,4 +541,19 @@ check before the write (used in `createProjectAction`'s owner-id lookup) is
 a fast-fail convenience only, per `useCurrentUser`'s finite-`staleTime`
 entry above; the code-based check after the write is the actual fix.
 `components/ActionErrorMessage.tsx` renders the result everywhere (a login
-link only for `sessionExpired`), replacing several duplicated error-banner call sites​ 
+link only for `sessionExpired`), replacing several duplicated error-banner call sites​
+
+---
+
+## `isDirty` is sticky, not re-derived per keystroke, in TaskModal/ProjectModal's edit-mode Save disabling
+
+**Decision:** `ProjectSlideOver.tsx`'s task fields and `ProjectModal.tsx`'s
+own fields track a single `isDirty` boolean via per-field `onChange`, set to
+`true` on the first mismatch against the original entity and never
+re-checked against the other fields afterward — editing a field back to its
+original value does not re-disable Save.
+
+**Why:** A fully accurate version means either controlled state on every
+field (against the project default of uncontrolled native inputs) or
+re-deriving from a fresh `FormData` read on every keystroke. Both are more
+complexity than a Save-button gate warrants. 

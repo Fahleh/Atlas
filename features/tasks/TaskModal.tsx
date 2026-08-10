@@ -42,6 +42,7 @@ export type TaskModalFieldProps = {
 export type StatusFieldProps = {
   defaultValue: TaskStatus;
   name: string;
+  onChange?: (value: TaskStatus) => void;
 };
 
 type DeleteButtonProps = {
@@ -125,8 +126,9 @@ function DeleteButton({ action }: DeleteButtonProps) {
  *
  * @param defaultValue - Pre-selected task status; re-mount to reset
  * @param name - The `name` attribute for the hidden input
+ * @param onChange - Called with the new status whenever selection changes
  */
-function TaskStatusField({ defaultValue, name }: StatusFieldProps) {
+function TaskStatusField({ defaultValue, name, onChange }: StatusFieldProps) {
   return (
     <StatusBox<TaskStatus>
       defaultValue={defaultValue}
@@ -134,6 +136,7 @@ function TaskStatusField({ defaultValue, name }: StatusFieldProps) {
       config={STATUS_CONFIG}
       order={STATUS_ORDER}
       label="Status"
+      onChange={onChange}
     />
   );
 }

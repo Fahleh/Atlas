@@ -22,6 +22,8 @@ export type StatusBoxProps<T extends string> = {
   order: T[];
   /** Optional visible label rendered above the trigger button. */
   label?: string;
+  /** Called with the new value whenever selection changes — status is otherwise fully internal. */
+  onChange?: (value: T) => void;
 };
 
 // ---- Component --------------------------------------------------------------
@@ -46,6 +48,7 @@ export function StatusBox<T extends string>({
   config,
   order,
   label,
+  onChange,
 }: StatusBoxProps<T>) {
   const [status, setStatus] = useState<T>(defaultValue);
   const [isOpen, setIsOpen] = useState(false);
@@ -111,6 +114,7 @@ export function StatusBox<T extends string>({
   function handleOptionClick(value: T) {
     setStatus(value);
     setIsOpen(false);
+    onChange?.(value);
   }
 
   function getOptionId(value: T): string {

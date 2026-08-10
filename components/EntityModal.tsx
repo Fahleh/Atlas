@@ -58,6 +58,8 @@ type SubmitButtonProps = {
   children: React.ReactNode;
   variant?: "default" | "danger";
   pendingLabel?: string;
+  /** Disables the button for a reason other than pending, e.g. an unchanged edit form. */
+  disabled?: boolean;
 };
 
 // ---- Context ----------------------------------------------------------------
@@ -162,11 +164,13 @@ function CancelButton({ children }: CancelButtonProps) {
  *
  * @param variant - "danger" renders the button using `--color-danger`
  * @param pendingLabel - Text shown while the form's primary action is in progress
+ * @param disabled - Disables the button for a reason other than pending
  */
 function SubmitButton({
   children,
   variant = "default",
   pendingLabel = "Saving…",
+  disabled = false,
 }: SubmitButtonProps) {
   const { formAction } = useEntityModalContext();
   const status = useFormStatus();
@@ -177,7 +181,7 @@ function SubmitButton({
   return (
     <button
       type="submit"
-      disabled={status.pending}
+      disabled={status.pending || disabled}
       className={
         variant === "danger" ? styles.submitButtonDanger : styles.submitButton
       }
