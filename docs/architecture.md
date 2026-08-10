@@ -408,6 +408,13 @@ creates a new query key and fetches fresh data.
 The auth-state listener handles `SIGNED_OUT` only. Do not re-add `SIGNED_IN`
 without reading `docs/decisions.md`.
 
+Mounted in `app/(dashboard)/layout.tsx` only, not in root `app/layout.tsx`.
+This keeps `@supabase/*` out of `(auth)`'s client bundle (`/login`, `/signup`),
+since `AuthListenerProvider` is the only thing that pulled the browser
+Supabase client above the `(auth)`/`(dashboard)` split. See
+`docs/decisions.md` for why this placement doesn't weaken the cross-user
+cache-leak defense.
+
 ### `ClearQueryCacheOnMount`
 
 Rendered inside both auth and dashboard layouts. It is the primary cross-user

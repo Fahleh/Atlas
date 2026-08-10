@@ -502,3 +502,20 @@ reads the real post-login cookie jar, `HttpOnly` and any chunked
 
 **Not scope creep.** Close to, likely reusable as, the login fixture the
 future `tests/e2e/` suite will need anyway.
+
+---
+
+## Moving `AuthListenerProvider` from root `app/layout.tsx` into `app/(dashboard)/layout.tsx`
+
+**Decision:** `AuthListenerProvider` now mounts only in
+`(dashboard)/layout.tsx`. `QueryProvider` (root) and
+`ClearQueryCacheOnMount` (both layouts) are unchanged.
+
+**Why:** Confirmed via the Turbopack bundle analyzer that this provider
+was the only thing pulling `@supabase/*` into `(auth)`'s client bundle;
+no `(auth)` component depends on it for anything else. Safe against both
+incidents in the cache-clearing entry above: `ClearQueryCacheOnMount`,
+not this listener, is the primary cache-leak defense, and every identity
+change still crosses the `(auth)`/`(dashboard)` boundary regardless of
+where this mounts. A stale tab idle on `/login` has nothing to leak,
+`(auth)` routes render none of the cached data that entry protects.
