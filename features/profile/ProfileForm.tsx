@@ -1,9 +1,11 @@
 "use client";
 
+import { ActionErrorMessage } from "@/components/ActionErrorMessage";
 import { Avatar } from "@/components/Avatar";
 import { Skeleton } from "@/components/Skeleton";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useCurrentUserProfile } from "@/hooks/useCurrentUserProfile";
+import type { SupabaseWriteErrorKind } from "@/lib/supabase/errors";
 import { useQueryClient } from "@tanstack/react-query";
 import { Camera } from "lucide-react";
 import {
@@ -18,19 +20,34 @@ import { useFormStatus } from "react-dom";
 import { updateProfile, validateAvatarFile } from "./profileActions";
 import styles from "./ProfileForm.module.css";
 
-type ProfileFormState = { error: string | null; success: boolean };
+type ProfileFormState = {
+  error: string | null;
+  errorKind: SupabaseWriteErrorKind | null;
+  success: boolean;
+};
 
 const SUCCESS_BANNER_DURATION_MS = 2500;
+
+type SaveButtonProps = {
+  /** True when neither the name nor the avatar differs from the loaded profile. */
+  disabled: boolean;
+};
 
 /**
  * Save button deriving its pending state from `useFormStatus`. Must be a
  * descendant of the `<form>` element, since `useFormStatus` cannot be called
  * in the component that renders the form itself.
+ *
+ * @param disabled - Disables Save while the form is unchanged from the loaded profile
  */
-function SaveButton() {
+function SaveButton({ disabled }: SaveButtonProps) {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" disabled={pending} className={styles.saveButton}>
+    <button
+      type="submit"
+      disabled={pending || disabled}
+      className={styles.saveButton}
+    >
       {pending ? "Saving…" : "Save"}
     </button>
   );
@@ -42,6 +59,9 @@ function SaveButton() {
  * A newly-selected avatar file is staged locally (never uploaded until Save
  * is pressed) and previewed via a local object URL, which is revoked whenever
  * a different file is selected or the component unmounts.
+ *
+ * Save is disabled until the name input or the staged avatar differs from
+ * the loaded profile.
  */
 export function ProfileForm() {
   const queryClient = useQueryClient();
@@ -52,6 +72,19 @@ export function ProfileForm() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrlState] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+
+  // Controlled so Save's dirty-state check (below) can compare live keystrokes
+  // against the loaded profile. Synced to profile.name during render — not an
+  // effect — whenever profile.name itself changes (initial load, or a refetch
+  // after a successful save), mirroring the resetProjectId pattern in
+  // ProjectSlideOver.tsx. lastSyncedName tracks what nameInput was last reset
+  // from, so a change to *that* is what triggers the reset, not every render.
+  const [nameInput, setNameInput] = useState(profile?.name ?? "");
+  const [lastSyncedName, setLastSyncedName] = useState(profile?.name ?? null);
+  if ((profile?.name ?? null) !== lastSyncedName) {
+    setLastSyncedName(profile?.name ?? null);
+    setNameInput(profile?.name ?? "");
+  }
 
   // Mirrors previewUrl so the unmount-only cleanup effect below can read the
   // latest object URL without needing previewUrl itself in its dependency array.
@@ -123,32 +156,42 @@ export function ProfileForm() {
         formData: FormData,
       ): Promise<ProfileFormState> => {
         if (!currentUser?.id) {
-          return { error: "Not authenticated.", success: false };
+          return { error: "Not authenticated.", errorKind: null, success: false };
         }
 
         const nameRaw = formData.get("name") as string | null;
         const name = nameRaw?.trim();
         if (!name)
-          return { error: "Display name is required.", success: false };
+          return {
+            error: "Display name is required.",
+            errorKind: null,
+            success: false,
+          };
 
         const result = await updateProfile(
           currentUser.id,
           { name, avatarFile: avatarFile ?? undefined },
           queryClient,
         );
-        if (result.error) return { error: result.error, success: false };
+        if (result.error)
+          return {
+            error: result.error,
+            errorKind: result.errorKind,
+            success: false,
+          };
 
         setAvatarFile(null);
         setPreview(null);
         if (fileInputRef.current) fileInputRef.current.value = "";
         triggerSuccessBanner();
-        return { error: null, success: true };
+        return { error: null, errorKind: null, success: true };
       },
     [currentUser, avatarFile, queryClient],
   );
 
   const [state, formAction] = useActionState(updateProfileAction, {
     error: null,
+    errorKind: null,
     success: false,
   });
 
@@ -171,6 +214,8 @@ export function ProfileForm() {
     );
   }
 
+  const isDirty = nameInput.trim() !== profile.name || avatarFile !== null;
+
   return (
     <form action={formAction} className={styles.form}>
       {showSuccess && (
@@ -179,9 +224,11 @@ export function ProfileForm() {
         </div>
       )}
       {state.error && (
-        <div role="alert" className={styles.errorBanner}>
-          {state.error}
-        </div>
+        <ActionErrorMessage
+          error={state.error}
+          errorKind={state.errorKind}
+          className={styles.errorBanner}
+        />
       )}
       {fileError && (
         <div role="alert" className={styles.errorBanner}>
@@ -236,13 +283,14 @@ export function ProfileForm() {
           name="name"
           type="text"
           required
-          defaultValue={profile.name}
+          value={nameInput}
+          onChange={(e) => setNameInput(e.target.value)}
           className={styles.nameInput}
         />
       </div>
 
       <div className={styles.actions}>
-        <SaveButton />
+        <SaveButton disabled={!isDirty} />
       </div>
     </form>
   );

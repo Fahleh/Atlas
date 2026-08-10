@@ -10,11 +10,18 @@ import {
 } from "react";
 import { useFormStatus } from "react-dom";
 import { X } from "lucide-react";
+import { ActionErrorMessage } from "./ActionErrorMessage";
+import type { SupabaseWriteErrorKind } from "@/lib/supabase/errors";
 import styles from "./EntityModal.module.css";
 
 // ---- Types ------------------------------------------------------------------
 
-export type EntityModalProps<TFormState extends { error: string | null }> = {
+type EntityModalFormState = {
+  error: string | null;
+  errorKind?: SupabaseWriteErrorKind | null;
+};
+
+export type EntityModalProps<TFormState extends EntityModalFormState> = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   // Mirrors React's useActionState signature: prevState is Awaited<TFormState>
@@ -197,7 +204,7 @@ function SubmitButton({
  * @param disableScrollLock - Pass when the parent already locks body scroll
  * @param children - Composed sub-components: Header, Body, Footer
  */
-function EntityModalRoot<TFormState extends { error: string | null }>({
+function EntityModalRoot<TFormState extends EntityModalFormState>({
   open,
   onOpenChange,
   action,
@@ -304,9 +311,11 @@ function EntityModalRoot<TFormState extends { error: string | null }>({
         >
           <form action={formAction} className={styles.form}>
             {state.error && (
-              <div role="alert" className={styles.errorBanner}>
-                {state.error}
-              </div>
+              <ActionErrorMessage
+                error={state.error}
+                errorKind={state.errorKind}
+                className={styles.errorBanner}
+              />
             )}
             {children}
           </form>

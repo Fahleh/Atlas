@@ -1,6 +1,10 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import {
+  interpretSupabaseWriteError,
+  type SupabaseWriteErrorKind,
+} from "@/lib/supabase/errors";
 import type { QueryClient } from "@tanstack/react-query";
 
 // ---- Types ------------------------------------------------------------------
@@ -8,6 +12,11 @@ import type { QueryClient } from "@tanstack/react-query";
 export type UpdateProfileChanges = {
   name?: string;
   avatarFile?: File;
+};
+
+export type UpdateProfileResult = {
+  error: string | null;
+  errorKind: SupabaseWriteErrorKind | null;
 };
 
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
@@ -56,18 +65,18 @@ export function validateAvatarFile(file: File): string | null {
  * @param userId - ID of the profile being updated
  * @param changes - `name` and/or `avatarFile` to apply; both optional
  * @param queryClient - TanStack QueryClient for cache invalidation
- * @returns `{ error: string | null }` — null on success, message string on failure
+ * @returns `{ error, errorKind }` — both null on success
  */
 export async function updateProfile(
   userId: string,
   changes: UpdateProfileChanges,
   queryClient: QueryClient,
-): Promise<{ error: string | null }> {
+): Promise<UpdateProfileResult> {
   const { name, avatarFile } = changes;
 
   if (avatarFile) {
     const validationError = validateAvatarFile(avatarFile);
-    if (validationError) return { error: validationError };
+    if (validationError) return { error: validationError, errorKind: null };
   }
 
   const supabase = createClient();
@@ -82,7 +91,10 @@ export async function updateProfile(
       .from("avatars")
       .upload(path, avatarFile, { upsert: true });
 
-    if (uploadError) return { error: uploadError.message };
+    // Storage errors carry their own error shape, not PostgrestError's
+    // code, so they're surfaced as-is rather than run through
+    // interpretSupabaseWriteError.
+    if (uploadError) return { error: uploadError.message, errorKind: null };
 
     const {
       data: { publicUrl },
@@ -103,7 +115,7 @@ export async function updateProfile(
       .update(updates)
       .eq("id", userId);
 
-    if (updateError) return { error: updateError.message };
+    if (updateError) return interpretSupabaseWriteError(updateError, supabase);
   }
 
   await Promise.all([
@@ -111,5 +123,5 @@ export async function updateProfile(
     queryClient.invalidateQueries({ queryKey: ["projectMembers"] }),
   ]);
 
-  return { error: null };
+  return { error: null, errorKind: null };
 }

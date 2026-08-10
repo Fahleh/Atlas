@@ -1,11 +1,12 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { interpretSupabaseWriteError } from "@/lib/supabase/errors";
 import { updateTask, updateTaskStatus } from "@/lib";
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
 import type { Task, TaskStatus } from "@/types/atlas.types";
 import { STATUS_CONFIG } from "./taskUtils";
-import type { TaskFormState } from "./TaskModal";
+import type { TaskFormState, DeleteTaskState } from "./TaskModal";
 
 // ---- Types ------------------------------------------------------------------
 
@@ -40,21 +41,22 @@ async function invalidateTaskQueries(
  * modal form) to scope the React Query invalidation correctly.
  *
  * @param deps - Same stable references as createTaskAction
- * @returns A `(formData: FormData) => Promise<{ error: string | null }>` action
+ * @returns A `(formData: FormData) => Promise<DeleteTaskState>` action
  */
 export function createDeleteTaskAction(
   deps: CreateTaskActionDeps,
-): (formData: FormData) => Promise<{ error: string | null }> {
+): (formData: FormData) => Promise<DeleteTaskState> {
   const { editingTaskRef, queryClient, setIsModalOpen } = deps;
 
   return async function deleteTaskAction(
     formData: FormData,
-  ): Promise<{ error: string | null }> {
+  ): Promise<DeleteTaskState> {
     const currentTask = editingTaskRef.current;
-    if (!currentTask) return { error: "No task selected." };
+    if (!currentTask) return { error: "No task selected.", errorKind: null };
 
     const projectId = formData.get("projectId") as string | null;
-    if (!projectId) return { error: "Project ID is required." };
+    if (!projectId)
+      return { error: "Project ID is required.", errorKind: null };
 
     const supabase = createClient();
     const { error } = await supabase
@@ -62,11 +64,11 @@ export function createDeleteTaskAction(
       .delete()
       .eq("id", currentTask.id);
 
-    if (error) return { error: error.message };
+    if (error) return interpretSupabaseWriteError(error, supabase);
 
     await invalidateTaskQueries(queryClient, ["tasks", projectId]);
     setIsModalOpen(false);
-    return { error: null };
+    return { error: null, errorKind: null };
   };
 }
 
@@ -107,10 +109,11 @@ export function createTaskAction(
     const projectId = formData.get("projectId") as string | null;
     const dueDate = dueDateRaw ? new Date(dueDateRaw) : null;
 
-    if (!projectId) return { error: "Project ID is required" };
+    if (!projectId)
+      return { error: "Project ID is required", errorKind: null };
 
     const title = titleRaw?.trim();
-    if (!title) return { error: "Title is required" };
+    if (!title) return { error: "Title is required", errorKind: null };
 
     let status: TaskStatus = "todo";
     if (statusRaw && isTaskStatus(statusRaw)) {
@@ -141,7 +144,7 @@ export function createTaskAction(
         })
         .eq("id", final.id);
 
-      if (error) return { error: error.message };
+      if (error) return interpretSupabaseWriteError(error, supabase);
     } else {
       // Create
       const { error } = await supabase.from("tasks").insert({
@@ -152,11 +155,11 @@ export function createTaskAction(
         due_date: dueDate ? dueDate.toISOString().split("T")[0] : null,
       });
 
-      if (error) return { error: error.message };
+      if (error) return interpretSupabaseWriteError(error, supabase);
     }
 
     await invalidateTaskQueries(queryClient, ["tasks", projectId]);
     setIsModalOpen(false);
-    return { error: null };
+    return { error: null, errorKind: null };
   };
 }

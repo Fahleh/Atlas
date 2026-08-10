@@ -55,7 +55,7 @@ export function ProjectModal({
       open={open}
       onOpenChange={onOpenChange}
       action={action}
-      initialState={{ error: null }}
+      initialState={{ error: null, errorKind: null }}
       disableScrollLock={disableScrollLock}
     >
       <EntityModal.Header>
