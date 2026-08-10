@@ -34,15 +34,6 @@ own plan.
    itself currently falls through to Next's default unstyled error UI. See
    `docs/decisions.md`.
 
-5. **`scripts/get-auth-cookie.ts` hardening.** Error handling collapses
-   every failure inside the login flow into a single "login timeout"
-   message; only `waitForURL` should be wrapped that way, other failures
-   need their own real error surfaced. The captured cookie file must be
-   deleted after each batch of Lighthouse runs, not left on disk between
-   sessions, since it holds a full Supabase session including a refresh
-   token. Revisit when this script is reused as the Testing phase's
-   Playwright E2E login fixture.
-
 ---
 
 ## Deferred to v2 (out of scope for the current version)
