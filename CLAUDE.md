@@ -230,6 +230,22 @@ Detailed React 19 form and action patterns live in `docs/frontend.md`.
 - `docs/decisions.md` owns architectural decision records.
 - `docs/roadmap.md` owns intentional deferrals and remaining work.
 
+### Keeping documentation short
+
+Applies to every file in `docs/`, not only `docs/decisions.md`.
+
+- State the point, then only the reasoning that's load-bearing. Most
+  entries should read in under a minute.
+- Do not re-derive or re-walk something another doc, or another entry
+  in the same doc, already establishes. Reference it by name instead.
+- Exact measurements, verification steps, and file-by-file confirmation
+  belong in the commit message or PR description, not the doc itself.
+  State the conclusion and name the method in one clause.
+- Do not enumerate every case a general principle already covers.
+  State the principle once.
+- If a draft entry or section is running long, that's a signal to cut,
+  not a reason to keep it, length alone is worth stopping on.
+
 ---
 
 ## High-Signal Forbidden Patterns
