@@ -197,7 +197,16 @@ export function ProjectSlideOver({
   const editingTaskRef = useRef<Task | null>(null);
   // Incremented on every open so the modal remounts and resets form values.
   const [modalResetKey, setModalResetKey] = useState(0);
+  // Reset alongside modalResetKey in openForCreate/openForEdit below — this
+  // state lives here, not inside TaskModal, since TaskModal is compound and
+  // its fields are actually rendered by this component. Sticky once true,
+  // not fully re-derived on every keystroke, see docs/decisions.md.
+  const [isTaskDirty, setIsTaskDirty] = useState(false);
   const queryClient = useQueryClient();
+
+  function markTaskDirtyIfChanged(current: string, original: string) {
+    if (editingTask && current !== original) setIsTaskDirty(true);
+  }
 
   // False positive in eslint-plugin-react-hooks@7.1.1: the rule flags any ref
   // passed to a function during render, but editingTaskRef.current is only read
@@ -289,6 +298,7 @@ export function ProjectSlideOver({
     editingTaskRef.current = null;
     setEditingTask(null);
     setModalResetKey((k) => k + 1);
+    setIsTaskDirty(false);
     setIsModalOpen(true);
   }
 
@@ -296,6 +306,7 @@ export function ProjectSlideOver({
     editingTaskRef.current = task;
     setEditingTask(task);
     setModalResetKey((k) => k + 1);
+    setIsTaskDirty(false);
     setIsModalOpen(true);
   }
 
@@ -636,6 +647,12 @@ export function ProjectSlideOver({
                 id="task-title"
                 name="title"
                 defaultValue={editingTask?.title ?? ""}
+                onChange={(e) =>
+                  markTaskDirtyIfChanged(
+                    e.target.value,
+                    editingTask?.title ?? "",
+                  )
+                }
                 placeholder="Task title"
                 required
               />
@@ -645,12 +662,21 @@ export function ProjectSlideOver({
                 id="task-description"
                 name="description"
                 defaultValue={editingTask?.description ?? ""}
+                onChange={(e) =>
+                  markTaskDirtyIfChanged(
+                    e.target.value,
+                    editingTask?.description ?? "",
+                  )
+                }
                 placeholder="Optional description"
               />
             </TaskModal.Field>
             <TaskModal.StatusField
               name="status"
               defaultValue={editingTask?.status ?? "todo"}
+              onChange={(value) =>
+                markTaskDirtyIfChanged(value, editingTask?.status ?? "todo")
+              }
             />
             <TaskModal.Field label="Due date" htmlFor="task-due-date">
               <input
@@ -662,6 +688,14 @@ export function ProjectSlideOver({
                     ? editingTask.dueDate.toISOString().split("T")[0]
                     : undefined
                 }
+                onChange={(e) =>
+                  markTaskDirtyIfChanged(
+                    e.target.value,
+                    editingTask?.dueDate
+                      ? editingTask.dueDate.toISOString().split("T")[0]
+                      : "",
+                  )
+                }
               />
             </TaskModal.Field>
           </TaskModal.Body>
@@ -671,7 +705,9 @@ export function ProjectSlideOver({
             )}
             <TaskModal.FooterActions>
               <TaskModal.CancelButton>Cancel</TaskModal.CancelButton>
-              <TaskModal.SubmitButton>
+              <TaskModal.SubmitButton
+                disabled={!!editingTask && !isTaskDirty}
+              >
                 {editingTask ? "Save changes" : "Create task"}
               </TaskModal.SubmitButton>
             </TaskModal.FooterActions>
