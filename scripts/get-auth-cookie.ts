@@ -10,6 +10,10 @@
  *
  * Usage: npx tsx scripts/get-auth-cookie.ts
  * Requires LIGHTHOUSE_AUTH_EMAIL and LIGHTHOUSE_AUTH_PASSWORD in .env.local.
+ *
+ * Delete .lighthouse-auth-cookie after each batch of Lighthouse runs. It
+ * holds a full Supabase session, including a refresh token, and must not be
+ * left on disk between sessions.
  */
 import { config } from "dotenv";
 import { chromium } from "playwright";
@@ -43,12 +47,19 @@ async function main() {
     await page.locator("#email").fill(email);
     await page.locator("#password").fill(password);
 
-    await Promise.all([
-      page.waitForURL((url) => url.pathname !== "/login", {
-        timeout: LOGIN_TIMEOUT_MS,
-      }),
-      page.locator("button[type=submit]").click(),
-    ]);
+    try {
+      await Promise.all([
+        page.waitForURL((url) => url.pathname !== "/login", {
+          timeout: LOGIN_TIMEOUT_MS,
+        }),
+        page.locator("button[type=submit]").click(),
+      ]);
+    } catch (error) {
+      throw new Error(
+        `Login did not complete within ${LOGIN_TIMEOUT_MS}ms (still on /login, ` +
+          `or navigation failed): ${error instanceof Error ? error.message : error}`,
+      );
+    }
 
     const cookies = await context.cookies(BASE_URL);
     if (cookies.length === 0) {
@@ -64,11 +75,6 @@ async function main() {
 
     writeFileSync(OUTPUT_PATH, cookieHeader, "utf-8");
     console.log(`Wrote authenticated cookie to ${OUTPUT_PATH}`);
-  } catch (error) {
-    throw new Error(
-      `Login did not complete within ${LOGIN_TIMEOUT_MS}ms (still on /login, ` +
-        `or navigation failed): ${error instanceof Error ? error.message : error}`,
-    );
   } finally {
     await browser.close();
   }
