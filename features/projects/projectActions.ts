@@ -1,6 +1,10 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import {
+  interpretSupabaseWriteError,
+  type SupabaseWriteErrorKind,
+} from "@/lib/supabase/errors";
 import type { QueryClient } from "@tanstack/react-query";
 import type { Project, ProjectStatus } from "@/types/atlas.types";
 import { PROJECT_STATUS_CONFIG } from "./projectUtils";
@@ -8,7 +12,15 @@ import { updateProject, updateProjectStatus } from "@/lib";
 
 // ---- Types ------------------------------------------------------------------
 
-export type ProjectFormState = { error: string | null };
+export type ProjectFormState = {
+  error: string | null;
+  errorKind: SupabaseWriteErrorKind | null;
+};
+
+export type ProjectMutationResult = {
+  error: string | null;
+  errorKind: SupabaseWriteErrorKind | null;
+};
 
 export type CreateProjectActionDeps = {
   editingProjectRef: React.RefObject<Project | null>;
@@ -26,25 +38,25 @@ export type CreateProjectActionDeps = {
  *
  * @param projectId - ID of the project to delete
  * @param queryClient - TanStack QueryClient for cache invalidation
- * @returns `{ error: string | null }` — null on success, message string on failure
+ * @returns `{ error, errorKind }` — both null on success
  */
 export async function deleteProject(
   projectId: string,
   queryClient: QueryClient,
-): Promise<{ error: string | null }> {
+): Promise<ProjectMutationResult> {
   const supabase = createClient();
   const { error } = await supabase
     .from("projects")
     .delete()
     .eq("id", projectId);
 
-  if (error) return { error: error.message };
+  if (error) return interpretSupabaseWriteError(error, supabase);
 
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: ["projects"] }),
     queryClient.invalidateQueries({ queryKey: ["tasks", projectId] }),
   ]);
-  return { error: null };
+  return { error: null, errorKind: null };
 }
 
 // ---- Members ------------------------------------------------------------------
@@ -57,13 +69,13 @@ export async function deleteProject(
  * @param projectId - ID of the project to add the member to
  * @param email - Email address of the Atlas account to add
  * @param queryClient - TanStack QueryClient for cache invalidation
- * @returns `{ error: string | null }` — null on success, message string on failure
+ * @returns `{ error, errorKind }` — both null on success
  */
 export async function addMember(
   projectId: string,
   email: string,
   queryClient: QueryClient,
-): Promise<{ error: string | null }> {
+): Promise<ProjectMutationResult> {
   const supabase = createClient();
 
   const { data: userId, error: lookupError } = await supabase.rpc(
@@ -71,8 +83,12 @@ export async function addMember(
     { _email: email },
   );
 
-  if (lookupError) return { error: lookupError.message };
-  if (!userId) return { error: "No Atlas account found with that email." };
+  if (lookupError) return interpretSupabaseWriteError(lookupError, supabase);
+  if (!userId)
+    return {
+      error: "No Atlas account found with that email.",
+      errorKind: null,
+    };
 
   const { error: insertError } = await supabase
     .from("project_members")
@@ -80,13 +96,16 @@ export async function addMember(
 
   if (insertError) {
     if (insertError.code === "23505") {
-      return { error: "This person is already a member of this project." };
+      return {
+        error: "This person is already a member of this project.",
+        errorKind: null,
+      };
     }
-    return { error: insertError.message };
+    return interpretSupabaseWriteError(insertError, supabase);
   }
 
   await queryClient.invalidateQueries({ queryKey: ["projectMembers"] });
-  return { error: null };
+  return { error: null, errorKind: null };
 }
 
 /**
@@ -97,13 +116,13 @@ export async function addMember(
  * @param projectId - ID of the project to remove the member from
  * @param userId - ID of the member to remove
  * @param queryClient - TanStack QueryClient for cache invalidation
- * @returns `{ error: string | null }` — null on success, message string on failure
+ * @returns `{ error, errorKind }` — both null on success
  */
 export async function removeMember(
   projectId: string,
   userId: string,
   queryClient: QueryClient,
-): Promise<{ error: string | null }> {
+): Promise<ProjectMutationResult> {
   const supabase = createClient();
   const { error } = await supabase
     .from("project_members")
@@ -111,10 +130,10 @@ export async function removeMember(
     .eq("project_id", projectId)
     .eq("user_id", userId);
 
-  if (error) return { error: error.message };
+  if (error) return interpretSupabaseWriteError(error, supabase);
 
   await queryClient.invalidateQueries({ queryKey: ["projectMembers"] });
-  return { error: null };
+  return { error: null, errorKind: null };
 }
 
 // ---- Save helpers -----------------------------------------------------------
@@ -161,7 +180,8 @@ export function createProjectAction(
     const dueDate = dueDateRaw ? new Date(dueDateRaw) : null;
 
     const name = nameRaw?.trim();
-    if (!name) return { error: "Project name is required." };
+    if (!name)
+      return { error: "Project name is required.", errorKind: null };
 
     let status: ProjectStatus = "active";
     if (statusRaw && isProjectStatus(statusRaw)) {
@@ -192,13 +212,17 @@ export function createProjectAction(
         })
         .eq("id", final.id);
 
-      if (error) return { error: error.message };
+      if (error) return interpretSupabaseWriteError(error, supabase);
     } else {
       // Create — owner_id from JWT claims, never from FormData
       const { data: claimsData } = await supabase.auth.getClaims();
       const ownerId = claimsData?.claims?.sub;
 
-      if (!ownerId) return { error: "Not authenticated." };
+      if (!ownerId)
+        return {
+          error: "Not authenticated.",
+          errorKind: "sessionExpired",
+        };
 
       const { error } = await supabase.from("projects").insert({
         owner_id: ownerId,
@@ -208,11 +232,11 @@ export function createProjectAction(
         due_date: dueDate ? dueDate.toISOString().split("T")[0] : null,
       });
 
-      if (error) return { error: error.message };
+      if (error) return interpretSupabaseWriteError(error, supabase);
     }
 
     await queryClient.invalidateQueries({ queryKey: ["projects"] });
     setIsModalOpen(false);
-    return { error: null };
+    return { error: null, errorKind: null };
   };
 }

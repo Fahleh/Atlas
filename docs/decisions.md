@@ -519,3 +519,26 @@ not this listener, is the primary cache-leak defense, and every identity
 change still crosses the `(auth)`/`(dashboard)` boundary regardless of
 where this mounts. A stale tab idle on `/login` has nothing to leak,
 `(auth)` routes render none of the cached data that entry protects.
+
+---
+
+## Distinguishing `sessionExpired` from `forbidden` on failed Postgrest writes
+
+**Decision:** `lib/supabase/errors.ts`'s `interpretSupabaseWriteError` is the
+only place client-direct mutations (`profileActions.ts`, `taskActions.ts`,
+`projectActions.ts`) translate a failed write into user-facing state. Never
+`error.message` directly.
+
+**Why:** Incident: reproduced via Network tab, a stale/dead session (cleared
+by sign-out in another tab) sent a write as `anon`; Postgres's raw `42501`
+message reached the UI verbatim. `42501` (insufficient privilege) alone
+doesn't distinguish that from a live, correctly-authenticated user
+legitimately denied by RLS (e.g. a collaborator calling an owner-only
+action) — only `PGRST301` (expired JWT) is unambiguous. For `42501`, the
+helper calls `getClaims()` to tell the two apart: no session →
+`sessionExpired`, live session → `forbidden`. A proactive `getClaims()`
+check before the write (used in `createProjectAction`'s owner-id lookup) is
+a fast-fail convenience only, per `useCurrentUser`'s finite-`staleTime`
+entry above; the code-based check after the write is the actual fix.
+`components/ActionErrorMessage.tsx` renders the result everywhere (a login
+link only for `sessionExpired`), replacing several duplicated error-banner call sites​ 

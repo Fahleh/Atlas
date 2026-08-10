@@ -2,15 +2,25 @@
 
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
+import { ActionErrorMessage } from "@/components/ActionErrorMessage";
 import { EntityModal, useEntityModalContext } from "@/components/EntityModal";
 import { StatusBox } from "@/components/StatusBox";
+import type { SupabaseWriteErrorKind } from "@/lib/supabase/errors";
 import type { TaskStatus } from "@/types/atlas.types";
 import { STATUS_CONFIG } from "./taskUtils";
 import styles from "./TaskModal.module.css";
 
 // ---- Types ------------------------------------------------------------------
 
-export type TaskFormState = { error: string | null };
+export type TaskFormState = {
+  error: string | null;
+  errorKind: SupabaseWriteErrorKind | null;
+};
+
+export type DeleteTaskState = {
+  error: string | null;
+  errorKind: SupabaseWriteErrorKind | null;
+};
 
 type TaskModalProps = {
   open: boolean;
@@ -35,7 +45,7 @@ export type StatusFieldProps = {
 };
 
 type DeleteButtonProps = {
-  action: (formData: FormData) => Promise<{ error: string | null }>;
+  action: (formData: FormData) => Promise<DeleteTaskState>;
 };
 
 // ---- Constants --------------------------------------------------------------
@@ -59,15 +69,18 @@ const STATUS_ORDER: TaskStatus[] = ["todo", "in_progress", "done"];
 function DeleteButton({ action }: DeleteButtonProps) {
   const { formAction } = useEntityModalContext();
   const [confirming, setConfirming] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteState, setDeleteState] = useState<DeleteTaskState>({
+    error: null,
+    errorKind: null,
+  });
   const status = useFormStatus();
   // True only when capturedAction (not the form's primary taskAction) is running.
   const isThisDeletePending = status.pending && status.action !== formAction;
 
   async function capturedAction(formData: FormData): Promise<void> {
-    setDeleteError(null);
+    setDeleteState({ error: null, errorKind: null });
     const result = await action(formData);
-    if (result.error) setDeleteError(result.error);
+    if (result.error) setDeleteState(result);
   }
 
   if (!confirming) {
@@ -85,7 +98,13 @@ function DeleteButton({ action }: DeleteButtonProps) {
 
   return (
     <>
-      {deleteError && <p className={styles.deleteError}>{deleteError}</p>}
+      {deleteState.error && (
+        <ActionErrorMessage
+          error={deleteState.error}
+          errorKind={deleteState.errorKind}
+          className={styles.deleteError}
+        />
+      )}
       <button
         type="submit"
         formAction={capturedAction}
@@ -144,7 +163,7 @@ function TaskModalRoot({
       open={open}
       onOpenChange={onOpenChange}
       action={action}
-      initialState={{ error: null }}
+      initialState={{ error: null, errorKind: null }}
       disableScrollLock={disableScrollLock}
     >
       {children}

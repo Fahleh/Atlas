@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionErrorMessage } from "@/components/ActionErrorMessage";
 import { Avatar } from "@/components/Avatar";
 import { EntityModal } from "@/components/EntityModal";
 import { TaskList } from "@/features/tasks/TaskList";
@@ -10,6 +11,7 @@ import {
 } from "@/features/tasks/taskActions";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { isValidEmail } from "@/lib/utils";
+import type { SupabaseWriteErrorKind } from "@/lib/supabase/errors";
 import type { Member, Project, ProjectStatus, Task } from "@/types/atlas.types";
 import { useQueryClient } from "@tanstack/react-query";
 import { Check, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
@@ -39,7 +41,11 @@ function AddMemberSubmitButton() {
   );
 }
 
-type AddMemberFormState = { error: string | null; email: string };
+type AddMemberFormState = {
+  error: string | null;
+  errorKind: SupabaseWriteErrorKind | null;
+  email: string;
+};
 type AddMemberFormProps = {
   project: Project;
 };
@@ -61,15 +67,25 @@ function AddMemberForm({ project }: AddMemberFormProps) {
         const emailRaw = formData.get("email") as string | null;
         const email = emailRaw?.trim();
 
-        if (!email) return { error: "Email is required.", email: email ?? "" };
+        if (!email)
+          return {
+            error: "Email is required.",
+            errorKind: null,
+            email: email ?? "",
+          };
         if (!isValidEmail(email)) {
-          return { error: "Please enter a valid email address.", email };
+          return {
+            error: "Please enter a valid email address.",
+            errorKind: null,
+            email,
+          };
         }
 
         const result = await addMember(project.id, email, queryClient);
-        if (result.error) return { error: result.error, email };
+        if (result.error)
+          return { error: result.error, errorKind: result.errorKind, email };
 
-        return { error: null, email: "" };
+        return { error: null, errorKind: null, email: "" };
       },
     [project, queryClient],
   );
@@ -78,6 +94,7 @@ function AddMemberForm({ project }: AddMemberFormProps) {
     addMemberAction,
     {
       error: null,
+      errorKind: null,
       email: "",
     },
   );
@@ -100,9 +117,11 @@ function AddMemberForm({ project }: AddMemberFormProps) {
         <AddMemberSubmitButton />
       </form>
       {addMemberState.error && (
-        <p role="alert" className={styles.addMemberError}>
-          {addMemberState.error}
-        </p>
+        <ActionErrorMessage
+          error={addMemberState.error}
+          errorKind={addMemberState.errorKind}
+          className={styles.addMemberError}
+        />
       )}
     </>
   );
@@ -205,14 +224,15 @@ export function ProjectSlideOver({
         _prevState: ProjectFormState,
         _formData: FormData,
       ): Promise<ProjectFormState> => {
-        if (!project) return { error: null };
+        if (!project) return { error: null, errorKind: null };
 
         const result = await deleteProject(project.id, queryClient);
-        if (result.error) return { error: result.error };
+        if (result.error)
+          return { error: result.error, errorKind: result.errorKind };
 
         setIsDeleteModalOpen(false);
         onClose();
-        return { error: null };
+        return { error: null, errorKind: null };
       },
     [project, queryClient, onClose],
   );
@@ -223,9 +243,10 @@ export function ProjectSlideOver({
     null,
   );
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
-  const [removeMemberError, setRemoveMemberError] = useState<string | null>(
-    null,
-  );
+  const [removeMemberState, setRemoveMemberState] = useState<{
+    error: string | null;
+    errorKind: SupabaseWriteErrorKind | null;
+  }>({ error: null, errorKind: null });
 
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -246,19 +267,19 @@ export function ProjectSlideOver({
     setResetProjectId(currentProjectId);
     setConfirmingMemberId(null);
     setRemovingMemberId(null);
-    setRemoveMemberError(null);
+    setRemoveMemberState({ error: null, errorKind: null });
   }
 
   async function handleRemoveMember(memberId: string) {
     if (!project) return;
     setRemovingMemberId(memberId);
-    setRemoveMemberError(null);
+    setRemoveMemberState({ error: null, errorKind: null });
 
     const result = await removeMember(project.id, memberId, queryClient);
     setRemovingMemberId(null);
 
     if (result.error) {
-      setRemoveMemberError(result.error);
+      setRemoveMemberState(result);
       return;
     }
     setConfirmingMemberId(null);
@@ -530,7 +551,10 @@ export function ProjectSlideOver({
                             <button
                               type="button"
                               onClick={() => {
-                                setRemoveMemberError(null);
+                                setRemoveMemberState({
+                                  error: null,
+                                  errorKind: null,
+                                });
                                 setConfirmingMemberId(member.id);
                               }}
                               aria-label={`Remove ${member.name}`}
@@ -539,14 +563,13 @@ export function ProjectSlideOver({
                               <Trash2 size={14} aria-hidden="true" />
                             </button>
                           )}
-                          {removeMemberError &&
+                          {removeMemberState.error &&
                             confirmingMemberId === member.id && (
-                              <p
-                                role="alert"
+                              <ActionErrorMessage
+                                error={removeMemberState.error}
+                                errorKind={removeMemberState.errorKind}
                                 className={styles.removeMemberError}
-                              >
-                                {removeMemberError}
-                              </p>
+                              />
                             )}
                         </div>
                       )}
@@ -566,7 +589,7 @@ export function ProjectSlideOver({
         open={isDeleteModalOpen}
         onOpenChange={setIsDeleteModalOpen}
         action={deleteProjectAction}
-        initialState={{ error: null }}
+        initialState={{ error: null, errorKind: null }}
         disableScrollLock
       >
         <EntityModal.Header>

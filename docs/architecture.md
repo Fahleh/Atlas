@@ -48,7 +48,9 @@ atlas/
 │   ├── StatusBox.tsx
 │   ├── Avatar.tsx
 │   ├── Skeleton.tsx
-│   └── ClearQueryCacheOnMount.tsx
+│   ├── ClearQueryCacheOnMount.tsx
+│   ├── ActionErrorMessage.tsx
+│   └── ActionErrorMessage.module.css
 ├── features/
 │   ├── projects/
 │   │   ├── ProjectList.tsx
@@ -100,7 +102,8 @@ atlas/
 │   ├── utils.ts
 │   ├── supabase/
 │   │   ├── client.ts
-│   │   └── server.ts
+│   │   ├── server.ts
+│   │   └── errors.ts
 │   └── index.ts
 ├── providers/
 │   ├── ThemeProvider.tsx
@@ -304,6 +307,11 @@ reactive subscription mechanism and is retained as a reference implementation.
   choice.
 - Real project/task hooks require a valid session because RLS is default-deny
   and may return empty arrays rather than explicit errors.
+- Client-direct mutation writes (`profileActions.ts`, `taskActions.ts`,
+  `projectActions.ts`) interpret failed Postgrest writes through
+  `lib/supabase/errors.ts`'s `interpretSupabaseWriteError`, never
+  `error.message` directly, and render the result via
+  `components/ActionErrorMessage.tsx`. See `docs/decisions.md`.
 
 Do not reintroduce mock data after live Supabase queries have replaced it.
 
