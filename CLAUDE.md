@@ -115,6 +115,17 @@ engineer.
 
 An empty or unusable fetch is a failed fetch. Say so.
 
+### Handling secrets and credentials
+
+- Never print or output a credential, token, or session value, even
+  partially. Verify redaction with counts or presence checks, never
+  by printing or diffing the content itself.
+- Tools that log their own invocation config (Lighthouse reports,
+  test output) can leak a secret you only meant to use, not store.
+  Check generated files before reporting them ready.
+- If a secret is found already committed: stop, flag it plainly,
+  for the engineer to rotate before continuing with anything else.
+
 ### Fix root causes
 
 Every implementation must reflect senior-level, industry-standard practice.
