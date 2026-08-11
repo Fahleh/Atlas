@@ -123,7 +123,7 @@ atlas/
 ├── supabase/
 │   └── migrations/
 ├── scripts/
-│   └── get-auth-cookie.ts
+│   └── authenticated-lighthouse.mts
 └── docs/
     ├── architecture.md
     ├── testing.md
