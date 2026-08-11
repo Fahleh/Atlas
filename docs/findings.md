@@ -39,6 +39,28 @@ Next.js App Router limitation (route-prefetch CSS preload/consumption
 mismatch), reproduced across Next 13 through current versions. Low
 priority.
 
+### Authenticated-route console errors (React #418, REST 401s), reopened
+**Evidence:** Every authenticated route showed a React hydration error and
+401s from Supabase REST calls when measured via `lighthouse --extra-headers`.
+**Status:** Open. Previously marked Resolved; that was wrong. The fix only
+replaced how the session cookie was sourced (a real login instead of a
+manual copy), not how Lighthouse received it. `--extra-headers` sets a
+header on outgoing requests via CDP; it never populates a freshly launched
+Chrome instance's actual cookie storage, regardless of how the cookie value
+was obtained. This was never re-verified against an actual Lighthouse run,
+only against a real login in an ordinary browser, a different thing. See
+`docs/decisions.md`.
+
+### Authenticated Performance numbers were provisional, still unverified
+**Evidence:** Dashboard/profile/projects scores, including every number in
+`docs/lighthouse/baseline-2026-08-06/`, were measured against pages where
+real data never loaded client-side, per the entry above.
+**Status:** Open. Previously marked Resolved as "re-measured with a real
+session"; that re-measurement used the same broken `--extra-headers`
+delivery mechanism, so it was never actually corrected. Every authenticated
+Performance number cited elsewhere in this document should be treated as
+unverified until re-measured with `scripts/authenticated-lighthouse.ts`.
+
 ---
 
 ## Accessibility (Phase 4)
@@ -85,25 +107,3 @@ page's full HTML where a valid `robots.txt` should be.
 **Status:** Open. Two live hypotheses, neither confirmed: no `app/robots.ts`
 exists, or `proxy.ts`'s `PUBLIC_PATHS` doesn't cover `/robots.txt` and it's
 being redirected into the login flow.
-
----
-
-## Resolved during baseline measurement (no phase work needed)
-
-### Authenticated-route console errors (React #418, REST 401s)
-**Evidence:** Every authenticated route showed a React hydration error and
-401s from Supabase REST calls when measured via a manually-copied session
-cookie.
-**Resolution:** Confirmed as a testing-methodology artifact.
-`--extra-headers` injects a raw request header; it never populates the
-browser's actual cookie store, so client-side code had no session even
-though SSR did. Confirmed absent in a real, normal login.
-`scripts/get-auth-cookie.ts` now captures a real session for this purpose.
-See `docs/decisions.md`.
-
-### Authenticated Performance numbers were provisional, now corrected
-**Evidence:** Initial dashboard/profile/projects scores were measured
-against pages where real data never loaded client-side, per the above.
-**Resolution:** Re-measured with a real session. Current numbers in
-`docs/lighthouse/baseline-2026-08-06/` are the ones referenced elsewhere
-in this document.

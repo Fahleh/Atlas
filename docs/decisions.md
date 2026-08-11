@@ -617,3 +617,22 @@ pattern already auto-closes the slide-over once a revoked user's next
 `useProjects()` refetch filters the project out, and any mutation attempt
 is independently blocked by the write-side forbidden handling already
 shipped. Nothing was left unprotected by removing it.
+
+---
+
+## Replacing --extra-headers with a persistent authenticated context
+
+**Decision:** scripts/authenticated-lighthouse.ts launches a persistent
+Chromium context with a debug port, logs in, then runs
+playwright-lighthouse's playAudit against that same instance, no
+cookie hand-off to a separately launched process.
+
+**Why:** --extra-headers never populated a browser's actual cookie
+storage, so every prior authenticated measurement was unverified.
+See docs/findings.md.
+
+**Why playwright-lighthouse, not hand-rolled:** three prior incidents
+this phase from underestimating browser-tooling glue code. A
+maintained library tracking Lighthouse/Playwright's own churn is the
+right call here, confirmed against the installed versions before
+adopting it.

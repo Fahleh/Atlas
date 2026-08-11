@@ -38,10 +38,10 @@
     "jest-environment-jsdom": "^30.4.1",
     "lighthouse": "^12.8.2",
     "playwright": "^1.62.1",
+    "playwright-lighthouse": "^4.0.0",
     "tailwindcss": "^4",
     "ts-jest": "^29.4.9",
     "ts-node": "^10.9.2",
-    "tsx": "^4.23.11",
     "typescript": "^5"
   }
 }
