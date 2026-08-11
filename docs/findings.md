@@ -21,15 +21,18 @@ elsewhere, referenced here for completeness.
 `login-desktop.report.json`: 80%, despite the absolute time dropping from
 3.2s to 660ms. Same shape at both throttling tiers.
 **Status:** Open. The LCP element is the "Atlas" wordmark span; the delay is
-in client-side rendering time, not asset loading.
+in client-side rendering time, not asset loading. Reconfirmed in
+`docs/lighthouse/baseline-2026-08-11/`: 83% mobile, 80% desktop, same shape.
 
 ### Mobile dashboard and mobile projects are the lowest scores in the baseline
 **Evidence:** `dashboard.report.json` (mobile): 71. `projects.report.json`
 (mobile): 70. Lowest Performance scores across every route and preset
 measured, public or authenticated. Desktop scores for the same two routes
 are 97 and 99.
-**Status:** Open. Both are card/list-heavy authenticated pages; the gap is
-specific to mobile throttling.
+**Status:** Resolved. Re-measured in `docs/lighthouse/baseline-2026-08-11/`
+with `scripts/authenticated-lighthouse.mts`: dashboard mobile 96, projects
+mobile 97. The original low scores were the same broken-measurement
+artifact as the two entries below, not a real mobile-specific gap.
 
 ### Unused preload warning
 **Evidence:** Console warning on every authenticated route: a CSS chunk
@@ -39,27 +42,23 @@ Next.js App Router limitation (route-prefetch CSS preload/consumption
 mismatch), reproduced across Next 13 through current versions. Low
 priority.
 
-### Authenticated-route console errors (React #418, REST 401s), reopened
+### Authenticated-route console errors (React #418, REST 401s)
 **Evidence:** Every authenticated route showed a React hydration error and
 401s from Supabase REST calls when measured via `lighthouse --extra-headers`.
-**Status:** Open. Previously marked Resolved; that was wrong. The fix only
-replaced how the session cookie was sourced (a real login instead of a
-manual copy), not how Lighthouse received it. `--extra-headers` sets a
-header on outgoing requests via CDP; it never populates a freshly launched
-Chrome instance's actual cookie storage, regardless of how the cookie value
-was obtained. This was never re-verified against an actual Lighthouse run,
-only against a real login in an ordinary browser, a different thing. See
-`docs/decisions.md`.
+**Status:** Resolved. Re-measured in `docs/lighthouse/baseline-2026-08-11/`
+with `scripts/authenticated-lighthouse.mts`, a persistent authenticated
+browser context instead of a cookie header. Confirmed clean: no known
+failure strings in any report, and `dashboard.report.json`'s LCP element
+manually inspected as real content. See `docs/decisions.md`.
 
-### Authenticated Performance numbers were provisional, still unverified
-**Evidence:** Dashboard/profile/projects scores, including every number in
-`docs/lighthouse/baseline-2026-08-06/`, were measured against pages where
+### Authenticated Performance numbers were provisional, now corrected
+**Evidence:** Dashboard/profile/projects scores in
+`docs/lighthouse/baseline-2026-08-06/` were measured against pages where
 real data never loaded client-side, per the entry above.
-**Status:** Open. Previously marked Resolved as "re-measured with a real
-session"; that re-measurement used the same broken `--extra-headers`
-delivery mechanism, so it was never actually corrected. Every authenticated
-Performance number cited elsewhere in this document should be treated as
-unverified until re-measured with `scripts/authenticated-lighthouse.ts`.
+**Status:** Resolved. Current numbers are in
+`docs/lighthouse/baseline-2026-08-11/`, measured with
+`scripts/authenticated-lighthouse.mts` and confirmed clean per the same
+entry.
 
 ---
 
@@ -77,17 +76,33 @@ every instance across the app in one pass. `/projects`' filter-tab
 (`4.07:1`) and "New" button failures are the same two root causes, not a
 separate fix.
 
-### Light-mode contrast is entirely unverified
-**Evidence:** Every captured report shows `data-theme="dark"` in the
-rendered HTML. Light mode's `--color-accent` (`#ea8c00`) contrast against
-white text has never been measured in this baseline.
-**Status:** Open. Scope the color-contrast audit to both themes
-explicitly, don't assume light mode inherits whatever fix dark mode gets.
+### Light-mode contrast is confirmed affected, not just unmeasured
+**Evidence:** `docs/lighthouse/baseline-2026-08-11/dashboard.report.json`'s
+`color-contrast` audit fails `#ea8c00` (light mode's `--color-accent`)
+against several backgrounds, e.g. `2.43:1` on `#fafafa`. Inferred from the
+color value matching light mode's documented token; no `data-theme`
+attribute was captured directly in this report's snippets either.
+**Status:** Open. Same fix as the dark-mode entry above should be verified
+against both themes explicitly, not assumed to carry over.
 
 ### No `<main>` landmark on `/login`
 **Evidence:** `landmark-one-main` audit fails on `login.report.json`.
 **Status:** Open. Could be a deliberate choice for a chromeless auth page,
 needs an actual decision, not a silent gap.
+
+### `ProjectStats`' progressbar role is invalid on its `<dl>` structure
+**Evidence:** `docs/lighthouse/baseline-2026-08-11/dashboard.report.json`:
+`aria-allowed-role` and `definition-list` both fail on the same node, the
+Tasks Done `<dd role="progressbar">` inside `ProjectStats`' `<dl>`. ARIA
+`progressbar` is not an allowed role there, and it makes the `<dl>`'s
+direct children invalid.
+**Status:** Open. First observed in this run.
+
+### `ProjectCard`'s accessible name does not include its visible text
+**Evidence:** `docs/lighthouse/baseline-2026-08-11/dashboard.report.json`:
+`label-content-name-mismatch` fails on all 4 `ProjectCard`s in the Recent
+Projects grid; visible card text is not included in the accessible name.
+**Status:** Open. First observed in this run.
 
 ---
 
@@ -106,4 +121,6 @@ to miss without the baseline.
 page's full HTML where a valid `robots.txt` should be.
 **Status:** Open. Two live hypotheses, neither confirmed: no `app/robots.ts`
 exists, or `proxy.ts`'s `PUBLIC_PATHS` doesn't cover `/robots.txt` and it's
-being redirected into the login flow.
+being redirected into the login flow. Reconfirmed in
+`docs/lighthouse/baseline-2026-08-11/` under a completely different
+measurement method, ruling out the old methodology as the cause.
