@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 import { Menu } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { Skeleton } from "@/components/Skeleton";
@@ -33,7 +34,8 @@ function getPageTitle(pathname: string): string {
 export function Header({ onMenuClick }: HeaderProps) {
   const pathname = usePathname();
   const pageTitle = getPageTitle(pathname);
-  const { data: profile } = useCurrentUserProfile();
+  const { data: profile, isError, error: profileError } =
+    useCurrentUserProfile();
 
   return (
     <header className={styles.header} aria-label="Page header">
@@ -52,6 +54,16 @@ export function Header({ onMenuClick }: HeaderProps) {
         <div className="flex items-center gap-3">
           <span className={styles.userName}>{profile.name}</span>
           <Avatar name={profile.name} avatarUrl={profile.avatarUrl} size={32} />
+        </div>
+      ) : isError ? (
+        <div className="flex items-center gap-3" role="alert">
+          {profileError?.errorKind === "sessionExpired" ? (
+            <Link href="/login" className={styles.sessionExpiredLink}>
+              Log in
+            </Link>
+          ) : (
+            <span className={styles.userName}>—</span>
+          )}
         </div>
       ) : (
         <div

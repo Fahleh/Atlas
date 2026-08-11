@@ -312,6 +312,12 @@ reactive subscription mechanism and is retained as a reference implementation.
   `lib/supabase/errors.ts`'s `interpretSupabaseWriteError`, never
   `error.message` directly, and render the result via
   `components/ActionErrorMessage.tsx`. See `docs/decisions.md`.
+- Read hooks throw `lib/supabase/errors.ts`'s `SupabaseReadError` (built via
+  `interpretSupabaseReadError`) instead of the raw Postgrest/network error, so
+  `errorKind` survives on React Query's own `error` object at every consuming
+  component. Interpretation happens once, in the hook's `queryFn`, matching
+  `toCamelCase`/`parseDates`'s existing transform-at-the-hook-layer
+  convention — never re-run at the component. See `docs/decisions.md`.
 
 Do not reintroduce mock data after live Supabase queries have replaced it.
 

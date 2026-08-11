@@ -574,3 +574,46 @@ runs was a live Supabase session (rotated after discovery, dead at time of
 fix). Any future authenticated Lighthouse run must strip
 `configSettings.extraHeaders` from **both** output formats before
 committing, not just the JSON.
+
+---
+
+## Read-side error interpretation is a distinct, narrower function than the write side
+
+**Decision:** `lib/supabase/errors.ts`'s `interpretSupabaseReadError` only
+distinguishes `sessionExpired` (`PGRST301`) from one generic message:
+no `forbidden` category, and it never surfaces `error.message` raw.
+
+**Why:** This schema's default-deny RLS denies reads by filtering rows out,
+not by throwing, so a `42501` on a `SELECT` means a missing `GRANT`, never a
+live user legitimately denied (the case `interpretSupabaseWriteError`'s
+`forbidden` exists for). Reads can also fail with no Postgrest response at
+all (network/timeout, no `.code`), a shape writes never hit. With no
+actionable "forbidden" case and no safe specific message to show, the
+function is synchronous (no `getClaims()` follow-up) and collapses
+everything but session expiry into one message. `SupabaseReadError` (same
+file) carries the result as a thrown `Error` subclass so hooks interpret
+once, at the `queryFn`, not at every consuming component.
+
+---
+
+## Reverted: `TaskList`'s empty-result membership recheck
+
+**Decision:** Built `hooks/useIsProjectMember.ts` and a distinct
+"you no longer have access" state for `TaskList`'s empty-result branch,
+to catch membership revoked in the gap after `useProjects()` last fetched
+this project. Reconsidered and reverted; `TaskList` is back to one plain
+"No tasks yet." message, and the hook is deleted, not left as dead code.
+
+**Why:** `useTasks(projectId)` only ever runs for a project `useProjects()`
+already returned, already RLS-filtered to the user's actual memberships as
+of that fetch. An empty task result isn't ambiguous at read time: RLS
+denies by filtering rows, membership or not, so there's no second case to
+distinguish in that one query. The real, narrower situation is a timing
+gap: membership can change between `useProjects()`'s fetch and this
+render. Even so, the extra RPC fired on every genuinely empty project, for
+every user: a permanent cost for a narrow, transient window.
+`ProjectSlideOver`'s existing `selectedProject = projects.find(...) ?? null`
+pattern already auto-closes the slide-over once a revoked user's next
+`useProjects()` refetch filters the project out, and any mutation attempt
+is independently blocked by the write-side forbidden handling already
+shipped. Nothing was left unprotected by removing it.

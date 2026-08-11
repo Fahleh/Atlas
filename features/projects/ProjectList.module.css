@@ -151,6 +151,20 @@
 
 /* ---- Loading / error / empty states ---- */
 
+/* Compact partial-failure note: projects loaded, only member/task-count
+   data failed. Mirrors page.module.css's .partialError. */
+.partialError {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
 .stateContainer {
   display: flex;
   flex-direction: column;

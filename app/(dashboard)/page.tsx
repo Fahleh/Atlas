@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AlertCircle, FolderPlus, ListChecks } from "lucide-react";
+import { ActionErrorMessage } from "@/components/ActionErrorMessage";
 import { useProjects } from "@/hooks/useProjects";
 import { useTaskCountsByProject } from "@/hooks/useTaskCountsByProject";
 import { useMembersByProject } from "@/hooks/useMembersByProject";
@@ -24,15 +25,25 @@ const TASK_SKELETON_ROW_COUNT = 5;
 
 export default function DashboardPage() {
   const router = useRouter();
-  // Fixes "now" as of dashboard mount, not a live clock — required so
-  // rendering stays pure (react-hooks/purity forbids calling Date.now()
-  // directly during render or inside a useMemo body).
+  // Fixes "now" as of mount, not a live clock. react-hooks/purity forbids
+  // calling Date.now() directly during render or inside useMemo.
   const [now] = useState(() => Date.now());
-  const { data: projects = [], isLoading, isError, refetch } = useProjects();
+  const {
+    data: projects = [],
+    isLoading,
+    isError,
+    error: projectsError,
+    refetch,
+  } = useProjects();
 
   const projectIds = useMemo(() => projects.map((p) => p.id), [projects]);
-  const { data: taskCountsByProject = {}, isLoading: isTaskCountsLoading } =
-    useTaskCountsByProject(projectIds);
+  const {
+    data: taskCountsByProject = {},
+    isLoading: isTaskCountsLoading,
+    isError: isTaskCountsError,
+    error: taskCountsError,
+    refetch: refetchTaskCounts,
+  } = useTaskCountsByProject(projectIds);
 
   const recentProjects = useMemo(
     () =>
@@ -45,8 +56,12 @@ export default function DashboardPage() {
     () => recentProjects.map((p) => p.id),
     [recentProjects],
   );
-  const { data: membersByProject = {} } =
-    useMembersByProject(recentProjectIds);
+  const {
+    data: membersByProject = {},
+    isError: isMembersError,
+    error: membersError,
+    refetch: refetchMembers,
+  } = useMembersByProject(recentProjectIds);
 
   // Soonest due date first (nulls last) among projects with no due date,
   // most-recently-updated first. First project with any tasks wins.
@@ -75,8 +90,12 @@ export default function DashboardPage() {
     [upcomingTasksData],
   );
 
-  const { data: dueSoonTaskCount = 0, isLoading: isDueSoonLoading } =
-    useDueSoonTaskCount(now);
+  const {
+    data: dueSoonTaskCount = 0,
+    isLoading: isDueSoonLoading,
+    isError: isDueSoonError,
+    refetch: refetchDueSoon,
+  } = useDueSoonTaskCount(now);
 
   // Cross-route navigation from the dashboard: push, not replace, so Back
   // returns here rather than skipping past it. See docs/decisions.md.
@@ -94,15 +113,21 @@ export default function DashboardPage() {
             aria-hidden="true"
           />
           <p className={styles.dashboardErrorMessage}>
-            Couldn&apos;t load your dashboard.
+            {projectsError?.message ?? "Couldn't load your dashboard."}
           </p>
-          <button
-            type="button"
-            onClick={() => refetch()}
-            className={styles.dashboardErrorRetry}
-          >
-            Try again
-          </button>
+          {projectsError?.errorKind === "sessionExpired" ? (
+            <Link href="/login" className={styles.dashboardErrorRetry}>
+              Log in
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className={styles.dashboardErrorRetry}
+            >
+              Try again
+            </button>
+          )}
         </div>
       </div>
     );
@@ -110,6 +135,21 @@ export default function DashboardPage() {
 
   return (
     <div className={layoutStyles.pageContainer}>
+      {(isTaskCountsError || isMembersError) && (
+        <ActionErrorMessage
+          error={
+            (taskCountsError ?? membersError)?.message ??
+            "Some project details couldn't load."
+          }
+          errorKind={(taskCountsError ?? membersError)?.errorKind}
+          onRetry={() => {
+            if (isTaskCountsError) refetchTaskCounts();
+            if (isMembersError) refetchMembers();
+          }}
+          className={styles.partialError}
+        />
+      )}
+
       <ProjectStats
         projects={projects}
         taskCounts={taskCountsByProject}
@@ -282,6 +322,8 @@ export default function DashboardPage() {
           <VelocityStatus
             dueSoonTaskCount={dueSoonTaskCount}
             isLoading={isDueSoonLoading}
+            isError={isDueSoonError}
+            onRetry={() => refetchDueSoon()}
           />
         </div>
       </div>
