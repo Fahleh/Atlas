@@ -2,7 +2,9 @@
 
 import { useState, useMemo, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { Plus, AlertCircle, Sparkles, SearchX } from "lucide-react";
+import { ActionErrorMessage } from "@/components/ActionErrorMessage";
 import { useQueryClient } from "@tanstack/react-query";
 import { useProjects } from "@/hooks/useProjects";
 import { useMembersByProject } from "@/hooks/useMembersByProject";
@@ -35,15 +37,20 @@ const STATUS_FILTERS: { label: string; value: StatusFilter }[] = [
  * search param, which is the sole source of truth for slide-over selection.
  */
 export function ProjectList() {
-  const { data: projects = [], isLoading, isError, refetch } = useProjects();
+  const {
+    data: projects = [],
+    isLoading,
+    isError,
+    error: projectsError,
+    refetch,
+  } = useProjects();
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedProjectId = searchParams.get("project");
   const queryClient = useQueryClient();
 
-  // Same-route selection change, not a new destination — replace so Back
-  // leaves /projects immediately instead of stepping through each
-  // previously-opened project. See docs/decisions.md.
+  // Same-route selection change, not a new destination: replace, not push.
+  // Keeps one history entry for "/projects". See docs/decisions.md.
   function selectProject(id: string) {
     router.replace(`/projects?project=${id}`);
   }
@@ -52,18 +59,24 @@ export function ProjectList() {
     router.replace("/projects");
   }
 
-  // Full unfiltered project ID list — member data shouldn't refetch on every
+  // Full unfiltered project ID list: member data shouldn't refetch on every
   // search/filter change, only when the underlying project set changes.
   const projectIds = useMemo(() => projects.map((p) => p.id), [projects]);
-  const { data: membersByProject = {} } = useMembersByProject(projectIds);
-  const { data: taskCountsByProject = {} } = useTaskCountsByProject(projectIds);
+  const {
+    data: membersByProject = {},
+    isError: isMembersError,
+    error: membersError,
+    refetch: refetchMembers,
+  } = useMembersByProject(projectIds);
+  const {
+    data: taskCountsByProject = {},
+    isError: isTaskCountsError,
+    error: taskCountsError,
+    refetch: refetchTaskCounts,
+  } = useTaskCountsByProject(projectIds);
 
-  // Derive the live Project object from the React Query cache on every render.
-  // After an edit, projectActions.ts invalidates ["projects"], useProjects()
-  // refetches, and this find() resolves against the fresh array automatically —
-  // no additional invalidation logic needed. deletion is also handled here for free:
-  // when a project is removed from the cache, find() returns undefined → null →
-  // slide-over closes automatically. No special-case logic needed.
+  // Derived from the React Query cache on every render, not stored separately.
+  // Edits and deletions resolve automatically; see docs/architecture.md.
 
   const selectedProject =
     projects.find((p) => p.id === selectedProjectId) ?? null;
@@ -229,6 +242,23 @@ export function ProjectList() {
         </div>
       </div>
 
+      {/* Partial-failure note: projects loaded fine, only per-card
+          member/task-count data failed. Non-blocking. */}
+      {(isTaskCountsError || isMembersError) && (
+        <ActionErrorMessage
+          error={
+            (taskCountsError ?? membersError)?.message ??
+            "Some project details couldn't load."
+          }
+          errorKind={(taskCountsError ?? membersError)?.errorKind}
+          onRetry={() => {
+            if (isTaskCountsError) refetchTaskCounts();
+            if (isMembersError) refetchMembers();
+          }}
+          className={styles.partialError}
+        />
+      )}
+
       {/* Loading state */}
       {isLoading && (
         <div
@@ -291,18 +321,26 @@ export function ProjectList() {
             className={`${styles.stateIcon} ${styles.stateIconDanger}`}
             aria-hidden="true"
           />
-          <p className={styles.stateMessage}>Failed to load projects.</p>
-          <button
-            type="button"
-            onClick={() => refetch()}
-            className={styles.retryButton}
-          >
-            Try again
-          </button>
+          <p className={styles.stateMessage}>
+            {projectsError?.message ?? "Failed to load projects."}
+          </p>
+          {projectsError?.errorKind === "sessionExpired" ? (
+            <Link href="/login" className={styles.retryButton}>
+              Log in
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className={styles.retryButton}
+            >
+              Try again
+            </button>
+          )}
         </div>
       )}
 
-      {/* Empty state — no projects exist */}
+      {/* Empty state: no projects exist */}
       {hasNoProjects && (
         <div className={styles.stateContainer}>
           <Sparkles size={48} className={styles.stateIcon} aria-hidden="true" />
@@ -313,7 +351,7 @@ export function ProjectList() {
         </div>
       )}
 
-      {/* Empty state — search/filter returned no results */}
+      {/* Empty state: search/filter returned no results */}
       {hasNoResults && (
         <div className={styles.stateContainer}>
           <SearchX size={48} className={styles.stateIcon} aria-hidden="true" />
@@ -351,7 +389,7 @@ export function ProjectList() {
         />
       )}
 
-      {/* Slide-over panel — always in DOM, CSS-controlled visibility */}
+      {/* Slide-over panel: always in DOM, CSS-controlled visibility */}
       <ProjectSlideOver
         project={selectedProject}
         onClose={closeProject}
@@ -361,7 +399,7 @@ export function ProjectList() {
         }
       />
 
-      {/* Project create/edit modal — keyed by modalResetKey so the form resets
+      {/* Project create/edit modal, keyed by modalResetKey so the form resets
           on every open. disableScrollLock when the slide-over is already open. */}
       <ProjectModal
         key={modalResetKey}

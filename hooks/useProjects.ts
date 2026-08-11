@@ -1,6 +1,10 @@
 // TODO: add tests
 
 import { createClient } from "@/lib/supabase/client";
+import {
+  interpretSupabaseReadError,
+  SupabaseReadError,
+} from "@/lib/supabase/errors";
 import { parseDates, toCamelCase } from "@/lib/utils";
 import { Project } from "@/types/atlas.types";
 import { useQuery } from "@tanstack/react-query";
@@ -16,7 +20,7 @@ import { useQuery } from "@tanstack/react-query";
  */
 
 export function useProjects() {
-  return useQuery({
+  return useQuery<Project[], SupabaseReadError>({
     queryKey: ["projects"],
     queryFn: async () => {
       const supabase = createClient();
@@ -25,7 +29,7 @@ export function useProjects() {
         .select("*")
         .order("updated_at", { ascending: false });
 
-      if (error) throw error;
+      if (error) throw new SupabaseReadError(interpretSupabaseReadError(error));
 
       const transformedData: Project[] = data.map((project) =>
         parseDates(toCamelCase(project), ["createdAt", "dueDate", "updatedAt"]),

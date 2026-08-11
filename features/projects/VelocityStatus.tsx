@@ -4,6 +4,8 @@ import styles from "./VelocityStatus.module.css";
 export type VelocityStatusProps = {
   dueSoonTaskCount: number;
   isLoading: boolean;
+  isError?: boolean;
+  onRetry?: () => void;
 };
 
 /**
@@ -14,10 +16,14 @@ export type VelocityStatusProps = {
  *
  * @param dueSoonTaskCount - Count of not-done tasks with a dueDate in the next 7 days
  * @param isLoading - Whether the due-soon task count is still loading
+ * @param isError - Whether the due-soon task count failed to load
+ * @param onRetry - Retry callback shown when isError is true
  */
 export function VelocityStatus({
   dueSoonTaskCount,
   isLoading,
+  isError = false,
+  onRetry,
 }: VelocityStatusProps) {
   const variant = dueSoonTaskCount > 0 ? "due" : "clear";
 
@@ -55,6 +61,29 @@ export function VelocityStatus({
           <Skeleton width="40%" height="1.125rem" />
         </div>
         <Skeleton width="90%" height="0.875rem" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className={styles.card} role="alert">
+        <div className={styles.header}>
+          <span className={styles.dot} aria-hidden="true" />
+          <h2 className={styles.title}>Velocity Status</h2>
+        </div>
+        <p className={styles.narrative}>
+          Couldn&apos;t load.{" "}
+          {onRetry && (
+            <button
+              type="button"
+              onClick={onRetry}
+              className={styles.retryLink}
+            >
+              Try again
+            </button>
+          )}
+        </p>
       </div>
     );
   }

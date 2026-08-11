@@ -1,4 +1,8 @@
 import { createClient } from "@/lib/supabase/client";
+import {
+  interpretSupabaseReadError,
+  SupabaseReadError,
+} from "@/lib/supabase/errors";
 import { parseDates, toCamelCase } from "@/lib/utils";
 import type { Member, MemberRole } from "@/types/atlas.types";
 import { useQuery } from "@tanstack/react-query";
@@ -55,7 +59,11 @@ function groupMembersByProject(
 export function useMembersByProject(projectIds: string[]) {
   const sortedIds = [...projectIds].sort();
 
-  return useQuery({
+  return useQuery<
+    ProjectMemberRow[],
+    SupabaseReadError,
+    Record<string, Member[]>
+  >({
     queryKey: ["projectMembers", sortedIds],
     queryFn: async () => {
       const supabase = createClient();
@@ -64,7 +72,7 @@ export function useMembersByProject(projectIds: string[]) {
         .select("project_id, role, joined_at, profiles(id, name, avatar_url)")
         .in("project_id", sortedIds);
 
-      if (error) throw error;
+      if (error) throw new SupabaseReadError(interpretSupabaseReadError(error));
 
       return data.map((row) =>
         parseDates(toCamelCase<ProjectMemberRow>(row), ["joinedAt"]),

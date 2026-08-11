@@ -66,19 +66,20 @@ function SaveButton({ disabled }: SaveButtonProps) {
 export function ProfileForm() {
   const queryClient = useQueryClient();
   const { data: currentUser } = useCurrentUser();
-  const { data: profile } = useCurrentUserProfile();
+  const {
+    data: profile,
+    isError: isProfileError,
+    error: profileError,
+    refetch: refetchProfile,
+  } = useCurrentUserProfile();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrlState] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
 
-  // Controlled so Save's dirty-state check (below) can compare live keystrokes
-  // against the loaded profile. Synced to profile.name during render — not an
-  // effect — whenever profile.name itself changes (initial load, or a refetch
-  // after a successful save), mirroring the resetProjectId pattern in
-  // ProjectSlideOver.tsx. lastSyncedName tracks what nameInput was last reset
-  // from, so a change to *that* is what triggers the reset, not every render.
+  // Controlled for Save's dirty-state check. Synced to profile.name during
+  // render, not an effect. See docs/frontend.md's reset-during-render pattern.
   const [nameInput, setNameInput] = useState(profile?.name ?? "");
   const [lastSyncedName, setLastSyncedName] = useState(profile?.name ?? null);
   if ((profile?.name ?? null) !== lastSyncedName) {
@@ -90,9 +91,8 @@ export function ProfileForm() {
   // latest object URL without needing previewUrl itself in its dependency array.
   const previewUrlRef = useRef<string | null>(null);
 
-  // Revokes the previous object URL (if any) before adopting a new one — called
-  // from event handlers only (file selection, post-save reset), never from an
-  // effect, so there is no setState-in-effect render cascade.
+  // Revokes the previous object URL before adopting a new one. Called from
+  // event handlers only, never an effect, so there is no setState-in-effect cascade.
   function setPreview(url: string | null) {
     if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
     previewUrlRef.current = url;
@@ -127,12 +127,12 @@ export function ProfileForm() {
 
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // Mirrors previewUrlRef above — lets the unmount-only cleanup effect clear
+  // Mirrors previewUrlRef above: lets the unmount-only cleanup effect clear
   // whatever timeout is currently pending without needing it in a dependency array.
   const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Called from the action's success branch, not a useEffect on state.success
-  // — see docs/decisions.md ("Triggering the success-banner side effect...").
+  // Called from the action's success branch, not a useEffect on state.success.
+  // See docs/decisions.md ("Triggering the success-banner side effect...").
   function triggerSuccessBanner() {
     if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
     setShowSuccess(true);
@@ -194,6 +194,19 @@ export function ProfileForm() {
     errorKind: null,
     success: false,
   });
+
+  if (isProfileError) {
+    return (
+      <div className={styles.form}>
+        <ActionErrorMessage
+          error={profileError?.message ?? "Couldn't load your profile."}
+          errorKind={profileError?.errorKind}
+          onRetry={() => refetchProfile()}
+          className={styles.errorBanner}
+        />
+      </div>
+    );
+  }
 
   if (!profile) {
     return (
