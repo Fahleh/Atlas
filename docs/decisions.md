@@ -556,4 +556,21 @@ original value does not re-disable Save.
 **Why:** A fully accurate version means either controlled state on every
 field (against the project default of uncontrolled native inputs) or
 re-deriving from a fresh `FormData` read on every keystroke. Both are more
-complexity than a Save-button gate warrants. 
+complexity than a Save-button gate warrants.
+
+---
+
+## Stripping `configSettings.extraHeaders` from committed Lighthouse reports
+
+**Decision:** `docs/lighthouse/baseline-2026-08-06/`'s six authenticated
+`.report.json` files, and the same six `.report.html` viewer files (which
+embed an identical inline JSON copy of the run data), have
+`configSettings.extraHeaders` set to `null`, matching what unauthenticated
+reports already show.
+
+**Why:** Lighthouse embeds `--extra-headers` verbatim into every report it
+writes, JSON and HTML alike; the `Cookie` value used to authenticate these
+runs was a live Supabase session (rotated after discovery, dead at time of
+fix). Any future authenticated Lighthouse run must strip
+`configSettings.extraHeaders` from **both** output formats before
+committing, not just the JSON.
