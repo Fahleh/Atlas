@@ -82,9 +82,13 @@ export default function DashboardPage() {
     );
   }, [projects, taskCountsByProject]);
 
-  const { data: upcomingTasksData = [], isLoading: isTasksLoading } = useTasks(
-    upcomingTasksProject?.id ?? "",
-  );
+  const {
+    data: upcomingTasksData = [],
+    isLoading: isTasksLoading,
+    isError: isTasksError,
+    error: tasksError,
+    refetch: refetchTasks,
+  } = useTasks(upcomingTasksProject?.id ?? "");
   const upcomingTasks = useMemo(
     () => upcomingTasksData.slice(0, UPCOMING_TASKS_COUNT),
     [upcomingTasksData],
@@ -268,6 +272,13 @@ export default function DashboardPage() {
                   )}
                 </div>
               </div>
+            ) : isTasksError ? (
+              <ActionErrorMessage
+                error={tasksError?.message ?? "Couldn't load upcoming tasks."}
+                errorKind={tasksError?.errorKind}
+                onRetry={() => refetchTasks()}
+                className={styles.partialError}
+              />
             ) : !upcomingTasksProject ? (
               <div className={styles.stateContainer}>
                 <ListChecks
