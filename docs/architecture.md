@@ -48,7 +48,6 @@ atlas/
 │   ├── StatusBox.tsx
 │   ├── Avatar.tsx
 │   ├── Skeleton.tsx
-│   ├── ClearQueryCacheOnMount.tsx
 │   ├── ActionErrorMessage.tsx
 │   └── ActionErrorMessage.module.css
 ├── features/
@@ -429,13 +428,12 @@ Supabase client above the `(auth)`/`(dashboard)` split. See
 `docs/decisions.md` for why this placement doesn't weaken the cross-user
 cache-leak defense.
 
-### `ClearQueryCacheOnMount`
+### `QueryProvider`
 
-Rendered inside both auth and dashboard layouts. It is the primary cross-user
-cache-leak defense under Atlas's current auth model.
-
-Read the full decision before implementing account switching or another feature
-that changes the current model's assumptions.
+Mounted in `app/(dashboard)/layout.tsx` only, not in root `app/layout.tsx`.
+No `(auth)` route calls a React Query hook. Replaced
+`ClearQueryCacheOnMount.tsx` entirely, its cache-leak defense is now the
+provider's own mount/unmount lifecycle. See `docs/decisions.md`.
 
 ---
 

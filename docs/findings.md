@@ -17,12 +17,31 @@ elsewhere, referenced here for completeness.
 ## Performance (Phase 2)
 
 ### LCP is render-delay-bound, not network-bound
-**Evidence:** `login.report.json` (mobile): 86% of LCP is "Render Delay."
-`login-desktop.report.json`: 80%, despite the absolute time dropping from
-3.2s to 660ms. Same shape at both throttling tiers.
-**Status:** Open. The LCP element is the "Atlas" wordmark span; the delay is
-in client-side rendering time, not asset loading. Reconfirmed in
-`docs/lighthouse/baseline-2026-08-11/`: 83% mobile, 80% desktop, same shape.
+**Evidence:** Confirmed render-delay-dominant across three separate
+measurements (`baseline-2026-08-06`, `baseline-2026-08-11`,
+`recheck-2026-08-13`), consistently 78-86% depending on preset and
+run. Current (5-run median, post `QueryProvider` fix): mobile
+2622.4ms total / 82% Render Delay, desktop 588.8ms / 78%. Full
+numeric history in the respective `docs/lighthouse/` folders.
+**Status:** Open. The LCP element is the "Atlas" wordmark span; the delay
+is in client-side rendering time, not asset loading. The `QueryProvider`
+scoping contributed a real, modest improvement, not a fix: mobile's median
+stayed above the 2,500ms Good threshold. The remaining cost is framework
+baseline plus Next's polyfill chunk, see the entry below; closing this
+finding depends on that one, not further work here.
+
+### Framework baseline and Next's polyfill chunk dominate `/login`'s remaining JS
+**Evidence:** Of roughly 627KB minified shipped to `/login` before the
+`QueryProvider` fix, React/React-DOM/Next App Router runtime accounted for
+393.153KB (164309 + 228844 bytes) and a Next-owned `core-js` polyfill
+chunk (confirmed by its license banner, not declared in `package.json`, no
+app code references it) accounted for another 112.6KB, roughly 505KB
+total, about 80% of the route's JS. None of it moved when `QueryProvider`
+was scoped down.
+**Status:** Open. Addressing it means touching Next's build/browserslist
+target for the polyfill chunk, a separate decision from anything scoped
+here. This, not further provider scoping, is what resolving the LCP
+render-delay finding above actually requires.
 
 ### Mobile dashboard and mobile projects are the lowest scores in the baseline
 **Evidence:** `dashboard.report.json` (mobile): 71. `projects.report.json`
