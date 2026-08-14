@@ -158,7 +158,7 @@ be documented once in the relevant topic section.
 A file in `components/` must never import from `features/`. Move the shared
 utility downward to `lib/` instead of inverting the dependency direction.
 
-Confirmed example: `getInitials` and `getMemberAvatarColor` moved from
+Confirmed example: `getInitials` and `getMemberAvatarPaletteIndex` moved from
 `features/projects/projectUtils.ts` to `lib/utils.ts` when `Avatar.tsx` needed
 them.
 
@@ -170,7 +170,7 @@ multiple features, or global components:
 - `toCamelCase`
 - `parseDates`
 - `getInitials`
-- `getMemberAvatarColor`
+- `getMemberAvatarPaletteIndex`
 - `isValidEmail`
 
 Use `features/[feature]/[feature]Utils.ts` for display logic scoped to one
