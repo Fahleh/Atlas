@@ -46,6 +46,7 @@ reason to document something here.
 - [Read-side error interpretation is a distinct, narrower function than the write side](#read-side-error-interpretation-is-a-distinct-narrower-function-than-the-write-side)
 - [Reverted: `TaskList`'s empty-result membership recheck](#reverted-tasklists-empty-result-membership-recheck)
 - [Replacing --extra-headers with a persistent authenticated context](#replacing---extra-headers-with-a-persistent-authenticated-context)
+- [Blanket `robots.txt` disallow, no per-route rules](#blanket-robotstxt-disallow-no-per-route-rules)
 
 ---
 
@@ -709,3 +710,20 @@ this phase from underestimating browser-tooling glue code. A
 maintained library tracking Lighthouse/Playwright's own churn is the
 right call here, confirmed against the installed versions before
 adopting it.
+
+---
+
+## Blanket `robots.txt` disallow, no per-route rules
+
+**Decision:** `app/robots.ts` returns
+`{ rules: { userAgent: "*", disallow: "/" } }`, no `sitemap` field.
+`/robots.txt` is exempted from `proxy.ts`'s auth redirect through
+`config.matcher`'s negative-lookahead pattern, alongside `favicon.ico`.
+
+**Why blanket disallow, not a per-route allow/disallow list:** every
+route in Atlas is either an auth page (`/login`, `/signup`) with nothing
+meant for indexing, or auth-gated (`/`, `/projects`, `/profile`) with
+nothing a crawler could render without a session anyway. A per-route
+rules list would need upkeep on every future route addition for a
+benefit that doesn't exist, no public marketing content is planned. No
+`sitemap` field for the same reason, nothing to list.

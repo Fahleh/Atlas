@@ -140,8 +140,8 @@ to miss without the baseline.
 ### `robots.txt` is broken, not just unoptimized
 **Evidence:** `robots-txt` audit fails; Lighthouse captured the login
 page's full HTML where a valid `robots.txt` should be.
-**Status:** Open. Two live hypotheses, neither confirmed: no `app/robots.ts`
-exists, or `proxy.ts`'s `PUBLIC_PATHS` doesn't cover `/robots.txt` and it's
-being redirected into the login flow. Reconfirmed in
-`docs/lighthouse/baseline-2026-08-11/` under a completely different
-measurement method, ruling out the old methodology as the cause.
+**Status:** Resolved. No robots mechanism existed, and `proxy.ts`'s
+matcher didn't exclude `/robots.txt`, redirecting requests into
+login. Both fixed together: `app/robots.ts` added, matcher updated
+alongside `favicon.ico`. Verified: direct `curl`, no redirect, `200`
+with the intended body. See `docs/decisions.md`.
