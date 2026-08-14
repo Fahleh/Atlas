@@ -3,12 +3,16 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import styles from "./StatusBox.module.css";
+import dotStyles from "@/styles/statusDot.module.css";
 
 // ---- Types ------------------------------------------------------------------
 
+// TEMPORARY, throwaway live-verification test, not part of the approved diff.
+export type StatusDotColorClass = "dotMuted" | "dotAccent" | "dotSuccess";
+
 export type StatusBoxConfig<T extends string> = Record<
   T,
-  { label: string; dotColor: string }
+  { label: string; dotColorClass: StatusDotColorClass }
 >;
 
 export type StatusBoxProps<T extends string> = {
@@ -161,10 +165,7 @@ export function StatusBox<T extends string>({
         >
           <span
             aria-hidden="true"
-            style={
-              { "--status-dot": currentConfig.dotColor } as React.CSSProperties
-            }
-            className={styles.statusDot}
+            className={`${styles.statusDot} ${dotStyles[currentConfig.dotColorClass]}`}
           />
           <span className={styles.statusTriggerLabel}>
             {currentConfig.label}
@@ -202,10 +203,7 @@ export function StatusBox<T extends string>({
               >
                 <span
                   aria-hidden="true"
-                  style={
-                    { "--status-dot": opt.dotColor } as React.CSSProperties
-                  }
-                  className={styles.statusDot}
+                  className={`${styles.statusDot} ${dotStyles[opt.dotColorClass]}`}
                 />
                 {opt.label}
               </div>

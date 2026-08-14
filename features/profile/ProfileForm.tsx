@@ -262,7 +262,7 @@ export function ProfileForm() {
             <Avatar
               name={profile.name}
               avatarUrl={profile.avatarUrl}
-              size={150}
+              size="large"
             />
           )}
           <button

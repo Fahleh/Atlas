@@ -53,7 +53,7 @@ export function Header({ onMenuClick }: HeaderProps) {
       {profile ? (
         <div className="flex items-center gap-3">
           <span className={styles.userName}>{profile.name}</span>
-          <Avatar name={profile.name} avatarUrl={profile.avatarUrl} size={32} />
+          <Avatar name={profile.name} avatarUrl={profile.avatarUrl} size="small" />
         </div>
       ) : isError ? (
         <div className="flex items-center gap-3" role="alert">

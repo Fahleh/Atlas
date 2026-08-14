@@ -64,12 +64,11 @@
 
 /* ---- Status dot ---- */
 
-/* Color driven by --status-dot CSS custom property set per-item via inline style */
+/* Color applied via one of styles/statusDot.module.css's fixed classes */
 .statusDot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: var(--status-dot);
   flex-shrink: 0;
 }
 

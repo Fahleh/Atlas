@@ -50,32 +50,22 @@ export function getInitials(name: string): string {
     .toUpperCase();
 }
 
-export type AvatarColor = { bg: string; text: string };
-
-// Non-token hex colors for member avatars. These intentionally fall outside the
-// design token system — they are UI-only accent hues with no semantic meaning,
-// and the token palette does not provide a sufficient range of distinct colours.
-const MEMBER_AVATAR_PALETTE: AvatarColor[] = [
-  { bg: "#ede9fe", text: "#7c3aed" }, // purple
-  { bg: "#cffafe", text: "#0e7490" }, // cyan
-  { bg: "#fce7f3", text: "#be185d" }, // pink
-  { bg: "#ccfbf1", text: "#0f766e" }, // teal
-  { bg: "#e0e7ff", text: "#4338ca" }, // indigo
-  { bg: "#fef9c3", text: "#a16207" }, // warm yellow — distinct from accent
-];
+// TEMPORARY, throwaway live-verification test, not part of the approved diff.
+// Palette hex values now live in Avatar.module.css's .palette0-.palette5.
+export const AVATAR_PALETTE_SIZE = 6;
 
 /**
- * Derives a consistent avatar colour from an initials string.
+ * Derives a consistent avatar palette index from an initials string.
  * The same initials always map to the same palette entry across renders.
  *
  * @param initials - Uppercase initials string, e.g. "JD"
- * @returns Object with bg and text hex colour values
+ * @returns Index 0-5 into Avatar.module.css's fixed palette classes
  */
-export function getMemberAvatarColor(initials: string): AvatarColor {
+export function getMemberAvatarPaletteIndex(initials: string): number {
   const hash = initials
     .split("")
     .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  return MEMBER_AVATAR_PALETTE[hash % MEMBER_AVATAR_PALETTE.length];
+  return hash % AVATAR_PALETTE_SIZE;
 }
 
 const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;

@@ -6,13 +6,14 @@ export const STATUS_LABELS: Record<ProjectStatus, string> = {
   archived: "Archived",
 };
 
+// TEMPORARY, throwaway live-verification test, not part of the approved diff.
 export const PROJECT_STATUS_CONFIG: Record<
   ProjectStatus,
-  { label: string; dotColor: string }
+  { label: string; dotColorClass: "dotMuted" | "dotAccent" | "dotSuccess" }
 > = {
-  active: { label: "Active", dotColor: "var(--color-success)" },
-  completed: { label: "Completed", dotColor: "var(--color-accent)" },
-  archived: { label: "Archived", dotColor: "var(--color-text-muted)" },
+  active: { label: "Active", dotColorClass: "dotSuccess" },
+  completed: { label: "Completed", dotColorClass: "dotAccent" },
+  archived: { label: "Archived", dotColorClass: "dotMuted" },
 };
 
 export const PROJECT_STATUS_ORDER: ProjectStatus[] = [
