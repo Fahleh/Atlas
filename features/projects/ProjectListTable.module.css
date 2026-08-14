@@ -133,20 +133,35 @@
   min-width: 120px;
 }
 
-.progressTrack {
+/* TEMPORARY, throwaway live-verification test, not part of the approved diff. */
+.progressBar {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
   width: 80px;
   flex-shrink: 0;
   height: 4px;
-  background-color: var(--color-surface-raised);
+  border: none;
   border-radius: var(--radius-pill);
+  background-color: var(--color-surface-raised);
   overflow: hidden;
 }
 
-.progressFill {
-  width: 0%;
-  height: 100%;
+.progressBar::-webkit-progress-bar {
+  background-color: var(--color-surface-raised);
+  border-radius: var(--radius-pill);
+}
+
+.progressBar::-webkit-progress-value {
   background-color: var(--color-accent);
   border-radius: var(--radius-pill);
+  transition: width 300ms ease;
+}
+
+.progressBar::-moz-progress-bar {
+  background-color: var(--color-accent);
+  border-radius: var(--radius-pill);
+  transition: width 300ms ease;
 }
 
 .progressLabel {
