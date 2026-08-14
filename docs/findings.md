@@ -135,7 +135,13 @@ Projects grid; visible card text is not included in the accessible name.
 across every route measured. None affect the Best Practices score in this
 Lighthouse version (informative-only audits), which is why this was easy
 to miss without the baseline.
-**Status:** Open. Direct input for `next.config.ts` headers work.
+**Status:** Resolved. CSP, HSTS, COOP, and clickjacking mitigation
+(`X-Frame-Options` plus `frame-ancestors`) are configured in
+`next.config.ts`. Reasoning for the non-default choices (`script-src`'s
+`unsafe-inline`, no HSTS `preload`, strict COOP) is in
+`docs/decisions.md`. `trusted-types-xss` is deliberately not part of
+this fix; it needs its own manual-verification pass and is tracked
+separately.
 
 ### `robots.txt` is broken, not just unoptimized
 **Evidence:** `robots-txt` audit fails; Lighthouse captured the login

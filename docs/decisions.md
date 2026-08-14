@@ -47,6 +47,7 @@ reason to document something here.
 - [Reverted: `TaskList`'s empty-result membership recheck](#reverted-tasklists-empty-result-membership-recheck)
 - [Replacing --extra-headers with a persistent authenticated context](#replacing---extra-headers-with-a-persistent-authenticated-context)
 - [Blanket `robots.txt` disallow, no per-route rules](#blanket-robotstxt-disallow-no-per-route-rules)
+- [Security headers: `unsafe-inline` for `script-src`, no HSTS preload, strict COOP](#security-headers-unsafe-inline-for-script-src-no-hsts-preload-strict-coop)
 
 ---
 
@@ -727,3 +728,53 @@ nothing a crawler could render without a session anyway. A per-route
 rules list would need upkeep on every future route addition for a
 benefit that doesn't exist, no public marketing content is planned. No
 `sitemap` field for the same reason, nothing to list.
+
+---
+
+## Security headers: `unsafe-inline` for `script-src`, no HSTS preload, strict COOP
+
+**Decision:** `next.config.ts`'s CSP uses
+`script-src 'self' 'unsafe-inline'` (plus `'unsafe-eval'` in
+development only), not a nonce or hash. `Strict-Transport-Security`
+ships without `preload`. `Cross-Origin-Opener-Policy` is set to the
+strict `same-origin`, not `same-origin-allow-popups`.
+
+**Why `unsafe-inline`, not a nonce.** CSP's defense against injected
+inline scripts is given up here deliberately. The
+nonce alternative was rejected because Next.js requires dynamic
+rendering on every nonced route (confirmed in Next's own CSP guide),
+conflicting directly with `docs/findings.md`'s open LCP render-delay
+finding. Partial Prerendering (Next 16's `cacheComponents` flag) was
+investigated as a possible middle ground and confirmed incompatible
+with nonce-based CSP, per Next's own docs: static shell scripts have
+no nonce to carry regardless of what streams in dynamically.
+
+**Why the current risk is narrow.** A full sink audit found exactly
+one `dangerouslySetInnerHTML` in the codebase, `app/layout.tsx`'s
+static, developer-authored theme-flash script: no other instance, no
+raw `innerHTML` assignment, no `document.write`. Everything else
+renders through React's default JSX escaping. `'unsafe-inline'`
+widens what an XSS payload could do if one ever landed, but nothing
+in the current codebase gives an attacker a way to get arbitrary
+content into that script or elsewhere.
+
+**Reopen this decision if:** a future feature ever renders
+user-controlled content without React's normal escaping, for
+example a `dangerouslySetInnerHTML` fed by request data, user input,
+or an external API response. That is the point where
+`'unsafe-inline'` stops being a narrow, audited exception and starts
+being a real hole.
+
+**Why HSTS omits preload:** browser preload-list submission is
+effectively irreversible for a long time once accepted, sites stay
+hard to remove even after disabling HSTS elsewhere. That deserves
+its own deliberate decision, not a default bundled into the general
+header rollout. Deferred, not rejected.
+
+**Why COOP uses strict same-origin:** confirmed, by grepping the
+entire codebase, that no cross-origin popup or window-based flow
+exists anywhere, auth or otherwise: no `window.open`, no
+`postMessage`, no `window.opener`, no OAuth popup sign-in. Atlas's
+auth is entirely cookie-based via `@supabase/ssr`. Nothing depends
+on `window.opener` access, so the strict value has no downside to
+weigh against.
