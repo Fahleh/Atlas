@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { SKELETON_STYLE_HASHES } from "./scripts/generate-skeleton-hashes.mjs";
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -8,6 +9,7 @@ const CSP_HEADER = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self'",
+  `style-src-attr 'unsafe-hashes' ${SKELETON_STYLE_HASHES.join(" ")}`,
   "img-src 'self'",
   "font-src 'self'",
   `connect-src 'self' ${SUPABASE_ORIGIN}`,
