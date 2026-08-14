@@ -1,4 +1,3 @@
-import { ClearQueryCacheOnMount } from "@/components/ClearQueryCacheOnMount";
 import styles from "./layout.module.css";
 
 type AuthLayoutProps = {
@@ -8,7 +7,6 @@ type AuthLayoutProps = {
 export default function AuthLayout({ children }: AuthLayoutProps) {
   return (
     <div className={styles.root}>
-      <ClearQueryCacheOnMount />
       <div className={styles.card}>
         <span className={styles.wordmark}>Atlas</span>
         {children}

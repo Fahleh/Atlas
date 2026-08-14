@@ -17,6 +17,38 @@ reason to document something here.
 
 ---
 
+## Table of Contents
+
+- [`EntityModal`/`TaskModal` compound vs. `ProjectModal` single-block](#entitymodaltaskmodal-compound-vs-projectmodal-single-block)
+- [Status field availability at creation time (`CreateTaskInput`/`CreateProjectInput` vs. the live forms)](#status-field-availability-at-creation-time-createtaskinputcreateprojectinput-vs-the-live-forms)
+- [Clearing the React Query cache on `(auth)`/`(dashboard)` layout mount, not just on `onAuthStateChange`](#clearing-the-react-query-cache-on-authdashboard-layout-mount-not-just-on-onauthstatechange)
+- [Bypassing fetch caching in both Supabase clients (`cache: "no-store"`)](#bypassing-fetch-caching-in-both-supabase-clients-cache-no-store)
+- [`useCurrentUser()`'s finite `staleTime`, not `Infinity`](#usecurrentusers-finite-staletime-not-infinity)
+- [Triggering the success-banner side effect imperatively, not via `useEffect` on a boolean](#triggering-the-success-banner-side-effect-imperatively-not-via-useeffect-on-a-boolean)
+- [Keeping `avatars: anyone can view` despite Supabase's own "clients can list all files" warning](#keeping-avatars-anyone-can-view-despite-supabases-own-clients-can-list-all-files-warning)
+- [No memoization on `ProjectSlideOver`'s `openForEdit`/`openForCreate`](#no-memoization-on-projectslideovers-openforeditopenforcreate)
+- [Placing `aria-busy` and the live region on the loading group, not on `Skeleton` itself](#placing-aria-busy-and-the-live-region-on-the-loading-group-not-on-skeleton-itself)
+- [Explicit `.focus()` on the remove-member Cancel button, not browser-default behavior](#explicit-focus-on-the-remove-member-cancel-button-not-browser-default-behavior)
+- [Zinc over slate, and a separate accent color from the warning color](#zinc-over-slate-and-a-separate-accent-color-from-the-warning-color)
+- [URL-derived project selection instead of `ProjectContext`](#url-derived-project-selection-instead-of-projectcontext)
+- [Velocity Status counts tasks due soon, not projects](#velocity-status-counts-tasks-due-soon-not-projects)
+- [Upcoming Tasks project-selection algorithm](#upcoming-tasks-project-selection-algorithm)
+- [Three-tier error boundary structure, not root-only or global-error](#three-tier-error-boundary-structure-not-root-only-or-global-error)
+- [Deferring `app/global-error.tsx`](#deferring-appglobal-errortsx)
+- [Scoped `console.error` exception in error boundaries](#scoped-consoleerror-exception-in-error-boundaries)
+- [Branch workflow: PR-based merges from Production Readiness onward](#branch-workflow-pr-based-merges-from-production-readiness-onward)
+- [Playwright for `scripts/get-auth-cookie.ts`, not Puppeteer or Lighthouse's User Flow API](#playwright-for-scriptsget-auth-cookiets-not-puppeteer-or-lighthouses-user-flow-api)
+- [Moving `AuthListenerProvider` from root `app/layout.tsx` into `app/(dashboard)/layout.tsx`](#moving-authlistenerprovider-from-root-applayouttsx-into-appdashboardlayouttsx)
+- [Distinguishing `sessionExpired` from `forbidden` on failed Postgrest writes](#distinguishing-sessionexpired-from-forbidden-on-failed-postgrest-writes)
+- [`isDirty` is sticky, not re-derived per keystroke, in TaskModal/ProjectModal's edit-mode Save disabling](#isdirty-is-sticky-not-re-derived-per-keystroke-in-taskmodalprojectmodals-edit-mode-save-disabling)
+- [Stripping `configSettings.extraHeaders` from committed Lighthouse reports](#stripping-configsettingsextraheaders-from-committed-lighthouse-reports)
+- [Scoping `QueryProvider` to `app/(dashboard)/layout.tsx`, deleting `ClearQueryCacheOnMount.tsx`](#scoping-queryprovider-to-appdashboardlayouttsx-deleting-clearquerycacheonmounttsx)
+- [Read-side error interpretation is a distinct, narrower function than the write side](#read-side-error-interpretation-is-a-distinct-narrower-function-than-the-write-side)
+- [Reverted: `TaskList`'s empty-result membership recheck](#reverted-tasklists-empty-result-membership-recheck)
+- [Replacing --extra-headers with a persistent authenticated context](#replacing---extra-headers-with-a-persistent-authenticated-context)
+
+---
+
 ## `EntityModal`/`TaskModal` compound vs. `ProjectModal` single-block
 
 **Decision:** `TaskModal` is a compound component (`.Header`, `.Title`,
@@ -471,7 +503,7 @@ error-reporting service is ever integrated.
 
 ---
 
-### Branch workflow: PR-based merges from Production Readiness onward
+## Branch workflow: PR-based merges from Production Readiness onward
 
 **Why:** Earlier work merged branches to `develop` locally, a solo,
 low-ceremony shortcut with no reviewer involved. From Production
@@ -574,6 +606,47 @@ runs was a live Supabase session (rotated after discovery, dead at time of
 fix). Any future authenticated Lighthouse run must strip
 `configSettings.extraHeaders` from **both** output formats before
 committing, not just the JSON.
+
+---
+
+## Scoping `QueryProvider` to `app/(dashboard)/layout.tsx`, deleting `ClearQueryCacheOnMount.tsx`
+
+**Decision:** `QueryProvider` now mounts only in `app/(dashboard)/layout.tsx`,
+wrapping `AuthListenerProvider`, not in root `app/layout.tsx`.
+`components/ClearQueryCacheOnMount.tsx` is deleted; it is no longer
+rendered in either layout.
+
+**Supersedes the cache-clearing entry above ("Clearing the React Query
+cache on `(auth)`/`(dashboard)` layout mount, not just on
+`onAuthStateChange`"):** that entry's incident history remains accurate
+and unchanged, both incidents happened exactly as recorded. Only the
+prevention mechanism changes, from an explicit `ClearQueryCacheOnMount`
+call in both layouts to the scoped provider's own mount/unmount lifecycle,
+described below.
+
+**Why:** `QueryProvider` was mounted at root even though only `(dashboard)`
+routes ever call a React Query hook, confirmed by grepping every
+`useQuery`/`useMutation`/`useQueryClient` call site in the codebase. That
+gave `(auth)` routes a query client with no reason to exist there, which is
+exactly why `ClearQueryCacheOnMount` had to run in both layouts, defending
+a client `(auth)` never needed. Scoping the provider to where it's used
+makes that defensive clearing unnecessary, not redundant: a route never
+given a client can't leak stale data from one.
+
+**Why this is a stronger cache-leak defense, not just a smaller one:**
+`QueryProvider` builds its `QueryClient` with a `useState` lazy
+initializer, one instance per mount, not a module-level singleton.
+`(dashboard)/layout.tsx` fully unmounts on every crossing to `(auth)`, the
+same route-group-crossing guarantee the cache-clearing entry above already
+relies on, so each `(auth)` → `(dashboard)` crossing constructs a
+genuinely new client. Unlike the `.clear()` call it replaces, which empties
+an existing client while the same object and its subscribers keep living,
+an unmounted client has no subscribers left, so a late-resolving fetch
+from the previous session can't write a stale entry into it.
+
+**Measured effect, secondary to the above:** real but partial improvement
+to the LCP finding this targeted. See `docs/findings.md` for the full
+before/after numbers.
 
 ---
 
