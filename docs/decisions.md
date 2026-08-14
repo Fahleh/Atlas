@@ -49,6 +49,7 @@ reason to document something here.
 - [Blanket `robots.txt` disallow, no per-route rules](#blanket-robotstxt-disallow-no-per-route-rules)
 - [Security headers: `unsafe-inline` for `script-src`, no HSTS preload, strict COOP](#security-headers-unsafe-inline-for-script-src-no-hsts-preload-strict-coop)
 - [Zero-exception style-src-attr: class refactors, a generated hash allowlist, and native `<progress>`](#zero-exception-style-src-attr-class-refactors-a-generated-hash-allowlist-and-native-progress)
+- [Trusted Types and style-src: production-only enforcement](#trusted-types-and-style-src-production-only-enforcement)
 
 ---
 
@@ -866,3 +867,55 @@ exists anywhere, auth or otherwise: no `window.open`, no
 auth is entirely cookie-based via `@supabase/ssr`. Nothing depends
 on `window.opener` access, so the strict value has no downside to
 weigh against.
+
+---
+
+## Trusted Types and style-src: production-only enforcement
+
+**Decision:** Trusted Types enforcement (require-trusted-types-for 'script'
+and trusted-types default) and style-src's strict policy (no 'unsafe-inline')
+both only apply in production, gated the same way script-src's 'unsafe-eval'
+already is.
+
+**Why. Incident: confirmed via a real `npm run dev` session, not
+assumed from the production result.** Both had only ever been
+verified against `npm run build && npm run start`. Running them under
+`npm run dev` for the first time, with a real
+`securitypolicyviolation` listener attached, surfaced four distinct
+breakages, not three: React's own development-mode `eval()`, used for
+reconstructing call stacks for debugging, blocked because
+`createScript` is undefined. Turbopack's HMR client chunk,
+`[turbopack]_browser_dev_hmr-client_hmr-client_ts_*.js`, failed
+`createScriptURL`'s validation, its dev-mode naming includes
+characters (`[`, `]`) the production chunk-path pattern was never
+built to expect. Next's dev-mode error overlay writes CSS
+(`:root {--next-error-bg: ...}`) into the page via `innerHTML`,
+blocked because `createHTML` is undefined, a Trusted Types failure.
+And, separately, Next's dev indicator UI inserts its own `<style>`
+element for a `@font-face` rule (`__nextjs-Geist`), which is a plain
+`style-src-elem` failure with nothing to do with Trusted Types at
+all, `style-src 'self'` has never had a dev-mode exception the way
+`script-src` does.
+
+**Why none of the four got a narrower fix instead.** All four are
+internal to React, Next, and Turbopack's own development-time
+tooling, not Atlas application code, so there's no app-side call site
+to wrap in a policy or a hash. Widening `createScript` or
+`createHTML` to pass strings through would mean not enforcing those
+sinks at all. Widening `createScriptURL`'s regex to accept
+Turbopack's dev-mode chunk naming, or adding a hash for the Geist
+`@font-face` rule, was considered and rejected for the same reason:
+that naming and that rule are internal, undocumented dev-bundler
+output, not a stable contract, and coupling production security
+policy to it means a future Next/Turbopack upgrade can break
+enforcement silently. None of this touches how Atlas is actually used
+in production, so scoping to production is the correct fix, not a
+workaround.
+
+**Verification.** Re-run after the fix: a real `npm run dev` session
+loads clean, `securitypolicyviolation`-free, with Fast Refresh
+confirmed still working (an edited file hot-reloads without a full
+page reload). A real `npm run build && npm run start` session
+confirmed still clean across all three routes, the post-login
+client-side redirect, and both `<Link>` navigations, matching the
+result from before this bug was found.
