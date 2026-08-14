@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { Header } from "@/components/Header";
-import { ClearQueryCacheOnMount } from "@/components/ClearQueryCacheOnMount";
 import { AuthListenerProvider } from "@/providers/AuthListenerProvider";
+import { QueryProvider } from "@/providers/QueryProvider";
 import styles from "./layout.module.css";
 
 type DashboardLayoutProps = {
@@ -21,16 +21,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <AuthListenerProvider>
-      <div className={styles.shell}>
-        <ClearQueryCacheOnMount />
-        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+    <QueryProvider>
+      <AuthListenerProvider>
+        <div className={styles.shell}>
+          <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-        <Header onMenuClick={() => setSidebarOpen(true)} />
+          <Header onMenuClick={() => setSidebarOpen(true)} />
 
-        {/* Main content area - children remain as Server Components */}
-        <main className={styles.main}>{children}</main>
-      </div>
-    </AuthListenerProvider>
+          {/* Main content area - children remain as Server Components */}
+          <main className={styles.main}>{children}</main>
+        </div>
+      </AuthListenerProvider>
+    </QueryProvider>
   );
 }

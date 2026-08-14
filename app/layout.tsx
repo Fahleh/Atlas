@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/providers/ThemeContext";
 import "../styles/global.css";
-import { QueryProvider } from "@/providers/QueryProvider";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -39,7 +38,7 @@ export default function RootLayout({
           }}
         />
         <ThemeProvider>
-          <QueryProvider>{children}</QueryProvider>
+          {children}
         </ThemeProvider>
       </body>
     </html>
