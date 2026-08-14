@@ -8,7 +8,7 @@ const SUPABASE_ORIGIN = "https://hgyygkysbljijxmltbgt.supabase.co";
 const CSP_HEADER = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
-  "style-src 'self'",
+  `style-src 'self'${isDev ? " 'unsafe-inline'" : ""}`,
   `style-src-attr 'unsafe-hashes' ${SKELETON_STYLE_HASHES.join(" ")}`,
   "img-src 'self'",
   "font-src 'self'",
@@ -18,8 +18,9 @@ const CSP_HEADER = [
   "form-action 'self'",
   "frame-ancestors 'none'",
   "upgrade-insecure-requests",
-  "require-trusted-types-for 'script'",
-  "trusted-types default",
+  ...(isDev
+    ? []
+    : ["require-trusted-types-for 'script'", "trusted-types default"]),
 ].join("; ");
 
 const nextConfig: NextConfig = {
