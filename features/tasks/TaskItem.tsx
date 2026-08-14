@@ -3,6 +3,7 @@
 import type { Task } from "@/types/atlas.types";
 import { STATUS_CONFIG } from "./taskUtils";
 import styles from "./TaskItem.module.css";
+import dotStyles from "@/styles/statusDot.module.css";
 
 type TaskItemProps = {
   task: Task;
@@ -43,8 +44,7 @@ export function TaskItem({ task, onSelect }: TaskItemProps) {
       <div className={styles.statusBadge}>
         <span
           aria-hidden="true"
-          style={{ "--task-dot-color": config.dotColor } as React.CSSProperties}
-          className={styles.statusDot}
+          className={`${styles.statusDot} ${dotStyles[config.dotColorClass]}`}
         />
         <span>{config.label}</span>
       </div>

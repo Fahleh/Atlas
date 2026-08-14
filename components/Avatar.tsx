@@ -1,44 +1,51 @@
 import Image from "next/image";
-import { getInitials, getMemberAvatarColor } from "@/lib/utils";
+import { getInitials, getMemberAvatarPaletteIndex } from "@/lib/utils";
 import styles from "./Avatar.module.css";
+
+// TEMPORARY, throwaway live-verification test, not part of the approved diff.
+type AvatarSizeVariant = "default" | "small" | "medium" | "large";
+
+const AVATAR_SIZE_PX: Record<AvatarSizeVariant, number> = {
+  default: 34,
+  small: 32,
+  medium: 36,
+  large: 150,
+};
+
+const AVATAR_SIZE_CLASS: Record<AvatarSizeVariant, string> = {
+  default: styles.avatarDefault,
+  small: styles.avatarSmall,
+  medium: styles.avatarMedium,
+  large: styles.avatarLarge,
+};
 
 type AvatarProps = {
   name: string;
   avatarUrl?: string | null;
-  size?: number;
+  size?: AvatarSizeVariant;
 };
 
 type AvatarOverflowProps = {
   count: number;
-  size?: number;
+  size?: AvatarSizeVariant;
 };
 
-const DEFAULT_AVATAR_SIZE = 34;
-
-/**
- * Generic avatar for any named entity. Renders a photo via next/image when
- * `avatarUrl` is present, otherwise falls back to an initials circle colored
- * deterministically from the name's initials.
- *
- * @param name - Full name used for initials fallback and alt text
- * @param avatarUrl - Photo URL, or null/absent to use the initials fallback
- * @param size - Diameter in pixels (default 34, matching the existing member-avatar sizing)
- */
 export function Avatar({
   name,
   avatarUrl = null,
-  size = DEFAULT_AVATAR_SIZE,
+  size = "default",
 }: AvatarProps) {
-  const style = { "--avatar-size": `${size}px` } as React.CSSProperties;
+  const sizePx = AVATAR_SIZE_PX[size];
+  const sizeClass = AVATAR_SIZE_CLASS[size];
 
   if (avatarUrl) {
     return (
-      <span style={style} className={styles.avatar}>
+      <span className={`${styles.avatar} ${sizeClass}`}>
         <Image
           src={avatarUrl}
           alt={name}
-          width={size}
-          height={size}
+          width={sizePx}
+          height={sizePx}
           className={styles.image}
         />
       </span>
@@ -46,41 +53,22 @@ export function Avatar({
   }
 
   const initials = getInitials(name);
-  const color = getMemberAvatarColor(initials);
+  const paletteIndex = getMemberAvatarPaletteIndex(initials);
+  const paletteClass = styles[`palette${paletteIndex}`];
 
   return (
-    <span
-      style={
-        {
-          ...style,
-          "--avatar-bg": color.bg,
-          "--avatar-text": color.text,
-        } as React.CSSProperties
-      }
-      className={styles.avatar}
-    >
-      <span className={styles.initials}>{initials}</span>
+    <span className={`${styles.avatar} ${sizeClass}`}>
+      <span className={`${styles.initials} ${paletteClass}`}>{initials}</span>
     </span>
   );
 }
 
-/**
- * Overflow indicator ("+N") for a capped avatar strip, sized identically
- * to Avatar via the same --avatar-size mechanism — never drifts out of
- * sync with Avatar's actual dimensions since both derive from the same
- * DEFAULT_AVATAR_SIZE constant.
- *
- * @param count - Number of additional, non-visible members
- * @param size - Diameter in pixels (default 34, matching Avatar's default)
- */
 export function AvatarOverflow({
   count,
-  size = DEFAULT_AVATAR_SIZE,
+  size = "default",
 }: AvatarOverflowProps) {
-  const style = { "--avatar-size": `${size}px` } as React.CSSProperties;
+  const sizeClass = AVATAR_SIZE_CLASS[size];
   return (
-    <span style={style} className={styles.overflow}>
-      +{count}
-    </span>
+    <span className={`${styles.overflow} ${sizeClass}`}>+{count}</span>
   );
 }

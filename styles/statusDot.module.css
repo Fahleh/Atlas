@@ -1,0 +1,11 @@
+.dotMuted {
+  background-color: var(--color-text-muted);
+}
+
+.dotAccent {
+  background-color: var(--color-accent);
+}
+
+.dotSuccess {
+  background-color: var(--color-success);
+}

@@ -48,6 +48,7 @@ reason to document something here.
 - [Replacing --extra-headers with a persistent authenticated context](#replacing---extra-headers-with-a-persistent-authenticated-context)
 - [Blanket `robots.txt` disallow, no per-route rules](#blanket-robotstxt-disallow-no-per-route-rules)
 - [Security headers: `unsafe-inline` for `script-src`, no HSTS preload, strict COOP](#security-headers-unsafe-inline-for-script-src-no-hsts-preload-strict-coop)
+- [Zero-exception style-src-attr: class refactors, a generated hash allowlist, and native `<progress>`](#zero-exception-style-src-attr-class-refactors-a-generated-hash-allowlist-and-native-progress)
 
 ---
 
@@ -728,6 +729,93 @@ nothing a crawler could render without a session anyway. A per-route
 rules list would need upkeep on every future route addition for a
 benefit that doesn't exist, no public marketing content is planned. No
 `sitemap` field for the same reason, nothing to list.
+
+---
+
+## Zero-exception style-src-attr: class refactors, a generated hash allowlist, and native `<progress>`
+
+**Decision:** `style-src-attr` ships with no `unsafe-inline`. Every
+inline `style` write in the codebase was either converted to a fixed
+CSS class (`Avatar`'s size/palette, `StatusBox`/`TaskItem`/the
+dashboard's status dots), covered by a build-time-generated hash
+allowlist (`Skeleton`, the only genuinely open-ended, developer-authored
+set of literal values), or removed by switching to a native element
+that doesn't use the `style` attribute at all (`ProjectCard`/
+`ProjectListTable`'s progress fill, now `<progress>`).
+
+**Why `unsafe-inline` was rejected here despite being cheaper, unlike
+the `script-src` decision above.** Style attributes get added far more
+casually than inline scripts, a `style={{}}` prop is ordinary,
+unremarkable React, not a deliberate, rare choice the way
+`dangerouslySetInnerHTML` is. A page-wide `style-src-attr
+'unsafe-inline'` would be a standing invitation for the next inline
+style anyone adds, anywhere, to silently reopen exactly the injection
+surface this work closes, with no build-time signal. The `script-src`
+exception stays narrow specifically because it's one static,
+developer-authored script; `style-src-attr` had no equivalent narrow
+story available without doing the refactor.
+
+**Why native `<progress>`, not bucketing, for the one value that
+couldn't become a fixed class.** The progress fill is a continuously
+computed percentage (0-100), not a small closed set, so it could not
+follow the class or hash path without a real precision loss against
+`docs/architecture.md`'s "honest percentages" principle (never show
+100% unless done === total, never 0% when done > 0, clamp to [1, 99]).
+Switching to `<progress value={progressPercent} max={100}>` removes
+the `style` attribute from that call site entirely, `value`/`max` are
+plain DOM attributes, not CSS, so no CSP concern applies to them at
+all, while also replacing the hand-rolled `role="progressbar"`/
+`aria-valuenow`/`aria-valuemin`/`aria-valuemax` with real native
+semantics, a net accessibility improvement, not just a CSP fix.
+
+**Known, accepted gap: the fill's grow animation is Chromium-only.**
+Confirmed via an isolated cross-browser test (forcing a value change
+and sampling the fill's pixel position over time): Chromium honors
+`transition: width 300ms ease` on `::-webkit-progress-value` with a
+real, smooth animation; Firefox does not animate the equivalent
+`::-moz-progress-bar` rule at all, the fill jumps instantly. The
+previous `div`-based implementation animated identically in both
+engines, since it was a plain CSS transition on a normal element, not
+routed through a UA-shadow pseudo-element. This is a real, narrow
+visual regression for Firefox users, accepted in exchange for removing
+the sink entirely rather than exempting it. Revisit if Firefox's
+`::-moz-progress-bar` transition support changes, or if this gap
+proves worse in practice than accepted here.
+
+**Why `Skeleton` gets a generated hash list instead of a class-based
+refactor.** A dynamic-Tailwind-class version was built and live-tested
+first: it compiled with zero errors and produced zero CSP violations,
+while every skeleton silently rendered at `0px` height and either
+`0px` or an incidental inherited width, confirmed via `getComputedStyle`
+across all 51 live instances. Tailwind's JIT scanner requires a
+complete class-name literal somewhere in scanned source; a
+template-literal-interpolated class name never satisfies that, no
+matter how reasonable the resulting code looks. A real Tailwind-based
+fix exists (call sites passing complete literal classes directly,
+not `Skeleton` building them from props), but changes `Skeleton`'s
+API across all 30 call sites for a benefit, one fewer CSP relaxation
+keyword, judged not worth that surface today. The hash list is
+generated at build time from the actual call sites (verified: 18 of 18
+independently-observed live violation hashes matched the generator's
+output exactly), so it cannot drift from source the way a
+hand-maintained list could.
+
+**`next/image`'s injected `color: transparent` needs no hash entry,
+confirmed, not assumed.** Repeated, decisive live testing (disabling
+`next/image` entirely and diffing the resulting CSP violation set,
+then re-enabling it and checking the underlying `<img>`'s computed
+`color` directly) confirmed this style is not blocked by the current
+CSP at all: it applies successfully, `getComputedStyle` reports
+`rgba(0, 0, 0, 0)`, no `securitypolicyviolation` event ever fires for
+it. **Reopen this decision if a future `next/image` version changes
+how that style is applied** (a different internal write path, a
+different `showAltText` default, or a change to which sink it goes
+through). If that ever starts producing real CSP violations, it would
+fail silently and app-wide: every avatar photo across the entire app
+uses this same code path, so a change here wouldn't show up as one
+broken component, it would show up as every user photo losing its
+alt-text-hiding behavior at once, worth naming as the specific, narrow
+risk this acceptance carries forward.
 
 ---
 

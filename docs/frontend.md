@@ -347,21 +347,28 @@ Props:
 type AvatarProps = {
   name: string;
   avatarUrl?: string | null;
-  size?: number;
+  size?: "default" | "small" | "medium" | "large";
 };
 ```
 
+`size` selects a fixed CSS class (`Avatar.module.css`'s `.avatarDefault`
+/`.avatarSmall`/`.avatarMedium`/`.avatarLarge`, 34/32/36/150px), not an
+arbitrary pixel value; a `AVATAR_SIZE_PX` map derives the numeric
+`width`/`height` `next/image` needs from the same variant. This is a
+deliberate, CSP-driven constraint, not an accessibility or design
+requirement — see the style-src-attr entry in `docs/decisions.md`.
+
 - Persisted URL: render `next/image`.
-- Set required `width` and `height` from `size`.
 - Missing URL: initials fallback using `getInitials` and
-  `getMemberAvatarColor` from `lib/utils.ts`.
+  `getMemberAvatarPaletteIndex` from `lib/utils.ts`, which selects one
+  of six fixed classes (`Avatar.module.css`'s `.palette0`-`.palette5`).
 
 ### `AvatarOverflow`
 
 Sibling export for capped avatar strips.
 
-Use the same `--avatar-size` custom property and
-`DEFAULT_AVATAR_SIZE` constant as `Avatar`.
+Use the same `size` variant and `AVATAR_SIZE_CLASS`/`AVATAR_SIZE_PX`
+maps as `Avatar`.
 
 ### Accessibility mode
 

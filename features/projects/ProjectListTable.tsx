@@ -124,19 +124,12 @@ export function ProjectListTable({
               {/* PROGRESS column */}
               <td className={styles.td}>
                 <div className={styles.progressCell}>
-                  <div
-                    className={styles.progressTrack}
-                    role="progressbar"
-                    aria-valuenow={progressPercent}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
+                  <progress
+                    className={styles.progressBar}
+                    value={progressPercent}
+                    max={100}
                     aria-label="Project progress"
-                  >
-                    <div
-                      className={styles.progressFill}
-                      style={{ width: `${progressPercent}%` }}
-                    />
-                  </div>
+                  />
                   <span className={styles.progressLabel}>
                     {progressPercent}%
                   </span>

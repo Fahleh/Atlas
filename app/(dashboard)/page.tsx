@@ -17,6 +17,7 @@ import { VelocityStatus } from "@/features/projects/VelocityStatus";
 import { DUE_DATE_FORMAT } from "@/features/projects/projectUtils";
 import { STATUS_CONFIG } from "@/features/tasks/taskUtils";
 import layoutStyles from "@/styles/layout.module.css";
+import dotStyles from "@/styles/statusDot.module.css";
 import styles from "./page.module.css";
 
 const RECENT_PROJECTS_COUNT = 4;
@@ -299,13 +300,7 @@ export default function DashboardPage() {
                       <div className={styles.taskRowHeader}>
                         <span
                           aria-hidden="true"
-                          style={
-                            {
-                              "--task-dot-color":
-                                STATUS_CONFIG[task.status].dotColor,
-                            } as React.CSSProperties
-                          }
-                          className={styles.taskStatusDot}
+                          className={`${styles.taskStatusDot} ${dotStyles[STATUS_CONFIG[task.status].dotColorClass]}`}
                         />
                         <span className={styles.taskTitle}>{task.title}</span>
                       </div>

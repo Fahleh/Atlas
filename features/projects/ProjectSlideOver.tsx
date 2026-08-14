@@ -517,7 +517,7 @@ export function ProjectSlideOver({
                       <Avatar
                         name={member.name}
                         avatarUrl={member.avatarUrl}
-                        size={36}
+                        size="medium"
                       />
                       <div className={styles.memberInfo}>
                         <span className={styles.memberName}>{member.name}</span>
