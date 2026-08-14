@@ -13,8 +13,8 @@
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-4);
-  background-color: var(--color-accent);
-  color: var(--color-text-on-accent);
+  background-color: var(--color-button-primary-bg);
+  color: var(--color-button-primary-text);
   border: none;
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
@@ -24,7 +24,7 @@
 }
 
 .newButton:hover {
-  background-color: var(--color-accent-hover);
+  background-color: var(--color-button-primary-hover);
 }
 
 .newButton:focus-visible {
@@ -202,7 +202,7 @@
   padding: 0;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
-  color: var(--color-accent);
+  color: var(--color-text-accent);
   cursor: pointer;
   transition: color 150ms ease;
 }

@@ -61,8 +61,8 @@
   justify-content: center;
   width: 36px;
   height: 36px;
-  background-color: var(--color-accent);
-  color: var(--color-text-on-accent);
+  background-color: var(--color-button-primary-bg);
+  color: var(--color-button-primary-text);
   border: 2px solid var(--color-surface);
   border-radius: var(--radius-pill);
   cursor: pointer;
@@ -70,7 +70,7 @@
 }
 
 .changePhotoButton:hover {
-  background-color: var(--color-accent-hover);
+  background-color: var(--color-button-primary-hover);
 }
 
 .changePhotoButton:focus-visible {
@@ -136,8 +136,8 @@
 
 .saveButton {
   padding: var(--space-2) var(--space-4);
-  background-color: var(--color-accent);
-  color: var(--color-text-on-accent);
+  background-color: var(--color-button-primary-bg);
+  color: var(--color-button-primary-text);
   border: none;
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
@@ -147,7 +147,7 @@
 }
 
 .saveButton:hover:not(:disabled) {
-  background-color: var(--color-accent-hover);
+  background-color: var(--color-button-primary-hover);
 }
 
 .saveButton:disabled {
