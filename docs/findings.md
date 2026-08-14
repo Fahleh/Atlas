@@ -27,8 +27,9 @@ numeric history in the respective `docs/lighthouse/` folders.
 is in client-side rendering time, not asset loading. The `QueryProvider`
 scoping contributed a real, modest improvement, not a fix: mobile's median
 stayed above the 2,500ms Good threshold. The remaining cost is framework
-baseline plus Next's polyfill chunk, see the entry below; closing this
-finding depends on that one, not further work here.
+baseline plus Next's polyfill chunk, see the entry below, now Tracked and
+not being pursued (upstream Next.js behavior, not an Atlas
+misconfiguration). No further active work is planned on this finding.
 
 ### Framework baseline and Next's polyfill chunk dominate `/login`'s remaining JS
 **Evidence:** Of roughly 627KB minified shipped to `/login` before the
@@ -38,10 +39,11 @@ chunk (confirmed by its license banner, not declared in `package.json`, no
 app code references it) accounted for another 112.6KB, roughly 505KB
 total, about 80% of the route's JS. None of it moved when `QueryProvider`
 was scoped down.
-**Status:** Open. Addressing it means touching Next's build/browserslist
-target for the polyfill chunk, a separate decision from anything scoped
-here. This, not further provider scoping, is what resolving the LCP
-render-delay finding above actually requires.
+**Status:** Tracked, not an Atlas misconfiguration. No `.browserslistrc`
+exists, but Next.js 16 already defaults to a modern browser target
+(chrome 111+ and equivalents). An open upstream issue,
+vercel/next.js#86785, confirms polyfills still ship regardless. No
+config-level fix is currently available. Not being pursued.
 
 ### Mobile dashboard and mobile projects are the lowest scores in the baseline
 **Evidence:** `dashboard.report.json` (mobile): 71. `projects.report.json`
