@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { Avatar, AvatarOverflow } from "@/components/Avatar";
 import { getInitials } from "@/lib/utils";
@@ -11,9 +12,9 @@ import sharedStyles from "./projectShared.module.css";
 
 type ProjectCardProps = {
   project: Project;
-  onSelect: (id: string) => void;
   members: Member[];
   taskCounts: TaskCounts;
+  replaceHistory?: boolean;
 };
 
 const STATUS_BADGE_CLASS: Record<ProjectStatus, string> = {
@@ -25,18 +26,19 @@ const STATUS_BADGE_CLASS: Record<ProjectStatus, string> = {
 const MAX_VISIBLE_MEMBERS = 4;
 
 /**
- * Displays a single project as a clickable card.
- * Clicking or pressing Enter/Space calls onSelect with the project ID.
+ * Displays a single project as a card. The project name is a real link
+ * to `/projects?project=<id>`, stretched via `styles.cardLink`'s `::after`
+ * to cover the whole card as the click/tap target.
  *
  * @param project - The project to display
- * @param onSelect - Callback fired with the project ID when the card is activated
  * @param members - Project members to render as an avatar strip
+ * @param replaceHistory - Whether the link replaces history instead of pushing
  */
 export function ProjectCard({
   project,
-  onSelect,
   members,
   taskCounts,
+  replaceHistory = false,
 }: ProjectCardProps) {
   const visibleMembers = members.slice(0, MAX_VISIBLE_MEMBERS);
   const overflowCount = members.length - visibleMembers.length;
@@ -44,25 +46,9 @@ export function ProjectCard({
     taskCounts.total === 0
       ? 0
       : Math.round((taskCounts.done / taskCounts.total) * 100);
-  function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
-    if (e.key === "Enter") {
-      onSelect(project.id);
-    }
-    if (e.key === " ") {
-      e.preventDefault();
-      onSelect(project.id);
-    }
-  }
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      aria-label={`Open ${project.name} details`}
-      onClick={() => onSelect(project.id)}
-      onKeyDown={handleKeyDown}
-      className={styles.card}
-    >
+    <div className={styles.card}>
       <div className={styles.cardHeader}>
         <div className={styles.avatar} aria-hidden="true">
           {getInitials(project.name)}
@@ -79,7 +65,15 @@ export function ProjectCard({
       </div>
 
       <div className={styles.cardBody}>
-        <h3 className={styles.name}>{project.name}</h3>
+        <h3 className={styles.name}>
+          <Link
+            href={`/projects?project=${project.id}`}
+            replace={replaceHistory}
+            className={styles.cardLink}
+          >
+            {project.name}
+          </Link>
+        </h3>
         <p className={styles.description}>{project.description}</p>
       </div>
 
@@ -97,6 +91,7 @@ export function ProjectCard({
 
       <div className={styles.cardFooter}>
         <div
+          role="group"
           className={sharedStyles.memberAvatars}
           aria-label={`Project members (${members.length})`}
         >

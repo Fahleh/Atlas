@@ -49,6 +49,7 @@ reason to document something here.
 - [Zero-exception style-src-attr: class refactors, a generated hash allowlist, and native `<progress>`](#zero-exception-style-src-attr-class-refactors-a-generated-hash-allowlist-and-native-progress)
 - [Trusted Types and style-src: production-only enforcement](#trusted-types-and-style-src-production-only-enforcement)
 - [Splitting `--color-accent` into a background token and a text token, and fixing the two gray text tokens alongside it](#splitting-color-accent-into-a-background-token-and-a-text-token-and-fixing-the-two-gray-text-tokens-alongside-it)
+- [`ProjectCard` moved from a `role="button"` div to a real `<Link>`](#projectcard-moved-from-a-rolebutton-div-to-a-real-link)
 
 ---
 
@@ -303,12 +304,13 @@ consolidating them for token-count convenience.
 `useSearchParams().get("project")` on `/projects?project=<id>`, not from a
 Context provider. `providers/ProjectContext.tsx` was deleted, along with
 `ProjectProvider` in `app/layout.tsx`, since selection was its only
-responsibility. Opening a project from a card, and closing the slide-over,
-both call `router.replace` (same-route selection change, not a new
-destination — keeps one history entry for "being on /projects"). Navigating
-to a project from the dashboard's Recent Projects section calls `router.push`
-instead, since that's a real cross-route navigation and Back should return to
-the dashboard, not skip past it.
+responsibility. Opening a project from a card uses the same-route replace
+behavior (keeps one history entry for "being on /projects"); closing the
+slide-over also calls `router.replace`. Navigating to a project from the
+dashboard's Recent Projects section pushes instead, a real cross-route
+navigation where Back should return to the dashboard, not skip past it. See
+"ProjectCard moved from a role="button" div to a real <Link>" below for how
+ProjectCard implements this distinction today.
 
 **Why:** Context state and the URL were two independent sources of truth for
 "which project is selected." Context persists across client-side navigation
@@ -1034,3 +1036,45 @@ Giving that up permanently, plus restructuring `(dashboard)/layout.tsx`
 out of being a single Client Component, to remove a sub-100ms loading
 state isn't a proportionate trade. Revisit if `cacheComponents` is
 ever adopted app-wide for other reasons.
+
+---
+
+## `ProjectCard` moved from a `role="button"` div to a real `<Link>`
+
+**Decision:** `ProjectCard`'s outer element is a plain `div` again,
+not `role="button"`. The click/keyboard target is a real `<Link
+href="/projects?project=<id>">` wrapping the project name, stretched
+to cover the whole card via a `::after` pseudo-element. `onSelect`
+is gone; `ProjectCard` takes an optional `replaceHistory` prop
+instead, matching the push/replace distinction the "URL-derived
+project selection" entry above already documents, passed from
+`ProjectList.tsx` only.
+
+**Why.** `label-content-name-mismatch` failed on all 4 cards: the
+old `aria-label="Open {name} details"` fully overrode the card's
+real content, since an explicit `aria-label` replaces
+name-from-content entirely, and a hand-maintained summary was always
+going to drift out of sync with the card's actual fields. A real
+link's accessible name comes from its own visible text by
+construction, nothing to maintain.
+
+**`:has()` gates hover/focus pass-through, Firefox needs a
+fallback.** `.card:has(.cardLink:hover/:focus-visible)` lets the
+whole card react to the link's state without JS. Chrome (105+) and
+Safari (15.4+) are covered by this project's browser targets;
+Firefox isn't until 121, a real gap for 111-120. Hover degrading
+there is harmless. Focus isn't: the rule also strips the link's own
+native outline, so without `:has()` a keyboard user would get no
+focus indicator at all. Gated behind `@supports selector(:has(a))`
+so a `:has()`-less browser keeps the link's ordinary native outline
+instead of losing focus visibility.
+
+**Found along the way: the member-avatars `aria-label` was never
+actually announced.** Removing `role="button"` surfaced a new
+`aria-prohibited-attr` violation on that `div`'s `aria-label`.
+Confirmed against the pre-change code that this didn't fail there:
+`role="button"` forces all descendants into ARIA's
+presentational-children behavior, so the label was structurally
+void the whole time, never live in the accessibility tree. Fixed
+with `role="group"`, now valid and, for the first time, actually
+announced.
