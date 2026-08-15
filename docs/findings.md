@@ -122,13 +122,32 @@ flagged at all. See `docs/decisions.md`.
 Tasks Done `<dd role="progressbar">` inside `ProjectStats`' `<dl>`. ARIA
 `progressbar` is not an allowed role there, and it makes the `<dl>`'s
 direct children invalid.
-**Status:** Open. First observed in this run.
+**Status:** Resolved. The role, aria-valuenow, aria-valuemin,
+aria-valuemax, and aria-label are removed from the dd entirely. This
+stat has no visual progress bar, just a plain number pair identical
+to its siblings; the role was applying widget semantics to something
+that was never a widget. Confirmed via axe-core against the real
+authenticated page: both audits clear.
 
 ### `ProjectCard`'s accessible name does not include its visible text
 **Evidence:** `docs/lighthouse/baseline-2026-08-11/dashboard.report.json`:
 `label-content-name-mismatch` fails on all 4 `ProjectCard`s in the Recent
 Projects grid; visible card text is not included in the accessible name.
-**Status:** Open. First observed in this run.
+**Status:** Resolved. The card moved from a `role="button"` div with an
+overriding `aria-label` to a real, stretched `<Link>` whose accessible name
+comes from its own visible text. See `docs/decisions.md`.
+
+### Member-avatars `aria-label` was structurally invalid, never announced
+**Evidence:** Found as a side effect of fixing the entry above, not part of
+the original baseline audit. After removing `ProjectCard`'s outer
+`role="button"`, a full axe-core run flagged `aria-prohibited-attr` on the
+member-avatars `div`'s `aria-label="Project members (N)"`, all 4 cards.
+Confirmed via a rebuild of the pre-change code that this violation did not
+exist there, root-caused to ARIA's presentational-children behavior under
+`role="button"` silently voiding the attribute rather than making it valid.
+**Status:** Resolved. Added `role="group"` to the member-avatars `div`,
+restoring it as a real, valid, and for the first time actually
+screen-reader-announced label. See `docs/decisions.md`.
 
 ---
 
