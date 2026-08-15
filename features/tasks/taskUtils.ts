@@ -1,6 +1,5 @@
 import type { TaskStatus } from "@/types/atlas.types";
 
-// TEMPORARY, throwaway live-verification test, not part of the approved diff.
 export const STATUS_CONFIG: Record<
   TaskStatus,
   { label: string; dotColorClass: "dotMuted" | "dotAccent" | "dotSuccess" }

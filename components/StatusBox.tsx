@@ -7,7 +7,6 @@ import dotStyles from "@/styles/statusDot.module.css";
 
 // ---- Types ------------------------------------------------------------------
 
-// TEMPORARY, throwaway live-verification test, not part of the approved diff.
 export type StatusDotColorClass = "dotMuted" | "dotAccent" | "dotSuccess";
 
 export type StatusBoxConfig<T extends string> = Record<

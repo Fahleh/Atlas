@@ -6,7 +6,6 @@ export const STATUS_LABELS: Record<ProjectStatus, string> = {
   archived: "Archived",
 };
 
-// TEMPORARY, throwaway live-verification test, not part of the approved diff.
 export const PROJECT_STATUS_CONFIG: Record<
   ProjectStatus,
   { label: string; dotColorClass: "dotMuted" | "dotAccent" | "dotSuccess" }
