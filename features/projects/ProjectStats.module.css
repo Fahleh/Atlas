@@ -36,7 +36,7 @@
 }
 
 .valueAccent {
-  color: var(--color-accent);
+  color: var(--color-text-accent);
 }
 
 .valueDanger {

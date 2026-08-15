@@ -57,7 +57,7 @@
 }
 
 .card:hover .arrow {
-  color: var(--color-accent);
+  color: var(--color-text-accent);
 }
 
 /* ---- Body ---- */

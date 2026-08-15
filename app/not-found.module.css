@@ -42,8 +42,8 @@
   align-items: center;
   margin-top: var(--space-2);
   padding: var(--space-2) var(--space-4);
-  background-color: var(--color-accent);
-  color: var(--color-text-on-accent);
+  background-color: var(--color-button-primary-bg);
+  color: var(--color-button-primary-text);
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
@@ -52,7 +52,7 @@
 }
 
 .homeLink:hover {
-  background-color: var(--color-accent-hover);
+  background-color: var(--color-button-primary-hover);
 }
 
 .homeLink:focus-visible {

@@ -12,19 +12,29 @@
 
   /* Text */
   --color-text-primary: #18181b;
-  --color-text-secondary: #71717a;
-  --color-text-muted: #a1a1aa;
+  --color-text-secondary: #67676f;
+  --color-text-muted: #6b6b76;
 
   /* Accent */
   --color-accent: #ea8c00;
-  --color-text-on-accent: #ffffff;
+  --color-text-accent: #9e5f00;
+  --color-text-on-accent: #18181b;
   --color-accent-hover: #c97a00;
   --color-accent-subtle: #fef3c7;
+
+  /* Button-only fills, distinct from --color-accent's other uses */
+  --color-button-primary-bg: #a36200;
+  --color-button-primary-text: #ffffff;
+  --color-button-primary-hover: #824e00;
 
   /* Semantic */
   --color-danger: #dc2626;
   --color-success: #16a34a;
   --color-warning: #f97316;
+
+  /* Distinct from --color-text-on-accent: danger's light-mode value needs
+     white, its dark-mode value needs dark, opposite of accent's needs. */
+  --color-text-on-danger: #ffffff;
 
   /* Typography */
   --font-sans: var(--font-inter), system-ui, sans-serif;
@@ -95,16 +105,26 @@
 
   /* Text */
   --color-text-primary: #fafafa;
-  --color-text-secondary: #a1a1aa;
-  --color-text-muted: #71717a;
+  --color-text-secondary: #b4b4bb;
+  --color-text-muted: #adadb3;
 
   /* Accent */
   --color-accent: #fbbf24;
+  --color-text-accent: #fbbf24;
   --color-accent-hover: #f59e0b;
   --color-accent-subtle: #3a2e1a;
+
+  /* Same values --color-accent/--color-text-on-accent already have here;
+     dark mode's button stays visually unchanged, just routed through its
+     own name so light mode can diverge without touching this token. */
+  --color-button-primary-bg: #fbbf24;
+  --color-button-primary-text: #18181b;
+  --color-button-primary-hover: #f59e0b;
 
   /* Semantic */
   --color-danger: #f87171;
   --color-success: #4ade80;
   --color-warning: #fb923c;
+
+  --color-text-on-danger: #18181b;
 }

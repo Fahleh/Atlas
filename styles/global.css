@@ -64,7 +64,7 @@ p {
 }
 
 a {
-  color: var(--color-accent);
+  color: var(--color-text-accent);
   text-decoration: none;
 }
 

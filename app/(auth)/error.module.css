@@ -41,8 +41,8 @@
 .retryButton {
   width: 100%;
   padding: var(--space-2) var(--space-4);
-  background-color: var(--color-accent);
-  color: var(--color-text-on-accent);
+  background-color: var(--color-button-primary-bg);
+  color: var(--color-button-primary-text);
   border: none;
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
@@ -52,7 +52,7 @@
 }
 
 .retryButton:hover {
-  background-color: var(--color-accent-hover);
+  background-color: var(--color-button-primary-hover);
 }
 
 .retryButton:focus-visible {
@@ -62,7 +62,7 @@
 
 .loginLink {
   font-size: var(--font-size-sm);
-  color: var(--color-accent);
+  color: var(--color-text-accent);
   text-decoration: none;
   font-weight: var(--font-weight-medium);
   transition: color 150ms ease;
