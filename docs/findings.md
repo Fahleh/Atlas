@@ -112,8 +112,9 @@ flagged at all. See `docs/decisions.md`.
 
 ### No `<main>` landmark on `/login`
 **Evidence:** `landmark-one-main` audit fails on `login.report.json`.
-**Status:** Open. Could be a deliberate choice for a chromeless auth page,
-needs an actual decision, not a silent gap.
+**Status:** Resolved. `app/(auth)/layout.tsx`'s `.card` element is now a
+`<main>`, wrapping the wordmark and page content for both `/login` and
+`/signup`.
 
 ### `ProjectStats`' progressbar role is invalid on its `<dl>` structure
 **Evidence:** `docs/lighthouse/baseline-2026-08-11/dashboard.report.json`:

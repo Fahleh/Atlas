@@ -7,10 +7,10 @@ type AuthLayoutProps = {
 export default function AuthLayout({ children }: AuthLayoutProps) {
   return (
     <div className={styles.root}>
-      <div className={styles.card}>
+      <main className={styles.card}>
         <span className={styles.wordmark}>Atlas</span>
         {children}
-      </div>
+      </main>
     </div>
   );
 }
