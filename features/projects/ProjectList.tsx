@@ -366,7 +366,7 @@ export function ProjectList() {
             <ProjectCard
               key={project.id}
               project={project}
-              onSelect={selectProject}
+              replaceHistory
               members={membersByProject[project.id] ?? []}
               taskCounts={
                 taskCountsByProject[project.id] ?? {

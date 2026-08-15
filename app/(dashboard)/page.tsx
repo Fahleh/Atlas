@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AlertCircle, FolderPlus, ListChecks } from "lucide-react";
 import { ActionErrorMessage } from "@/components/ActionErrorMessage";
@@ -25,7 +24,6 @@ const UPCOMING_TASKS_COUNT = 5;
 const TASK_SKELETON_ROW_COUNT = 5;
 
 export default function DashboardPage() {
-  const router = useRouter();
   // Fixes "now" as of mount, not a live clock. react-hooks/purity forbids
   // calling Date.now() directly during render or inside useMemo.
   const [now] = useState(() => Date.now());
@@ -101,12 +99,6 @@ export default function DashboardPage() {
     isError: isDueSoonError,
     refetch: refetchDueSoon,
   } = useDueSoonTaskCount(now);
-
-  // Cross-route navigation from the dashboard: push, not replace, so Back
-  // returns here rather than skipping past it. See docs/decisions.md.
-  function handleSelectProject(id: string) {
-    router.push(`/projects?project=${id}`);
-  }
 
   if (isError) {
     return (
@@ -237,7 +229,6 @@ export default function DashboardPage() {
                   <ProjectCard
                     key={project.id}
                     project={project}
-                    onSelect={handleSelectProject}
                     members={membersByProject[project.id] ?? []}
                     taskCounts={
                       taskCountsByProject[project.id] ?? { total: 0, done: 0 }
