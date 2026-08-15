@@ -21,7 +21,6 @@ reason to document something here.
 
 - [`EntityModal`/`TaskModal` compound vs. `ProjectModal` single-block](#entitymodaltaskmodal-compound-vs-projectmodal-single-block)
 - [Status field availability at creation time (`CreateTaskInput`/`CreateProjectInput` vs. the live forms)](#status-field-availability-at-creation-time-createtaskinputcreateprojectinput-vs-the-live-forms)
-- [Clearing the React Query cache on `(auth)`/`(dashboard)` layout mount, not just on `onAuthStateChange`](#clearing-the-react-query-cache-on-authdashboard-layout-mount-not-just-on-onauthstatechange)
 - [Bypassing fetch caching in both Supabase clients (`cache: "no-store"`)](#bypassing-fetch-caching-in-both-supabase-clients-cache-no-store)
 - [`useCurrentUser()`'s finite `staleTime`, not `Infinity`](#usecurrentusers-finite-staletime-not-infinity)
 - [Triggering the success-banner side effect imperatively, not via `useEffect` on a boolean](#triggering-the-success-banner-side-effect-imperatively-not-via-useeffect-on-a-boolean)
@@ -37,7 +36,6 @@ reason to document something here.
 - [Deferring `app/global-error.tsx`](#deferring-appglobal-errortsx)
 - [Scoped `console.error` exception in error boundaries](#scoped-consoleerror-exception-in-error-boundaries)
 - [Branch workflow: PR-based merges from Production Readiness onward](#branch-workflow-pr-based-merges-from-production-readiness-onward)
-- [Playwright for `scripts/get-auth-cookie.ts`, not Puppeteer or Lighthouse's User Flow API](#playwright-for-scriptsget-auth-cookiets-not-puppeteer-or-lighthouses-user-flow-api)
 - [Moving `AuthListenerProvider` from root `app/layout.tsx` into `app/(dashboard)/layout.tsx`](#moving-authlistenerprovider-from-root-applayouttsx-into-appdashboardlayouttsx)
 - [Distinguishing `sessionExpired` from `forbidden` on failed Postgrest writes](#distinguishing-sessionexpired-from-forbidden-on-failed-postgrest-writes)
 - [`isDirty` is sticky, not re-derived per keystroke, in TaskModal/ProjectModal's edit-mode Save disabling](#isdirty-is-sticky-not-re-derived-per-keystroke-in-taskmodalprojectmodals-edit-mode-save-disabling)
@@ -122,70 +120,6 @@ rule the live forms are violating. If these are ever intentionally unified
 (e.g. by retiring `entityFactory.ts` or extending its input types), that is
 a deliberate product decision to make explicitly, not a discovered bug to
 silently "fix" by removing the status field from either surface.
-
----
-
-## Clearing the React Query cache on `(auth)`/`(dashboard)` layout mount, not just on `onAuthStateChange`
-
-**Decision:** `components/ClearQueryCacheOnMount.tsx`, a small Client
-Component that calls `queryClient.clear()` once on mount and returns `null`,
-is rendered inside both `app/(auth)/layout.tsx` and
-`app/(dashboard)/layout.tsx`. This is the **primary** mechanism preventing
-cross-user cache leaks (one user's cached `projects`/`tasks`/`members`/profile
-data rendering for a different, newly-logged-in user in the same tab).
-`providers/AuthListenerProvider.tsx`'s `onAuthStateChange`-based `clear()` is
-kept as a secondary path, not removed, but is no longer the thing this
-correctness property actually depends on, and per the second incident
-below, is now deliberately narrower than it once was.
-
-**Why `onAuthStateChange` wasn't sufficient. Incident: confirmed via manual
-two-browser testing.** Atlas's login/signup/logout all run as Server
-Actions against the _server_ Supabase client. The _browser_ client's
-`onAuthStateChange`, which `AuthListenerProvider` listens on, is never
-itself told a server-side sign-in/sign-out happened. This is a confirmed,
-Supabase-team-acknowledged limitation (supabase-js#1618), not a bug in
-Atlas's usage of it, and explains the intermittent behavior observed in
-manual two-browser testing before this fix (logging out User A and
-immediately logging in as User B, same tab, sometimes showed User A's stale
-data and sometimes didn't, depending on incidental timing).
-
-**Why layout mount is a reliable substitute:** Next.js fully remounts a
-nested layout on every crossing between separate route groups, and does
-_not_ remount it on navigation within the same group. Since `(auth)` and
-`(dashboard)` are sibling nested layouts under the single root
-`app/layout.tsx` (which is what makes this a client-side transition rather
-than a hard page reload), mounting `ClearQueryCacheOnMount` in both is a
-deterministic "a real transition just occurred" signal, independent of
-whichever Supabase client happened to run the auth call.
-
-**A second, separate incident narrowed `AuthListenerProvider` further, to
-`SIGNED_OUT` only. Incident: confirmed via React Query Devtools.** An
-earlier version of `AuthListenerProvider` also cleared on `SIGNED_IN`. This
-caused a real, reproduced bug: `onAuthStateChange` fires `SIGNED_IN` on
-_any_ fresh client initialization that finds an existing valid session,
-including an ordinary page refresh by the same, still-logged-in user, not
-just a genuine new login. Clearing on that event raced against every other
-query mounting in the same commit, orphaning their in-flight fetches. This
-produced a stuck-loading-skeleton bug specifically on hard refresh (not on
-normal navigation), confirmed by React Query Devtools showing zero
-registered queries at the exact moment the Network tab showed a real,
-already-resolved `200` response for the same request. `SIGNED_IN` was
-removed from the listener entirely rather than patched, since the false
-positive is inherent to what the event means, not fixable by better timing.
-
-**The assumption this correctness depends on. Read before adding any new
-auth-adjacent feature:** this only works because, in Atlas's current
-single-account auth model, _every_ path from one user's identity to a
-different one necessarily crosses the `(auth)` route group boundary (you
-cannot reach a different user's dashboard session without passing through
-`/login` first). If a future feature ever allowed switching identity
-_without_ crossing that boundary, for example an account-switcher or
-impersonation feature that swaps the active user via an API call while
-staying on a dashboard route, this mechanism would **not** fire, and the
-cache leak this fix closes would reopen for that new code path. Any such
-feature must either trigger `queryClient.clear()` directly itself, or be
-designed to route through a layout boundary the same way login/logout
-already do.
 
 ---
 
@@ -521,27 +455,6 @@ forward-only.
 
 ---
 
-## Playwright for `scripts/get-auth-cookie.ts`, not Puppeteer or Lighthouse's User Flow API
-
-**Decision:** `scripts/get-auth-cookie.ts` uses Playwright to log into Atlas
-and capture a real cookie set for Lighthouse's `--extra-headers`, replacing
-a manual DevTools copy-paste approach.
-
-**Why. Incident: confirmed via a Lighthouse baseline run, then a real
-login.** `--extra-headers` injects a raw header onto requests; it never
-touches the browser's actual cookie store. SSR saw the session, client-side
-code never did, producing a hydration error and REST 401s on every
-authenticated route, both absent once logged in normally. `docs/testing.md`
-already commits to Playwright for E2E, so it's used here too rather than
-adding Puppeteer or the User Flow API for the same job. `context.cookies()`
-reads the real post-login cookie jar, `HttpOnly` and any chunked
-`sb-<ref>-auth-token.0/.1/.2` included.
-
-**Not scope creep.** Close to, likely reusable as, the login fixture the
-future `tests/e2e/` suite will need anyway.
-
----
-
 ## Moving `AuthListenerProvider` from root `app/layout.tsx` into `app/(dashboard)/layout.tsx`
 
 **Decision:** `AuthListenerProvider` now mounts only in
@@ -619,39 +532,90 @@ committing, not just the JSON.
 **Decision:** `QueryProvider` now mounts only in `app/(dashboard)/layout.tsx`,
 wrapping `AuthListenerProvider`, not in root `app/layout.tsx`.
 `components/ClearQueryCacheOnMount.tsx` is deleted; it is no longer
-rendered in either layout.
+rendered in either layout. This, not `providers/AuthListenerProvider.tsx`'s
+`onAuthStateChange`-based `clear()`, is the mechanism preventing
+cross-user cache leaks (one user's cached `projects`/`tasks`/`members`/
+profile data rendering for a different, newly-logged-in user in the
+same tab). `AuthListenerProvider` is kept as a secondary path, not
+removed, and per the second incident below is deliberately narrower
+than it once was.
 
-**Supersedes the cache-clearing entry above ("Clearing the React Query
-cache on `(auth)`/`(dashboard)` layout mount, not just on
-`onAuthStateChange`"):** that entry's incident history remains accurate
-and unchanged, both incidents happened exactly as recorded. Only the
-prevention mechanism changes, from an explicit `ClearQueryCacheOnMount`
-call in both layouts to the scoped provider's own mount/unmount lifecycle,
-described below.
+**Why `onAuthStateChange` wasn't sufficient on its own. Incident:
+confirmed via manual two-browser testing.** Atlas's login/signup/logout
+all run as Server Actions against the _server_ Supabase client. The
+_browser_ client's `onAuthStateChange`, which `AuthListenerProvider`
+listens on, is never itself told a server-side sign-in/sign-out
+happened. This is a confirmed, Supabase-team-acknowledged limitation
+(supabase-js#1618), not a bug in Atlas's usage of it, and explains the
+intermittent behavior observed in manual two-browser testing before
+this fix (logging out User A and immediately logging in as User B,
+same tab, sometimes showed User A's stale data and sometimes didn't,
+depending on incidental timing).
 
-**Why:** `QueryProvider` was mounted at root even though only `(dashboard)`
-routes ever call a React Query hook, confirmed by grepping every
-`useQuery`/`useMutation`/`useQueryClient` call site in the codebase. That
-gave `(auth)` routes a query client with no reason to exist there, which is
-exactly why `ClearQueryCacheOnMount` had to run in both layouts, defending
-a client `(auth)` never needed. Scoping the provider to where it's used
-makes that defensive clearing unnecessary, not redundant: a route never
-given a client can't leak stale data from one.
+The original fix for this was `components/ClearQueryCacheOnMount.tsx`,
+a small Client Component that called `queryClient.clear()` once on
+mount and rendered inside both `app/(auth)/layout.tsx` and
+`app/(dashboard)/layout.tsx`, relying on Next.js fully remounting a
+nested layout on every crossing between separate route groups. That
+component is gone now; see below for what replaced it.
+
+**A second, separate incident narrowed `AuthListenerProvider` further,
+to `SIGNED_OUT` only. Incident: confirmed via React Query Devtools.**
+An earlier version of `AuthListenerProvider` also cleared on
+`SIGNED_IN`. This caused a real, reproduced bug: `onAuthStateChange`
+fires `SIGNED_IN` on _any_ fresh client initialization that finds an
+existing valid session, including an ordinary page refresh by the
+same, still-logged-in user, not just a genuine new login. Clearing on
+that event raced against every other query mounting in the same
+commit, orphaning their in-flight fetches. This produced a
+stuck-loading-skeleton bug specifically on hard refresh (not on normal
+navigation), confirmed by React Query Devtools showing zero registered
+queries at the exact moment the Network tab showed a real,
+already-resolved `200` response for the same request. `SIGNED_IN` was
+removed from the listener entirely rather than patched, since the
+false positive is inherent to what the event means, not fixable by
+better timing.
+
+**Why the mechanism changed, not the incident history above; both
+incidents happened exactly as recorded.** `QueryProvider` was mounted
+at root even though only `(dashboard)` routes ever call a React Query
+hook, confirmed by grepping every `useQuery`/`useMutation`/
+`useQueryClient` call site in the codebase. That gave `(auth)` routes
+a query client with no reason to exist there, which is exactly why
+`ClearQueryCacheOnMount` had to run in both layouts, defending a
+client `(auth)` never needed. Scoping the provider to where it's used
+makes that defensive clearing unnecessary, not redundant: a route
+never given a client can't leak stale data from one.
 
 **Why this is a stronger cache-leak defense, not just a smaller one:**
 `QueryProvider` builds its `QueryClient` with a `useState` lazy
 initializer, one instance per mount, not a module-level singleton.
-`(dashboard)/layout.tsx` fully unmounts on every crossing to `(auth)`, the
-same route-group-crossing guarantee the cache-clearing entry above already
-relies on, so each `(auth)` → `(dashboard)` crossing constructs a
-genuinely new client. Unlike the `.clear()` call it replaces, which empties
-an existing client while the same object and its subscribers keep living,
-an unmounted client has no subscribers left, so a late-resolving fetch
-from the previous session can't write a stale entry into it.
+`(dashboard)/layout.tsx` fully unmounts on every crossing to `(auth)`,
+the same route-group-crossing guarantee the deleted component relied
+on, so each `(auth)` → `(dashboard)` crossing constructs a genuinely
+new client. Unlike the `.clear()` call it replaces, which emptied an
+existing client while the same object and its subscribers kept
+living, an unmounted client has no subscribers left, so a
+late-resolving fetch from the previous session can't write a stale
+entry into it.
 
-**Measured effect, secondary to the above:** real but partial improvement
-to the LCP finding this targeted. See `docs/findings.md` for the full
-before/after numbers.
+**Measured effect, secondary to the above:** real but partial
+improvement to the LCP finding this targeted. See `docs/findings.md`
+for the full before/after numbers.
+
+**The assumption this correctness depends on. Read before adding any
+new auth-adjacent feature:** this only works because, in Atlas's
+current single-account auth model, _every_ path from one user's
+identity to a different one necessarily crosses the `(auth)` route
+group boundary (you cannot reach a different user's dashboard session
+without passing through `/login` first). If a future feature ever
+allowed switching identity _without_ crossing that boundary, for
+example an account-switcher or impersonation feature that swaps the
+active user via an API call while staying on a dashboard route, this
+mechanism would **not** fire, and the cache leak this fix closes would
+reopen for that new code path. Any such feature must either trigger
+`queryClient.clear()` directly itself, or be designed to route through
+a layout boundary the same way login/logout already do.
 
 ---
 
@@ -700,20 +664,46 @@ shipped. Nothing was left unprotected by removing it.
 
 ## Replacing --extra-headers with a persistent authenticated context
 
-**Decision:** scripts/authenticated-lighthouse.ts launches a persistent
+**Decision:** scripts/authenticated-lighthouse.mts launches a persistent
 Chromium context with a debug port, logs in, then runs
 playwright-lighthouse's playAudit against that same instance, no
 cookie hand-off to a separately launched process.
 
-**Why:** --extra-headers never populated a browser's actual cookie
-storage, so every prior authenticated measurement was unverified.
-See docs/findings.md.
+**How it started.** The first version of this tooling,
+scripts/get-auth-cookie.ts (since deleted), used Playwright to log
+into Atlas and capture a real cookie set for Lighthouse's
+--extra-headers, replacing a manual DevTools copy-paste approach.
+Playwright was the choice there rather than Puppeteer or Lighthouse's
+own User Flow API because docs/testing.md already commits to
+Playwright for E2E, so there was no reason to bring in a second
+browser-automation tool for the same job. context.cookies() reads the
+real post-login cookie jar, HttpOnly and any chunked
+sb-<ref>-auth-token.0/.1/.2 included.
+
+**Why that turned out insufficient. Incident: confirmed via a
+Lighthouse baseline run, then a real login.** --extra-headers injects
+a raw header onto requests; it never touches the browser's actual
+cookie store. SSR saw the session, client-side code never did,
+producing a hydration error and REST 401s on every authenticated
+route, both absent once logged in normally. Every prior authenticated
+measurement made this way was unverified.
+
+**Why:** the fix was to stop handing cookies to a separately launched
+process at all. One continuous, persistent authenticated browser
+context stays open for the whole run, with playwright-lighthouse
+auditing directly against it. See docs/findings.md.
 
 **Why playwright-lighthouse, not hand-rolled:** three prior incidents
 this phase from underestimating browser-tooling glue code. A
 maintained library tracking Lighthouse/Playwright's own churn is the
 right call here, confirmed against the installed versions before
 adopting it.
+
+**Playwright itself didn't change.** Both the deleted script and its
+replacement run on Playwright; what changed is the hand-off
+mechanism, not the tool. Not scope creep either: close to, likely
+reusable as, the login fixture the future tests/e2e/ suite will need
+anyway.
 
 ---
 
