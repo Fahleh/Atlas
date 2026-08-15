@@ -2,7 +2,6 @@ import Image from "next/image";
 import { getInitials, getMemberAvatarPaletteIndex } from "@/lib/utils";
 import styles from "./Avatar.module.css";
 
-// TEMPORARY, throwaway live-verification test, not part of the approved diff.
 type AvatarSizeVariant = "default" | "small" | "medium" | "large";
 
 const AVATAR_SIZE_PX: Record<AvatarSizeVariant, number> = {
@@ -30,6 +29,15 @@ type AvatarOverflowProps = {
   size?: AvatarSizeVariant;
 };
 
+/**
+ * Generic avatar for any named entity. Renders a photo via next/image when
+ * `avatarUrl` is present, otherwise falls back to an initials circle colored
+ * deterministically from the name's initials.
+ *
+ * @param name - Full name used for initials fallback and alt text
+ * @param avatarUrl - Photo URL, or null/absent to use the initials fallback
+ * @param size - Named size variant (default "default", 34px, matching the existing member-avatar sizing)
+ */
 export function Avatar({
   name,
   avatarUrl = null,
@@ -63,6 +71,15 @@ export function Avatar({
   );
 }
 
+/**
+ * Overflow indicator ("+N") for a capped avatar strip, sized identically
+ * to Avatar via the same named size variant — never drifts out of sync
+ * with Avatar's actual dimensions since both derive from the same
+ * AVATAR_SIZE_PX/AVATAR_SIZE_CLASS maps.
+ *
+ * @param count - Number of additional, non-visible members
+ * @param size - Named size variant (default "default", 34px, matching Avatar's default)
+ */
 export function AvatarOverflow({
   count,
   size = "default",

@@ -133,7 +133,6 @@
   min-width: 120px;
 }
 
-/* TEMPORARY, throwaway live-verification test, not part of the approved diff. */
 .progressBar {
   appearance: none;
   -webkit-appearance: none;

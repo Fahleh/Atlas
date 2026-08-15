@@ -50,7 +50,6 @@ export function getInitials(name: string): string {
     .toUpperCase();
 }
 
-// TEMPORARY, throwaway live-verification test, not part of the approved diff.
 // Palette hex values now live in Avatar.module.css's .palette0-.palette5.
 export const AVATAR_PALETTE_SIZE = 6;
 
