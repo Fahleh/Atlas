@@ -50,6 +50,7 @@ reason to document something here.
 - [Security headers: `unsafe-inline` for `script-src`, no HSTS preload, strict COOP](#security-headers-unsafe-inline-for-script-src-no-hsts-preload-strict-coop)
 - [Zero-exception style-src-attr: class refactors, a generated hash allowlist, and native `<progress>`](#zero-exception-style-src-attr-class-refactors-a-generated-hash-allowlist-and-native-progress)
 - [Trusted Types and style-src: production-only enforcement](#trusted-types-and-style-src-production-only-enforcement)
+- [Splitting `--color-accent` into a background token and a text token, and fixing the two gray text tokens alongside it](#splitting-color-accent-into-a-background-token-and-a-text-token-and-fixing-the-two-gray-text-tokens-alongside-it)
 
 ---
 
@@ -919,3 +920,69 @@ page reload). A real `npm run build && npm run start` session
 confirmed still clean across all three routes, the post-login
 client-side redirect, and both `<Link>` navigations, matching the
 result from before this bug was found.
+## Splitting `--color-accent` into a background token and a text token, and fixing the two gray text tokens alongside it
+
+**Decision:** `--color-accent` now does one job only: fills, badges, dots,
+the progress bar, anywhere it's a background or a decorative color with
+something else on top of it. A new token, `--color-text-accent`, covers
+every place accent was being used as the text or icon color itself. Both
+gray text tokens, `--color-text-muted` and `--color-text-secondary`, got
+new values in both themes. `--color-text-on-accent` changed from a single
+white value to a single dark one.
+
+**Why split the token instead of picking one compromise value.**
+`--color-accent`'s original hex (`#ea8c00` light, `#fbbf24` dark) was
+tuned to look right as a button fill and a badge color. Checking it
+against 4.5:1 as text turned up real failures everywhere it doubled as
+link and label text too, light mode failed on every background it was
+used against, dark mode failed only on the white button text. Darkening
+the one token enough to pass as text would have muddied every button and
+badge in the app for a problem that only exists on 22 lines. Two tokens
+means the buttons stay exactly as bright as they were.
+
+**Why `--color-text-on-accent` moved from white to `#18181b`, one value
+for both themes.** White was never actually checked against `--color-
+accent` when it was picked. It fails badly in dark mode, `1.67:1` on the
+"Sign in" button, worse than either gray-text failure Lighthouse actually
+flagged. `#18181b` (the same hex already used for `--color-text-primary`
+in light mode) clears both themes' accent values comfortably, `6.96:1`
+against light mode's `#ea8c00`, `10.61:1` against dark mode's `#fbbf24`.
+One value doing the job for both themes means no new per-theme override,
+and no reason to add one.
+
+**The hue check against `--color-warning`.** `--color-text-accent`'s
+light value, `#995c00`, was built by taking the original accent hue
+(H35.9°) and saturation and just lowering the lightness until it cleared
+4.5:1 against the tightest of the three backgrounds it's actually used
+on (`--color-accent-subtle`, at `4.85:1`). Hue never moved, so the ~11°
+gap from `--color-warning` (H24.6°) that the entry above this one
+deliberately set up is untouched. The result reads as a darker amber, not
+as red-orange, so a warning-colored element still won't get mistaken for
+a branded one.
+
+**`--color-text-muted` and `--color-text-secondary`, fixed together, not
+one now and one later.** Computing `--color-text-muted`'s replacement
+surfaced two things worth catching before shipping: light mode had the
+same failure Lighthouse only caught in dark mode (Lighthouse's own pages
+never happened to render `--color-text-muted` against every background it
+actually sits on in light mode), and `--color-text-secondary`, which
+wasn't part of the original finding at all, fails against `--color-
+surface-raised` in both themes and against `--color-accent-subtle` too
+(`VelocityStatus`'s narrative text renders on both). Since `text-muted`
+is supposed to read as the more de-emphasized of the two grays, fixing
+one without checking the other risked leaving muted text more readable
+than secondary text, or the reverse, on at least one shared background.
+Both got new values, computed together, and the ordering was checked
+with real numbers rather than assumed:
+
+| | light (darker = more prominent) | dark (lighter = more prominent) |
+|---|---|---|
+| `--color-text-secondary` | `#67676f` | `#b4b4bb` |
+| `--color-text-muted` | `#6b6b76` | `#adadb3` |
+
+Secondary is darker than muted in light mode and lighter than muted in
+dark mode, in both cases the more prominent position, confirmed by
+comparing relative luminance directly, not by eye. Every pairing clears
+4.5:1 with real margin, nothing sits close enough to the line that
+sub-pixel rendering differences could flip it. Full numbers are in
+`docs/findings.md`.

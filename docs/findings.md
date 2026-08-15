@@ -91,11 +91,13 @@ on every primary button measured (`/login`, `/signup`, `/projects`).
 `--color-text-muted` (dark: `#71717a`) on `--color-surface` (`#27272a`),
 `3.08:1`, on every muted secondary-text instance measured. Both need
 `4.5:1`.
-**Status:** Open. Token-level, not component-level. Fixing
-`--color-accent` and `--color-text-muted`'s dark values should resolve
-every instance across the app in one pass. `/projects`' filter-tab
-(`4.07:1`) and "New" button failures are the same two root causes, not a
-separate fix.
+**Status:** Resolved. `--color-accent` split into a background token
+(unchanged) and a new `--color-text-accent` token for text use, and
+`--color-text-on-accent` moved from white to a dark value. `--color-text-
+muted` got a new value in both themes. `--color-text-secondary`, not part
+of this original finding, turned out to have the same problem and was
+fixed in the same pass. Full reasoning and every computed ratio in
+`docs/decisions.md`.
 
 ### Light-mode contrast is confirmed affected, not just unmeasured
 **Evidence:** `docs/lighthouse/baseline-2026-08-11/dashboard.report.json`'s
@@ -103,8 +105,10 @@ separate fix.
 against several backgrounds, e.g. `2.43:1` on `#fafafa`. Inferred from the
 color value matching light mode's documented token; no `data-theme`
 attribute was captured directly in this report's snippets either.
-**Status:** Open. Same fix as the dark-mode entry above should be verified
-against both themes explicitly, not assumed to carry over.
+**Status:** Resolved. Verified directly against both themes rather than
+assumed to carry over, light mode had its own version of every failure in
+the entry above, including one (`--color-text-secondary`) Lighthouse never
+flagged at all. See `docs/decisions.md`.
 
 ### No `<main>` landmark on `/login`
 **Evidence:** `landmark-one-main` audit fails on `login.report.json`.
