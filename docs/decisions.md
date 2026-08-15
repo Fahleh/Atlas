@@ -910,6 +910,9 @@ page reload). A real `npm run build && npm run start` session
 confirmed still clean across all three routes, the post-login
 client-side redirect, and both `<Link>` navigations, matching the
 result from before this bug was found.
+
+---
+
 ## Splitting `--color-accent` into a background token and a text token, and fixing the two gray text tokens alongside it
 
 **Decision:** `--color-accent` now does one job only: fills, badges, dots,
@@ -976,3 +979,58 @@ comparing relative luminance directly, not by eye. Every pairing clears
 4.5:1 with real margin, nothing sits close enough to the line that
 sub-pixel rendering differences could flip it. Full numbers are in
 `docs/findings.md`.
+
+---
+
+## Theme toggle reads via `useSyncExternalStore`, not `ThemeContext`'s own state
+
+**Decision:** `Sidebar.tsx`'s theme toggle (icon, label, `aria-label`)
+reads from a new `providers/useDisplayedTheme.ts` hook, not from
+`ThemeContext`'s `theme` value. The hook wraps `useSyncExternalStore`,
+reading `data-theme` off `documentElement`, with `getServerSnapshot`
+returning a neutral `"pending"` state rather than a guess.
+`ThemeContext.theme` is unchanged and still drives `toggleTheme`.
+
+**Root cause. Incident: reproduced in both dev and a production
+build.** `ThemeContext`'s old `useState` initializer branched on
+`typeof window`: always `"light"` on the server, but on the client's
+first render (the hydration render) `window` already exists, so it
+read `localStorage` immediately and returned whatever was actually
+stored. Server HTML was built from the forced `"light"` branch; the
+client's first render disagreed with it before React did anything
+else. `Sidebar.tsx` was the only place this showed, the only
+component branching render output on `theme`.
+
+**Why it became a blank screen in production, not just a dev
+warning.** On a hydration mismatch React discards and regenerates
+the affected subtree client-side, and that recovery path writes
+through a raw `innerHTML` call. `app/layout.tsx`'s Trusted Types
+`default` policy only defines `createScriptURL`, not `createHTML`
+(see the Trusted Types entry above), so that write throws once
+enforcement is active in production. The policy did what it's for;
+this wasn't a gap to widen.
+
+**Why `useSyncExternalStore`, not a `mounted`-flag guard.** A
+`mounted` flag hides the symptom but not the mismatch, React still
+diffs a wrong first render against the server HTML.
+`useSyncExternalStore` avoids the mismatch at the source: confirmed
+in React 19.2.4's own source, during hydration it calls only
+`getServerSnapshot`, never the real one, so the first client render
+matches the server exactly and the `innerHTML` recovery path never
+runs. The real value applies after mount through a normal effect, an
+ordinary re-render, not error recovery. `getServerSnapshot` returns
+`"pending"` rather than a guessed light/dark specifically so that one
+render reads as loading, not as a wrong answer someone could act on.
+Confirmed live: no hydration mismatch, no production crash, no
+perceptible lag added to normal toggle clicks.
+
+**Why the scoped-cookie alternative was rejected.** Reading the theme
+cookie server-side, scoped to `(dashboard)/layout.tsx` since
+`Sidebar` only mounts there, would give a true mismatch-free render
+with no flash at all, and wouldn't touch `/login`/`/signup`. Rejected
+anyway: `cookies()` unconditionally opts a route into dynamic
+rendering, and `/`, `/projects`, and `/profile` are static today.
+Giving that up permanently, plus restructuring `(dashboard)/layout.tsx`
+out of being a single Client Component, to remove a sub-100ms loading
+state isn't a proportionate trade. Revisit if `cacheComponents` is
+ever adopted app-wide for other reasons.

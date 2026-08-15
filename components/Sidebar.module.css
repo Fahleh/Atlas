@@ -172,6 +172,23 @@
   color: var(--color-text-primary);
 }
 
+.themeTogglePending {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.themeTogglePending:hover {
+  background-color: transparent;
+  color: var(--color-text-secondary);
+}
+
+.themeIconPlaceholder {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
 /* Desktop overrides */
 @media (min-width: 1024px) {
   .sidebar {
