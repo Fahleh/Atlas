@@ -49,7 +49,7 @@
 .logo {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
-  color: var(--color-accent);
+  color: var(--color-text-accent);
   text-decoration: none;
   transition: color 150ms ease;
 }

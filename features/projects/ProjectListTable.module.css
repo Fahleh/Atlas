@@ -115,7 +115,7 @@
 }
 
 .openButton:hover {
-  color: var(--color-accent);
+  color: var(--color-text-accent);
 }
 
 .openButton:focus-visible {

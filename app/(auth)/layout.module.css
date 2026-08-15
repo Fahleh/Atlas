@@ -14,7 +14,7 @@
   background-color: var(--color-background);
   font-size: var(--font-size-4xl);
   font-weight: var(--font-weight-bold);
-  color: var(--color-accent);
+  color: var(--color-text-accent);
   letter-spacing: -0.02em;
   margin-bottom: var(--space-4);
 }
