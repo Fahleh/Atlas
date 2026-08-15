@@ -67,14 +67,7 @@ export function ProjectStats({
       </div>
       <div className={styles.stat}>
         <dt className={styles.label}>Tasks Done</dt>
-        <dd
-          className={styles.value}
-          role={isLoading ? undefined : "progressbar"}
-          aria-valuenow={isLoading ? undefined : doneTotal}
-          aria-valuemin={isLoading ? undefined : 0}
-          aria-valuemax={isLoading ? undefined : taskTotal}
-          aria-label={isLoading ? undefined : "Tasks completed"}
-        >
+        <dd className={styles.value}>
           {isLoading ? (
             valueSkeleton
           ) : (
