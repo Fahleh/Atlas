@@ -50,6 +50,7 @@ reason to document something here.
 - [Trusted Types and style-src: production-only enforcement](#trusted-types-and-style-src-production-only-enforcement)
 - [Splitting `--color-accent` into a background token and a text token, and fixing the two gray text tokens alongside it](#splitting-color-accent-into-a-background-token-and-a-text-token-and-fixing-the-two-gray-text-tokens-alongside-it)
 - [`ProjectCard` moved from a `role="button"` div to a real `<Link>`](#projectcard-moved-from-a-rolebutton-div-to-a-real-link)
+- [`npm test` runs with `--forceExit`: MSW leaves an open handle for any FormData request body](#npm-test-runs-with---forceexit-msw-leaves-an-open-handle-for-any-formdata-request-body)
 
 ---
 
@@ -1078,3 +1079,41 @@ presentational-children behavior, so the label was structurally
 void the whole time, never live in the accessibility tree. Fixed
 with `role="group"`, now valid and, for the first time, actually
 announced.
+
+---
+
+## `npm test` runs with `--forceExit`: MSW leaves an open handle for any FormData request body
+
+**Decision:** `package.json`'s `test` script is `jest --forceExit`, not
+plain `jest`. `test:watch` is unchanged, since watch mode never exits
+on its own anyway.
+
+**Why. Incident: isolated with a minimal repro, no Supabase code
+involved.** `profileActions.test.ts`'s avatar-upload tests hung
+indefinitely after every assertion passed, confirmed with
+`--forceExit` that each test genuinely completes in under a second,
+this is Jest waiting on something that never releases, not a stuck
+test.
+
+Isolated to a bare `fetch()` sending a `multipart/form-data` body (a
+`FormData` with even one plain string field, no `File` needed)
+against an MSW-intercepted endpoint. `@mswjs/interceptors`'s Node
+request interceptor doesn't fully release the socket for this
+content type specifically, confirmed against every other request
+shape in this suite, `deleteProject`, `addMember`, both
+`createProjectAction` branches, both `createTaskAction` branches,
+`logout`, all plain JSON or urlencoded, all exiting cleanly alone
+with no `--forceExit` needed.
+
+**Why `--forceExit`, not a real fix.** The cause sits inside a
+third-party Node interceptor, no call site here to fix. `--forceExit`
+is Jest's own documented answer to exactly this situation. The usual
+risk, masking a genuine stuck test, is narrow here: every test's
+assertions already complete well within the default timeout; forcing
+exit only skips waiting on a handle nothing in this codebase
+controls.
+
+**Reopen this if:** a future `msw`/`@mswjs/interceptors` upgrade
+fixes the underlying issue, or `--forceExit` ever starts hiding a
+real hang, i.e. a test's own assertions stop completing quickly, not
+just the process failing to exit afterward.
