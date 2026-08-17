@@ -1,4 +1,5 @@
 import type { ProjectStatus } from "@/types/atlas.types";
+import type { TaskCounts } from "@/hooks/useTaskCountsByProject";
 
 export const STATUS_LABELS: Record<ProjectStatus, string> = {
   active: "Active",
@@ -44,4 +45,23 @@ export function truncateDescription(
 ): string {
   if (description.length <= maxLength) return description;
   return description.slice(0, maxLength).trimEnd() + "…";
+}
+
+/**
+ * Calculates a task-completion percentage per docs/architecture.md's
+ * honest-percentages rule.
+ *
+ * total === 0 is a deliberate exception to that rule: done === total
+ * (0 === 0) is technically satisfied, but a zero-task project reading
+ * "100% complete" is misleading, not honest, so it reads 0% instead.
+ *
+ * @param taskCounts - done/total task counts for one project
+ * @returns Integer percentage 0-100
+ */
+export function calculateProgressPercent(taskCounts: TaskCounts): number {
+  const { done, total } = taskCounts;
+  if (total === 0) return 0;
+  if (done === 0) return 0;
+  if (done === total) return 100;
+  return Math.min(99, Math.max(1, Math.round((done / total) * 100)));
 }

@@ -6,7 +6,11 @@ import { Avatar, AvatarOverflow } from "@/components/Avatar";
 import { getInitials } from "@/lib/utils";
 import type { TaskCounts } from "@/hooks/useTaskCountsByProject";
 import type { Member, Project, ProjectStatus } from "@/types/atlas.types";
-import { DUE_DATE_FORMAT, STATUS_LABELS } from "./projectUtils";
+import {
+  DUE_DATE_FORMAT,
+  STATUS_LABELS,
+  calculateProgressPercent,
+} from "./projectUtils";
 import styles from "./ProjectCard.module.css";
 import sharedStyles from "./projectShared.module.css";
 
@@ -42,10 +46,7 @@ export function ProjectCard({
 }: ProjectCardProps) {
   const visibleMembers = members.slice(0, MAX_VISIBLE_MEMBERS);
   const overflowCount = members.length - visibleMembers.length;
-  const progressPercent =
-    taskCounts.total === 0
-      ? 0
-      : Math.round((taskCounts.done / taskCounts.total) * 100);
+  const progressPercent = calculateProgressPercent(taskCounts);
 
   return (
     <div className={styles.card}>
