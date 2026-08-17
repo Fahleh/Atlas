@@ -16,8 +16,15 @@ build checks, browser verification requirements, and debugging process.
 - React Query hook tests are a deliberate coverage gap. Do not add them
   unprompted without discussion.
 
-Current automated coverage is limited to several early `lib/` utilities.
-Everything added later may have no automated coverage by deliberate deferral.
+Current automated coverage covers the early reference-only `lib/` utilities
+plus layer 1 (pure utilities and error-interpretation logic: `lib/utils.ts`,
+`lib/supabase/errors.ts`, `projectUtils.ts`). Everything beyond that,
+Server Actions, hooks, most components, may have no automated coverage by
+deliberate deferral.
+
+`jest.config.ts` has `collectCoverage`/`collectCoverageFrom` configured
+(`npm test -- --coverage` reports real numbers) but no `coverageThreshold`.
+Nothing is enforced yet.
 
 Check `tests/unit/` before claiming what is covered.
 
@@ -125,6 +132,10 @@ Mock browser APIs as needed:
 
 - `window.matchMedia`;
 - `window.localStorage`.
+
+`jest.config.ts` maps `*.module.css` imports to `tests/mocks/cssModuleMock.js`
+(a Proxy returning the property name for any class lookup), so components
+importing CSS Modules render under Jest without a real CSS pipeline.
 
 Test dynamic colors through CSS custom properties rather than direct inline
 color declarations.
