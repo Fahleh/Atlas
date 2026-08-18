@@ -1,6 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { renderHook, type RenderHookOptions } from "@testing-library/react";
-import type { ReactNode } from "react";
+import {
+  render,
+  renderHook,
+  type RenderHookOptions,
+  type RenderOptions,
+} from "@testing-library/react";
+import type { ReactElement, ReactNode } from "react";
 
 /**
  * One fresh QueryClient per call, matching the "fresh client per mount, not
@@ -37,4 +42,25 @@ export function renderHookWithClient<Result, Props>(
   );
 
   return { ...renderHook(hook, { ...options, wrapper }), queryClient };
+}
+
+/**
+ * Renders a component wrapped in a fresh QueryClientProvider, for components
+ * that call useQueryClient()/useQuery() directly (not just via a mocked hook).
+ * Same fresh-per-call reasoning as renderHookWithClient above.
+ *
+ * @param ui - The element to render, e.g. <ProfileForm />
+ * @param options - Optional render options; `wrapper` is always overridden
+ * @returns render's result plus the QueryClient instance used
+ */
+export function renderWithClient(
+  ui: ReactElement,
+  options?: Omit<RenderOptions, "wrapper">,
+) {
+  const queryClient = createTestQueryClient();
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+
+  return { ...render(ui, { ...options, wrapper }), queryClient };
 }
