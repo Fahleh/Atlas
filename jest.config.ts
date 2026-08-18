@@ -7,12 +7,8 @@ const config: Config = {
     "\\.module\\.css$": "<rootDir>/tests/mocks/cssModuleMock.js",
     "^@/(.*)$": "<rootDir>/$1",
   },
-  // msw's Node build depends on a few ESM-only packages with no CJS export
-  // condition (rettime, until-async, @open-draft/deferred-promise). Jest
-  // ignores node_modules by default, so these opt back into transformation,
-  // run through ts-jest (tsconfig's isolatedModules: true already covers
-  // plain JS/mjs syntax) so their `import` statements become `require`
-  // calls Jest's CJS runtime can load.
+  // msw's Node build depends on ESM-only packages with no CJS export
+  // (rettime, until-async, @open-draft). Opt them back into transformation.
   transformIgnorePatterns: [
     "node_modules/(?!(rettime|until-async|@open-draft)/)",
   ],
@@ -31,6 +27,11 @@ const config: Config = {
     "providers/**/*.{ts,tsx}",
     "!**/*.d.ts",
   ],
+  // jsdom's default "browser" export condition resolves "msw/node" wrong.
+  // Forcing "node" fixes it, harmless for existing jsdom suites.
+  testEnvironmentOptions: {
+    customExportConditions: ["node"],
+  },
   fakeTimers: {
     enableGlobally: false,
   },
