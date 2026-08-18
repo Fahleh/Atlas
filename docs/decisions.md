@@ -1100,18 +1100,31 @@ Isolated to a bare `fetch()` sending a `multipart/form-data` body (a
 against an MSW-intercepted endpoint. `@mswjs/interceptors`'s Node
 request interceptor doesn't fully release the socket for this
 content type specifically, confirmed against every other request
-shape in this suite, `deleteProject`, `addMember`, both
-`createProjectAction` branches, both `createTaskAction` branches,
-`logout`, all plain JSON or urlencoded, all exiting cleanly alone
-with no `--forceExit` needed.
+shape in the Server Action suites at the time, `deleteProject`,
+`addMember`, both `createProjectAction` branches, both
+`createTaskAction` branches, `logout`, all plain JSON or urlencoded,
+all exiting cleanly alone with no `--forceExit` needed.
 
-**Why `--forceExit`, not a real fix.** The cause sits inside a
-third-party Node interceptor, no call site here to fix. `--forceExit`
-is Jest's own documented answer to exactly this situation. The usual
-risk, masking a genuine stuck test, is narrow here: every test's
-assertions already complete well within the default timeout; forcing
-exit only skips waiting on a handle nothing in this codebase
-controls.
+**A second, distinct confirmed cause: React's `scheduler` package,
+hook tests only.** `tests/integration/useTasks.test.tsx` (layer 3)
+leaves one `MESSAGEPORT` handle open even alone, confirmed via
+`--detectOpenHandles`, traced to `scheduler`'s `MessageChannel`-based
+deferral for state updates that land outside a synchronous `act()`
+call, e.g. a `waitFor`-observed state change after a real fetch
+resolves. `ThemeContext.test.tsx` never triggers it (confirmed: zero
+open handles), since its updates are all synchronous. Third-party,
+by design, no app- or test-level hook to close it early, same
+reasoning as the interceptor cause above. Not every request shape
+still exits cleanly alone, any hook test doing a real async update
+now needs `--forceExit` too.
+
+**Why `--forceExit`, not a real fix, for both causes above.** Both
+sit inside third-party code with no call site here to fix.
+`--forceExit` is Jest's own documented answer to exactly this
+situation. The usual risk, masking a genuine stuck test, is narrow
+here: every test's assertions already complete well within the
+default timeout; forcing exit only skips waiting on a handle nothing
+in this codebase controls.
 
 **Reopen this if:** a future `msw`/`@mswjs/interceptors` upgrade
 fixes the underlying issue, or `--forceExit` ever starts hiding a

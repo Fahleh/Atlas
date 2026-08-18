@@ -13,6 +13,11 @@ import type { Project } from "@/types/atlas.types";
 import { server } from "@/tests/mocks/server";
 import { postgrestError } from "@/tests/mocks/postgrestError";
 import { SUPABASE_URL } from "@/tests/mocks/handlers/baseUrl";
+import {
+  mockNoSession,
+  mockLiveSession,
+  type GetClaimsResult,
+} from "@/tests/mocks/getClaims";
 
 function buildFormData(fields: Record<string, string>): FormData {
   const formData = new FormData();
@@ -25,27 +30,6 @@ function buildFormData(fields: Record<string, string>): FormData {
 afterEach(() => {
   jest.restoreAllMocks();
 });
-
-// Matches getClaims()'s real return type without depending on auth-js's
-// unexported JwtHeader/JwtPayload types.
-type GetClaimsResult = Awaited<ReturnType<GoTrueClient["getClaims"]>>;
-
-// Real getClaims() returns { data: null, error: null } when getSession()
-// finds no session at all — confirmed by reading GoTrueClient.js directly,
-// not { data: { claims: null } } (that shape is interpretSupabaseWriteError's
-// internal check, not what getClaims() itself actually returns).
-function mockNoSession() {
-  return jest
-    .spyOn(GoTrueClient.prototype, "getClaims")
-    .mockResolvedValue({ data: null, error: null } as GetClaimsResult);
-}
-
-function mockLiveSession(sub = "user-123") {
-  return jest.spyOn(GoTrueClient.prototype, "getClaims").mockResolvedValue({
-    data: { claims: { sub }, header: {}, signature: new Uint8Array() },
-    error: null,
-  } as GetClaimsResult);
-}
 
 describe("deleteProject", () => {
   it("should delete a project and invalidate the projects and tasks queries on success", async () => {
