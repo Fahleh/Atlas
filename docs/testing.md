@@ -15,6 +15,10 @@ build checks, browser verification requirements, and debugging process.
 - Playwright E2E tests live in `tests/e2e/`.
 - React Query hook tests are a deliberate coverage gap. Do not add them
   unprompted without discussion.
+- React Query hook tests: previously deferred deliberately (hooks
+  sit on Server Actions and MSW infrastructure that didn't exist yet).
+  That infrastructure is now built; hook tests now live in
+  tests/integration/, same convention as Server Action tests.
 
 Current automated coverage covers the early reference-only `lib/` utilities
 plus layer 1 (pure utilities and error-interpretation logic: `lib/utils.ts`,
