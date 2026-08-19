@@ -51,6 +51,7 @@ reason to document something here.
 - [Splitting `--color-accent` into a background token and a text token, and fixing the two gray text tokens alongside it](#splitting-color-accent-into-a-background-token-and-a-text-token-and-fixing-the-two-gray-text-tokens-alongside-it)
 - [`ProjectCard` moved from a `role="button"` div to a real `<Link>`](#projectcard-moved-from-a-rolebutton-div-to-a-real-link)
 - [`npm test` runs with `--forceExit`: MSW leaves an open handle for any FormData request body](#npm-test-runs-with---forceexit-msw-leaves-an-open-handle-for-any-formdata-request-body)
+- [Deriving SUPABASE_ORIGIN from env in dev only](#deriving-supabase_origin-from-env-in-dev-only)
 
 ---
 
@@ -1130,3 +1131,37 @@ in this codebase controls.
 fixes the underlying issue, or `--forceExit` ever starts hiding a
 real hang, i.e. a test's own assertions stop completing quickly, not
 just the process failing to exit afterward.
+
+---
+
+## Deriving SUPABASE_ORIGIN from env in dev only
+
+**Decision:** `next.config.ts`'s `SUPABASE_ORIGIN` (used to build
+`connect-src` in the CSP header) derives from `NEXT_PUBLIC_SUPABASE_URL`
+only when `isDev` is true. In production it stays the hardcoded literal,
+never read from env at build time.
+
+**Why not always derive it from env, the simpler option.** Production CSP
+never depending on a build-time env var is an existing invariant worth
+keeping, not something this change should quietly break for convenience.
+A hardcoded literal in production means the deployed CSP is exactly what
+was reviewed and committed, with no chance of drifting from a
+misconfigured or missing env var at build time, or from a build pipeline
+that ends up pointed at the wrong project entirely. `isDev` gating the
+derivation, instead of always deriving it, is the same pattern this file
+already uses for `unsafe-eval` (dev-only addition) and Trusted Types
+(dev-only exclusion), not a new mechanism introduced for this one case.
+
+**Why it needed to change at all.** E2E tests (`tests/e2e/`) run against
+a local Supabase stack at `http://127.0.0.1:54321`, not the production
+project. With the literal fixed to the production origin, every
+client-side Supabase fetch during a real `next dev` E2E run was silently
+CSP-blocked, confirmed via a real browser console error
+(`TypeError: Failed to fetch` from `fetchWithoutCache`) during the first
+E2E flow's dev run.
+
+**Parsed via `new URL(...).origin`, not string concatenation.** Confirmed
+this produces the identical shape the literal already used for both the
+local stack (`http://127.0.0.1:54321`) and the real production URL
+(`https://hgyygkysbljijxmltbgt.supabase.co`), so `connect-src`'s syntax
+never depends on `NEXT_PUBLIC_SUPABASE_URL` being pre-formatted correctly.

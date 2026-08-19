@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "jest --forceExit",
     "test:watch": "jest --watch",
+    "test:e2e": "playwright test",
     "claude": "claude"
   },
   "dependencies": {
@@ -22,6 +23,7 @@
   },
   "devDependencies": {
     "@anthropic-ai/claude-code": "^2.1.216",
+    "@playwright/test": "^1.62.1",
     "@supabase/auth-js": "^2.107.0",
     "@tailwindcss/postcss": "^4",
     "@tanstack/react-query-devtools": "^5.101.4",

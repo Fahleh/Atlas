@@ -3,7 +3,12 @@ import { SKELETON_STYLE_HASHES } from "./scripts/generate-skeleton-hashes.mjs";
 
 const isDev = process.env.NODE_ENV === "development";
 
-const SUPABASE_ORIGIN = "https://hgyygkysbljijxmltbgt.supabase.co";
+// Dev-only derivation, not always-from-env: see docs/decisions.md
+// ("Deriving SUPABASE_ORIGIN from env in dev only").
+const SUPABASE_ORIGIN =
+  isDev && process.env.NEXT_PUBLIC_SUPABASE_URL
+    ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).origin
+    : "https://hgyygkysbljijxmltbgt.supabase.co";
 
 const CSP_HEADER = [
   "default-src 'self'",
