@@ -554,6 +554,12 @@ Deliberately rejected for live Supabase flows:
 Design future background-error UI around Supabase's real error model rather
 than resurrecting this file.
 
+Its `console.error`/`console.warn`/`console.info` calls are exempt from root
+`CLAUDE.md`'s no-`console.log` rule for the same reason the file itself is
+exempt from being treated as dead code: it's a preserved reference artifact,
+never called from live app code, not something that policy was written to
+police.
+
 #### `createCounter.ts`
 
 Not exported by `lib/index.ts` and more disconnected than its siblings.
