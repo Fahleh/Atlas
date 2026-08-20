@@ -5,7 +5,7 @@ import { useFormStatus } from "react-dom";
 import Link from "next/link";
 import { signup } from "./actions";
 import type { SignupFormState } from "./actions";
-import styles from "./signup.module.css";
+import styles from "../authShared.module.css";
 
 /**
  * Submit button that derives its pending state from `useFormStatus`.
@@ -37,9 +37,9 @@ export default function SignupPage() {
           We sent a confirmation link to your inbox. Click it to activate your
           account and sign in.
         </p>
-        <p className={styles.loginRow}>
+        <p className={styles.navRow}>
           Already confirmed?{" "}
-          <Link href="/login" className={styles.loginLink}>
+          <Link href="/login" className={styles.navLink}>
             Sign in
           </Link>
         </p>
@@ -125,12 +125,9 @@ export default function SignupPage() {
       </form>
 
       <div className={styles.footerLinks}>
-        <p className={styles.loginRow}>
+        <p className={styles.navRow}>
           Already have an account?{" "}
-          <Link
-            href="/login"
-            className={`${styles.loginLink} ${styles.accentLink}`}
-          >
+          <Link href="/login" className={styles.navLink}>
             Sign in
           </Link>
         </p>
