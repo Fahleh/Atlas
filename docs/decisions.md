@@ -52,6 +52,7 @@ reason to document something here.
 - [`ProjectCard` moved from a `role="button"` div to a real `<Link>`](#projectcard-moved-from-a-rolebutton-div-to-a-real-link)
 - [`npm test` runs with `--forceExit`: MSW leaves an open handle for any FormData request body](#npm-test-runs-with---forceexit-msw-leaves-an-open-handle-for-any-formdata-request-body)
 - [Deriving SUPABASE_ORIGIN from env in dev only](#deriving-supabase_origin-from-env-in-dev-only)
+- [Removing `.env.development.local`](#removing-envdevelopmentlocal)
 
 ---
 
@@ -1165,3 +1166,35 @@ this produces the identical shape the literal already used for both the
 local stack (`http://127.0.0.1:54321`) and the real production URL
 (`https://hgyygkysbljijxmltbgt.supabase.co`), so `connect-src`'s syntax
 never depends on `NEXT_PUBLIC_SUPABASE_URL` being pre-formatted correctly.
+
+---
+
+## Removing `.env.development.local`
+
+**Decision:** `.env.development.local` is deleted. E2E's local-stack
+`NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` values now
+live in `playwright.config.ts`'s `webServer.env`, scoped to the dev server
+process Playwright itself spawns. Plain `npm run dev` reads only `.env.local`.
+
+**Why. Incident: confirmed via the CSP header on a plain `npm run dev`
+session, same method as "Deriving SUPABASE_ORIGIN from env in dev only"
+above.** `.env.development.local` held the local stack's URL so E2E could
+run `next dev` against it. Next's own documented env-loading order puts a
+`.env.$(NODE_ENV).local` file above plain `.env.local`, unconditionally, for
+every `next dev` invocation, not just ones Playwright starts. With the file
+present, an ordinary developer running `npm run dev` by hand was silently
+pointed at the local Supabase stack instead of the real dev project in
+`.env.local`, confirmed via `connect-src` showing `http://127.0.0.1:54321`
+instead of the real project origin.
+
+**Why scoping into `webServer.env`, not a different recognized filename.**
+Next.js has no mechanism to make a recognized env filename apply only when
+a specific parent process (Playwright) is the one invoking `next dev`; the
+loader only branches on `NODE_ENV`, which every `next dev` run shares
+regardless of who started it. Playwright's `webServer.env` merges into the
+spawned child process's `process.env` (confirmed in `playwright`'s own
+source, `WebServerPlugin._startProcess`), and Next's env loader treats an
+already-set `process.env` value as highest priority, above every `.env`
+file. Setting the values there means only the process Playwright itself
+starts ever sees the local stack's URL; a manually-run `npm run dev` never
+does.
