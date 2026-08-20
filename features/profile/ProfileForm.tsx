@@ -8,6 +8,7 @@ import { useCurrentUserProfile } from "@/hooks/useCurrentUserProfile";
 import type { SupabaseWriteErrorKind } from "@/lib/supabase/errors";
 import { useQueryClient } from "@tanstack/react-query";
 import { Camera } from "lucide-react";
+import Link from "next/link";
 import {
   useActionState,
   useEffect,
@@ -301,6 +302,12 @@ export function ProfileForm() {
           className={styles.nameInput}
         />
       </div>
+
+      <p className={styles.changePasswordRow}>
+        <Link href="/update-password" className={styles.changePasswordLink}>
+          Change password
+        </Link>
+      </p>
 
       <div className={styles.actions}>
         <SaveButton disabled={!isDirty} />

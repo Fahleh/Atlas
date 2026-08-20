@@ -81,6 +81,34 @@ export function isValidEmail(value: string): boolean {
   return EMAIL_REGEX.test(value);
 }
 
+export const MIN_PASSWORD_LENGTH = 8;
+
+/**
+ * Checks whether a password meets Atlas's minimum length requirement.
+ *
+ * @param password - Candidate password string
+ * @returns True if the password is at least `MIN_PASSWORD_LENGTH` characters
+ */
+export function isPasswordLongEnough(password: string): boolean {
+  return password.length >= MIN_PASSWORD_LENGTH;
+}
+
+/**
+ * Checks whether a password and its confirmation entry match. Never trims
+ * either value first — a leading or trailing space is part of the password,
+ * not incidental whitespace.
+ *
+ * @param password - The primary password entry
+ * @param confirmPassword - The repeated confirmation entry
+ * @returns True if both values are identical
+ */
+export function passwordsMatch(
+  password: string,
+  confirmPassword: string,
+): boolean {
+  return password === confirmPassword;
+}
+
 /**
  * Icon size (px) for full-page state icons: not-found and error boundaries.
  * Deliberately larger than any inline empty-state icon elsewhere in the app

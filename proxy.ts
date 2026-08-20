@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { Database } from "./types/database.types";
 
-const PUBLIC_PATHS = ["/login", "/signup", "/auth"];
+const PUBLIC_PATHS = ["/login", "/signup", "/auth", "/reset-password"];
 
 function isPublicRoute(pathname: string) {
   return PUBLIC_PATHS.some(
@@ -10,7 +10,7 @@ function isPublicRoute(pathname: string) {
   );
 }
 
-const AUTH_ENTRY_PATHS = ["/login", "/signup"];
+const AUTH_ENTRY_PATHS = ["/login", "/signup", "/reset-password"];
 
 function isAuthEntryRoute(pathname: string) {
   return AUTH_ENTRY_PATHS.some(
