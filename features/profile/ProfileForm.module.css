@@ -127,6 +127,30 @@
   border-color: var(--color-accent);
 }
 
+/* ---- Change password ---- */
+
+.changePasswordRow {
+  margin: 0;
+  font-size: var(--font-size-sm);
+}
+
+.changePasswordLink {
+  color: var(--color-text-accent);
+  text-decoration: none;
+  font-weight: var(--font-weight-medium);
+  transition: color 150ms ease;
+}
+
+.changePasswordLink:hover {
+  color: var(--color-accent-hover);
+}
+
+.changePasswordLink:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
 /* ---- Actions ---- */
 
 .actions {
