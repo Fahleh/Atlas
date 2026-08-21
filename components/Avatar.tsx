@@ -22,6 +22,7 @@ type AvatarProps = {
   name: string;
   avatarUrl?: string | null;
   size?: AvatarSizeVariant;
+  loading?: "lazy" | "eager";
 };
 
 type AvatarOverflowProps = {
@@ -37,11 +38,13 @@ type AvatarOverflowProps = {
  * @param name - Full name used for initials fallback and alt text
  * @param avatarUrl - Photo URL, or null/absent to use the initials fallback
  * @param size - Named size variant (default "default", 34px, matching the existing member-avatar sizing)
+ * @param loading - next/image loading strategy (default "lazy"). Set to "eager" only for a call site that is a real LCP candidate, e.g. ProfileForm's large avatar.
  */
 export function Avatar({
   name,
   avatarUrl = null,
   size = "default",
+  loading = "lazy",
 }: AvatarProps) {
   const sizePx = AVATAR_SIZE_PX[size];
   const sizeClass = AVATAR_SIZE_CLASS[size];
@@ -55,6 +58,7 @@ export function Avatar({
           width={sizePx}
           height={sizePx}
           className={styles.image}
+          loading={loading}
         />
       </span>
     );
