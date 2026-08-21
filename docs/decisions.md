@@ -56,7 +56,6 @@ reason to document something here.
 - [Matching `supabase/config.toml`'s `site_url` to `localhost`, not `127.0.0.1`](#matching-supabaseconfigtomls-site_url-to-localhost-not-127001)
 - [Separate Route Handlers for signup confirmation and password recovery](#separate-route-handlers-for-signup-confirmation-and-password-recovery)
 - [Storage errors surface as-is, not through `interpretSupabaseWriteError`](#storage-errors-surface-as-is-not-through-interpretsupabasewriteerror)
-- [Test mocks verified against real dependency source, not assumed](#test-mocks-verified-against-real-dependency-source-not-assumed)
 - [Why `loginAction.test.ts`'s malformed-`redirectTo` test uses an unclosed IPv6-bracket host](#why-loginactiontestts-malformed-redirectto-test-uses-an-unclosed-ipv6-bracket-host)
 
 ---
