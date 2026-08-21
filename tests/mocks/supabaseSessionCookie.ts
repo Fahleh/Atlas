@@ -2,20 +2,10 @@ import { SUPABASE_URL } from "./handlers/baseUrl";
 
 /**
  * Builds the { name, value } pair @supabase/ssr's server client reads a
- * session from, for seeding via nextHeadersMock's __setCookie() in Server
- * Action tests that need an existing session (e.g. logout's signOut call).
- *
- * Cookie name: confirmed by reading @supabase/supabase-js's SupabaseClient
- * constructor directly — the default storageKey is
- * `sb-${new URL(supabaseUrl).hostname.split(".")[0]}-auth-token`, since
- * lib/supabase/server.ts never overrides cookieOptions.name.
- *
- * Cookie value: @supabase/ssr defaults cookieEncoding to "base64url" and
- * prefixes the encoded payload with "base64-" (confirmed in cookies.js's
- * decodeChunkedCookieValue, which strips exactly that prefix before
- * JSON.parse). No real JWT signature needed here — signOut() only reads
- * access_token as an opaque string to send in the Authorization header,
- * it never verifies it locally (unlike getClaims(), which does).
+ * session from, for seeding via nextHeadersMock's __setCookie(). See
+ * docs/decisions.md ("Test mocks verified against real dependency source,
+ * not assumed") for the cookie name/value format and why no real JWT
+ * signature is needed.
  */
 const PROJECT_REF = new URL(SUPABASE_URL).hostname.split(".")[0];
 export const SESSION_COOKIE_NAME = `sb-${PROJECT_REF}-auth-token`;

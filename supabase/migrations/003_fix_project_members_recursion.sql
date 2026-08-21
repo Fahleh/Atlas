@@ -1,16 +1,5 @@
--- Fixes: 42P17 infinite recursion detected in policy for relation "project_members"
---
--- Root cause: the original "project_members: members can read" policy
--- (see 002_rls_policies.sql) queries project_members from within its own
--- USING clause. Every evaluation of the policy re-triggers itself to satisfy
--- the inner query, recursing until Postgres detects the cycle and errors.
---
--- Fix: a SECURITY DEFINER function bypasses RLS on its internal query,
--- breaking the cycle. Must be LANGUAGE plpgsql, not LANGUAGE sql — Postgres's
--- planner can inline a simple SQL function directly into the calling policy
--- at plan time, which silently discards the SECURITY DEFINER context and
--- reintroduces the recursion despite looking fixed. plpgsql functions are
--- never inlined.
+-- Fixes 42P17 infinite recursion in "project_members: members can read"
+-- (002_rls_policies.sql). See docs/database.md's "Correct recursion escape".
 
 create or replace function public.is_project_member(_user_id uuid, _project_id uuid)
 returns boolean

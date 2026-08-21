@@ -107,11 +107,8 @@ describe("login", () => {
   });
 
   it("should fall back to / for a malformed redirectTo that throws when parsed", async () => {
-    // Confirmed via a standalone Node check: `new URL(str, base)` resolves
-    // almost any string as a relative path against the base rather than
-    // throwing (WHATWG URL parsing is lenient with a base present) — an
-    // actual throw needs something that looks like a broken absolute URL,
-    // e.g. an unclosed IPv6-bracket host.
+    // See docs/decisions.md ("Why loginAction.test.ts's malformed-redirectTo
+    // test uses an unclosed IPv6-bracket host").
     await expect(
       login(
         { error: null },
