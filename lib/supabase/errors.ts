@@ -17,10 +17,8 @@ const FORBIDDEN_MESSAGE = "You don't have permission to perform that action.";
 
 /**
  * Distinguishes a dead session from a legitimate RLS denial for a failed
- * Postgrest write. `PGRST301` (expired JWT) is unambiguous. `42501`
- * (insufficient privilege) is not: a live, correctly-authenticated user can
- * also be denied by RLS for a real reason (e.g. a collaborator calling an
- * owner-only action), so it's resolved with a follow-up `getClaims()` check.
+ * Postgrest write. See docs/decisions.md ("Distinguishing sessionExpired
+ * from forbidden on failed Postgrest writes").
  *
  * @param error - The PostgrestError returned by a failed write
  * @param supabase - The client that produced the error, used to check session liveness

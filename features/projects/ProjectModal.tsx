@@ -1,12 +1,7 @@
 "use client";
 
-/*
- * ProjectModal is deliberately non-compound (unlike TaskModal, which remains
- * compound to avoid touching its existing working usage in ProjectSlideOver.tsx).
- * The non-compound shape is appropriate here because ProjectModal's fields are
- * fixed — no caller needs to compose the body or footer differently. A compound
- * API would add indirection without adding flexibility.
- */
+// ProjectModal is deliberately non-compound, unlike TaskModal. See
+// docs/decisions.md ("EntityModal/TaskModal compound vs. ProjectModal single-block").
 
 import { useState } from "react";
 import { EntityModal } from "@/components/EntityModal";
