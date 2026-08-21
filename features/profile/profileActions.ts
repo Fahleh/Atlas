@@ -91,9 +91,8 @@ export async function updateProfile(
       .from("avatars")
       .upload(path, avatarFile, { upsert: true });
 
-    // Storage errors carry their own error shape, not PostgrestError's
-    // code, so they're surfaced as-is rather than run through
-    // interpretSupabaseWriteError.
+    // Storage errors have their own shape, not PostgrestError's; see
+    // docs/decisions.md ("Storage errors surface as-is, not through interpretSupabaseWriteError").
     if (uploadError) return { error: uploadError.message, errorKind: null };
 
     const {

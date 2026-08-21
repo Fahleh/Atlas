@@ -18,13 +18,10 @@ export const FAKE_TASK_ROW = {
 };
 
 /**
- * Default happy-path handlers for the `tasks` table. POST/PATCH/DELETE match
- * projects.ts's Prefer: return=minimal reasoning — no `.select()` anywhere in
- * taskActions.ts, so those success bodies are empty. GET is useTasks's real
- * read path. HEAD is useDueSoonTaskCount's `{ count: "exact", head: true }`
- * query: PostgREST carries the count in Content-Range, no body, confirmed by
- * reading postgrest-js's own count-parsing (`count = parseInt(contentRange[1])`
- * from `res.headers.get('content-range')`), not the response body.
+ * Default happy-path handlers for the `tasks` table. POST/PATCH/DELETE
+ * return empty bodies (no `.select()` in taskActions.ts). See
+ * docs/decisions.md ("Test mocks verified against real dependency source,
+ * not assumed") for the HEAD/Content-Range shape confirmation.
  */
 export const tasksHandlers = [
   http.get(`${SUPABASE_URL}/rest/v1/tasks`, () => {

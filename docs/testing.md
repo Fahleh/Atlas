@@ -203,4 +203,11 @@ Separate:
 - reasonable inference;
 - unverified hypothesis.
 
+---
+
 If a tool fails or returns no usable result, report that failure directly.
+
+- tests/mocks/authError.ts sets both `code` and `error_code`, plus the
+  `X-Supabase-Api-Version` header, because `@supabase/auth-js`'s
+  `handleError()` only reads `data.code` when that header is present
+  and recent, confirmed by reading `handleError()` directly.

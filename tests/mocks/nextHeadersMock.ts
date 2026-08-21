@@ -1,20 +1,8 @@
 /**
- * Manual replacement for next/headers. Server Action test files import this
- * module as a namespace and hand it to jest.mock() as the factory's return
- * value:
- *
- *   import * as nextHeadersMock from "@/tests/mocks/nextHeadersMock";
- *   jest.mock("next/headers", () => nextHeadersMock);
- *
- * (Not require() inside the factory — that trips the no-require-imports
- * lint rule. A static import works the same way since ts-jest hoists
- * jest.mock() calls above other statements, confirmed by reading
- * ts-jest's hoist-jest transformer directly.)
- *
- * The real cookies() reads Next's request-scoped AsyncLocalStorage and
- * throws outside an actual request, so it can't run as-is under plain
- * Jest. This backs cookies() with an in-memory Map instead, matching the
- * get/getAll/set surface lib/supabase/server.ts actually calls.
+ * Manual replacement for next/headers, imported as a namespace and handed
+ * to jest.mock(). Backs cookies() with an in-memory Map since the real one
+ * needs a live request. See docs/decisions.md ("Test mocks verified
+ * against real dependency source, not assumed") for why a static import.
  */
 
 const store = new Map<string, string>();

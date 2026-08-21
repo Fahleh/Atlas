@@ -11,11 +11,9 @@ import { type NextRequest, NextResponse } from "next/server";
  *
  * On success, redirects to /update-password, now authenticated. On missing
  * params or verification error, redirects to
- * /reset-password?error=recovery_failed — back to the request form, not
- * /login, since a failed recovery link leaves nothing useful to do there.
- * See app/auth/confirm/route.ts for the equivalent signup-confirmation flow;
- * kept as a separate handler rather than a shared branch because the two
- * flows' failure destinations genuinely differ.
+ * /reset-password?error=recovery_failed. See app/auth/confirm/route.ts for
+ * the equivalent signup flow, and docs/decisions.md for why these stay
+ * separate handlers.
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;

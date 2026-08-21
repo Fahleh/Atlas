@@ -23,9 +23,8 @@ function SubmitButton() {
 }
 
 /**
- * Isolated in its own component because `useSearchParams()` requires a
- * Suspense boundary. Without this extraction, ResetPasswordPage would be
- * forced to fully de-optimize from static to dynamic rendering.
+ * Isolated in its own component; see docs/frontend.md's useSearchParams
+ * section.
  */
 function RecoveryErrorBanner() {
   const searchParams = useSearchParams();

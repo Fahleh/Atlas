@@ -54,6 +54,10 @@ reason to document something here.
 - [Deriving SUPABASE_ORIGIN from env in dev only](#deriving-supabase_origin-from-env-in-dev-only)
 - [Removing `.env.development.local`](#removing-envdevelopmentlocal)
 - [Matching `supabase/config.toml`'s `site_url` to `localhost`, not `127.0.0.1`](#matching-supabaseconfigtomls-site_url-to-localhost-not-127001)
+- [Separate Route Handlers for signup confirmation and password recovery](#separate-route-handlers-for-signup-confirmation-and-password-recovery)
+- [Storage errors surface as-is, not through `interpretSupabaseWriteError`](#storage-errors-surface-as-is-not-through-interpretsupabasewriteerror)
+- [Test mocks verified against real dependency source, not assumed](#test-mocks-verified-against-real-dependency-source-not-assumed)
+- [Why `loginAction.test.ts`'s malformed-`redirectTo` test uses an unclosed IPv6-bracket host](#why-loginactiontestts-malformed-redirectto-test-uses-an-unclosed-ipv6-bracket-host)
 
 ---
 
@@ -1221,3 +1225,41 @@ route's own redirect always pointed at `localhost` — the browser arrived
 signed out. Aligning `site_url` with `localhost:3000`, the host every other
 part of this project's dev and E2E setup already uses, keeps both sides on
 the same origin.
+
+---
+
+## Separate Route Handlers for signup confirmation and password recovery
+
+**Decision:** `app/auth/confirm/route.ts` (signup) and
+`app/auth/recovery-confirm/route.ts` (recovery) are separate handlers,
+not one branching on `type`.
+
+**Why:** Their failure redirects genuinely differ, a failed recovery
+link has nothing useful to do on `/login`, unlike a failed signup
+confirmation. Branching one handler on `type` would add indirection
+for that single difference, not remove any real duplication.
+
+---
+
+## Storage errors surface as-is, not through `interpretSupabaseWriteError`
+
+**Decision:** `profileActions.ts`'s avatar upload failure surfaces
+`uploadError.message` directly, not through `interpretSupabaseWriteError`.
+
+**Why:** `@supabase/storage-js` errors don't carry the `.code` shape
+that helper depends on to tell `sessionExpired` from `forbidden`.
+Running one through it would misfire, not simply skip a nice-to-have.
+
+---
+
+## Why `loginAction.test.ts`'s malformed-`redirectTo` test uses an unclosed IPv6-bracket host
+
+**Decision:** The malformed-redirect test uses `"http://[invalid"`
+specifically, not an arbitrary bad string.
+
+**Why:** Confirmed via a standalone Node check: `new URL(str, base)`
+resolves almost any string as a relative path rather than throwing
+when a base is given. Only something shaped like a broken absolute
+URL, like an unclosed IPv6-bracket host, actually triggers the
+throw; most malformed strings never reach `login()`'s catch branch
+at all.

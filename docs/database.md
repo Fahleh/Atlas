@@ -201,6 +201,11 @@ A one-time backfill covers projects created before the trigger existed.
 - returns matched user ID or `null`;
 - never returns the email.
 
+`profiles.email` deliberately does not exist; email lives only in
+`auth.users`, owned by Supabase Auth, avoiding a second source of truth and
+a sync trigger. `SECURITY DEFINER` is required because a normal
+authenticated role has no direct access to `auth.users`.
+
 It is deliberately callable by authenticated users rather than restricted to
 project owners. Since project creation is free and unrestricted, an ownership
 gate would be trivial to bypass and would provide security theater rather than
