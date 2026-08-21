@@ -48,7 +48,7 @@ cover.
 ### E2E Data Strategy
 - Local Supabase stack via the CLI (Docker), not a second cloud project — free-tier projects pause after 7 days idle, unsuitable for repeatable runs
 - `globalSetup` runs `supabase db reset --local` once per suite run — this, not per-test cleanup, is what guarantees repeatability across runs
-- Two fixed seed accounts (primary, secondary), seeded idempotently, not reseeded fresh per test
+- Three fixed seed accounts (primary, secondary, and a reset account dedicated to password-reset.spec.ts, which mutates its password), seeded idempotently, not reseeded fresh per test
 - Per-test cleanup (deleting what a test created) only applies where deletion is the behavior under test, not as a blanket rule — e.g. `project-crud-membership.spec.ts` deletes its own project because proving delete works is the point of that test
 - Revisit if a future test asserts an exact project count or exercises a capped/sorted list (e.g. the dashboard's Recent Projects) — accumulated same-run projects would start to matter at that point
 

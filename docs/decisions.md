@@ -53,6 +53,7 @@ reason to document something here.
 - [`npm test` runs with `--forceExit`: MSW leaves an open handle for any FormData request body](#npm-test-runs-with---forceexit-msw-leaves-an-open-handle-for-any-formdata-request-body)
 - [Deriving SUPABASE_ORIGIN from env in dev only](#deriving-supabase_origin-from-env-in-dev-only)
 - [Removing `.env.development.local`](#removing-envdevelopmentlocal)
+- [Matching `supabase/config.toml`'s `site_url` to `localhost`, not `127.0.0.1`](#matching-supabaseconfigtomls-site_url-to-localhost-not-127001)
 
 ---
 
@@ -1198,3 +1199,25 @@ already-set `process.env` value as highest priority, above every `.env`
 file. Setting the values there means only the process Playwright itself
 starts ever sees the local stack's URL; a manually-run `npm run dev` never
 does.
+
+## Matching `supabase/config.toml`'s `site_url` to `localhost`, not `127.0.0.1`
+
+**Decision:** `[auth].site_url` and `additional_redirect_urls` in
+`supabase/config.toml` use `localhost:3000`, not `127.0.0.1:3000`. This is
+what Supabase's local mailer uses to build the links in confirmation and
+recovery emails.
+
+**Why. Incident: found writing password-reset.spec.ts's real click-through
+E2E test.** Every recovery/confirm link landed on `127.0.0.1:3000`, and the
+Route Handlers that exchange them (`app/auth/confirm`, `app/auth/recovery-confirm`)
+build their success redirect from `request.url`. Confirmed empirically, with
+curl and three different `Host` headers (default, a bogus value, and the
+literal correct `127.0.0.1:3000`): Next 16's dev server always normalizes
+`request.url`'s origin to `localhost:3000`, ignoring the incoming `Host`
+entirely. The session cookie GoTrue's exchange sets, though, is host-only
+for whichever host the browser actually connected to. Following a
+`127.0.0.1` email link meant the cookie lived on `127.0.0.1`, while the
+route's own redirect always pointed at `localhost` — the browser arrived
+signed out. Aligning `site_url` with `localhost:3000`, the host every other
+part of this project's dev and E2E setup already uses, keeps both sides on
+the same origin.
