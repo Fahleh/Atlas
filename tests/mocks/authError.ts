@@ -1,9 +1,7 @@
 import { HttpResponse } from "msw";
 
 /**
- * Builds a GoTrue-shaped auth error response. See docs/decisions.md
- * ("Test mocks verified against real dependency source, not assumed")
- * for why both the header and both error-code fields are set.
+ * Builds a GoTrue-shaped auth error response.
  *
  * @param code - GoTrue error code, e.g. "email_not_confirmed", "user_already_exists"
  * @param message - Human-readable message; only msg is actually read by

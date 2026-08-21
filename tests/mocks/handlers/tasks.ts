@@ -19,9 +19,7 @@ export const FAKE_TASK_ROW = {
 
 /**
  * Default happy-path handlers for the `tasks` table. POST/PATCH/DELETE
- * return empty bodies (no `.select()` in taskActions.ts). See
- * docs/decisions.md ("Test mocks verified against real dependency source,
- * not assumed") for the HEAD/Content-Range shape confirmation.
+ * return empty bodies (no `.select()` in taskActions.ts).
  */
 export const tasksHandlers = [
   http.get(`${SUPABASE_URL}/rest/v1/tasks`, () => {

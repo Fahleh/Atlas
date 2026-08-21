@@ -68,7 +68,7 @@ describe("deleteProject", () => {
   it("should return sessionExpired for 42501 when getClaims finds no session", async () => {
     server.use(
       http.delete(`${SUPABASE_URL}/rest/v1/projects`, () =>
-        postgrestError({ code: "42501", message: "permission denied" }, 403),
+        postgrestError({ code: "42501", message: "permission denied" }, 401),
       ),
     );
     mockNoSession();
@@ -89,7 +89,7 @@ describe("deleteProject", () => {
   it("should return forbidden for 42501 when getClaims finds a live session", async () => {
     server.use(
       http.delete(`${SUPABASE_URL}/rest/v1/projects`, () =>
-        postgrestError({ code: "42501", message: "permission denied" }, 403),
+        postgrestError({ code: "42501", message: "permission denied" }, 401),
       ),
     );
     mockLiveSession();
@@ -220,7 +220,7 @@ describe("addMember", () => {
   it("should return sessionExpired for a 42501 insert failure when getClaims finds no session", async () => {
     server.use(
       http.post(`${SUPABASE_URL}/rest/v1/project_members`, () =>
-        postgrestError({ code: "42501", message: "permission denied" }, 403),
+        postgrestError({ code: "42501", message: "permission denied" }, 401),
       ),
     );
     mockNoSession();
@@ -241,7 +241,7 @@ describe("addMember", () => {
   it("should return forbidden for a 42501 insert failure when getClaims finds a live session", async () => {
     server.use(
       http.post(`${SUPABASE_URL}/rest/v1/project_members`, () =>
-        postgrestError({ code: "42501", message: "permission denied" }, 403),
+        postgrestError({ code: "42501", message: "permission denied" }, 401),
       ),
     );
     mockLiveSession();
@@ -475,7 +475,7 @@ describe("createProjectAction, create branch", () => {
       .mockResolvedValueOnce({ data: null, error: null } as GetClaimsResult);
     server.use(
       http.post(`${SUPABASE_URL}/rest/v1/projects`, () =>
-        postgrestError({ code: "42501", message: "permission denied" }, 403),
+        postgrestError({ code: "42501", message: "permission denied" }, 401),
       ),
     );
     const queryClient = new QueryClient();
@@ -501,7 +501,7 @@ describe("createProjectAction, create branch", () => {
     mockLiveSession();
     server.use(
       http.post(`${SUPABASE_URL}/rest/v1/projects`, () =>
-        postgrestError({ code: "42501", message: "permission denied" }, 403),
+        postgrestError({ code: "42501", message: "permission denied" }, 401),
       ),
     );
     const queryClient = new QueryClient();

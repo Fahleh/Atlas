@@ -7,8 +7,8 @@ import { HttpResponse } from "msw";
  * path, e.g. server.use(http.delete(url, () => postgrestError({ code: "PGRST301" }))).
  *
  * @param params - code is required; message/details/hint default to empty/generic
- * @param status - HTTP status PostgREST would send for this code (inference,
- *   not load-bearing: supabase-js reads the JSON body's .code, not the status)
+ * @param status - HTTP status PostgREST would send for this code (not
+ *   load-bearing: supabase-js reads the JSON body's .code, not the status)
  */
 export function postgrestError(
   {
