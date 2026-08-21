@@ -1,8 +1,9 @@
 /**
  * Manual replacement for next/headers, imported as a namespace and handed
  * to jest.mock(). Backs cookies() with an in-memory Map since the real one
- * needs a live request. See docs/decisions.md ("Test mocks verified
- * against real dependency source, not assumed") for why a static import.
+ * needs a live request. Uses a static import, not require(), since
+ * require() inside the jest.mock() factory trips the no-require-imports
+ * lint rule.
  */
 
 const store = new Map<string, string>();

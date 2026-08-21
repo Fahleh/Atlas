@@ -2,10 +2,7 @@ import { SUPABASE_URL } from "./handlers/baseUrl";
 
 /**
  * Builds the { name, value } pair @supabase/ssr's server client reads a
- * session from, for seeding via nextHeadersMock's __setCookie(). See
- * docs/decisions.md ("Test mocks verified against real dependency source,
- * not assumed") for the cookie name/value format and why no real JWT
- * signature is needed.
+ * session from, for seeding via nextHeadersMock's __setCookie().
  */
 const PROJECT_REF = new URL(SUPABASE_URL).hostname.split(".")[0];
 export const SESSION_COOKIE_NAME = `sb-${PROJECT_REF}-auth-token`;

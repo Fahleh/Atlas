@@ -1,8 +1,8 @@
 /**
  * Manual replacement for next/navigation, imported as a namespace and
- * handed to jest.mock(). See docs/decisions.md ("Test mocks verified
- * against real dependency source, not assumed") for the redirect() digest
- * shape and why this uses a static import, not require().
+ * handed to jest.mock(). Uses a static import, not require(), since
+ * require() inside the jest.mock() factory trips the no-require-imports
+ * lint rule.
  */
 
 export const redirect = jest.fn((url: string, type: "push" | "replace" = "push") => {
