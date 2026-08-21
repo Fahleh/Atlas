@@ -3,10 +3,11 @@ import { defineConfig, devices } from "@playwright/test";
 const BASE_URL = "http://localhost:3000";
 
 /**
- * E2E config. Points at the local Supabase stack via .env.development.local
- * (Next's own loader picks it up, takes priority over .env.local, see
- * docs/decisions.md for why NODE_ENV=test was rejected for this). Not run
- * as part of `npm test`; see docs/testing.md for the separate e2e command.
+ * E2E config. Points the dev server Playwright spawns at the local Supabase
+ * stack via webServer.env, scoped only to that child process. See
+ * docs/decisions.md ("Removing .env.development.local") for why this
+ * replaced a recognized Next.js env filename. Not run as part of `npm test`;
+ * see docs/testing.md for the separate e2e command.
  */
 export default defineConfig({
   // Keep specs named *.spec.ts, not *.test.ts: jest.config.ts's testMatch
@@ -29,6 +30,11 @@ export default defineConfig({
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 60 * 1000,
+    env: {
+      NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54321",
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+        "sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH",
+    },
   },
   projects: [
     {

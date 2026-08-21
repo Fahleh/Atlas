@@ -1,5 +1,5 @@
 /**
- * Idempotent E2E fixture seeding. Creates the two fixed test accounts
+ * Idempotent E2E fixture seeding. Creates the three fixed test accounts
  * (tests/e2e/accounts.ts) against the local Supabase stack via the admin
  * API, pre-confirmed so E2E specs can log in immediately. Safe to run on
  * every globalSetup: a duplicate createUser call fails with the documented
@@ -10,7 +10,7 @@
  */
 import WebSocket from "ws";
 import { createClient } from "@supabase/supabase-js";
-import { PRIMARY_ACCOUNT, SECONDARY_ACCOUNT } from "./accounts";
+import { PRIMARY_ACCOUNT, SECONDARY_ACCOUNT, RESET_ACCOUNT } from "./accounts";
 
 // Node 20 has no native WebSocket; supabase-js's RealtimeClient constructor
 // requires one even though this script never opens a realtime connection.
@@ -45,4 +45,5 @@ export async function seedE2eAccounts(): Promise<void> {
 
   await seedAccount(PRIMARY_ACCOUNT);
   await seedAccount(SECONDARY_ACCOUNT);
+  await seedAccount(RESET_ACCOUNT);
 }

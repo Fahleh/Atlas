@@ -216,10 +216,11 @@ Wire logout as a form action around the logout button, not as a client `onClick`
 
 ## Cache Isolation
 
-`ClearQueryCacheOnMount` is rendered in both auth and dashboard layouts.
-
-It is the primary cross-user React Query cache isolation mechanism under the
-current auth model.
+`QueryProvider` is scoped to `app/(dashboard)/layout.tsx` only, not root
+`app/layout.tsx`. `(dashboard)/layout.tsx` fully unmounts on every crossing to
+`(auth)`, so `QueryProvider`'s own mount/unmount lifecycle is the primary
+cross-user React Query cache isolation mechanism under the current auth
+model, not `ClearQueryCacheOnMount`, which is deleted. See `docs/decisions.md`.
 
 `AuthListenerProvider` listens for `SIGNED_OUT` only as a secondary safeguard.
 

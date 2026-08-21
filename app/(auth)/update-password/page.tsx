@@ -3,8 +3,8 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
-import { signup } from "./actions";
-import type { SignupFormState } from "./actions";
+import { updatePassword } from "./actions";
+import type { UpdatePasswordFormState } from "./actions";
 import styles from "../authShared.module.css";
 
 /**
@@ -16,31 +16,29 @@ function SubmitButton() {
   const { pending } = useFormStatus();
   return (
     <button type="submit" disabled={pending} className={styles.submitButton}>
-      {pending ? "Creating account…" : "Create account"}
+      {pending ? "Saving…" : "Save new password"}
     </button>
   );
 }
 
-// ---- SignupPage -------------------------------------------------------------
+// ---- UpdatePasswordPage --------------------------------------------------------
 
-export default function SignupPage() {
-  const [state, formAction] = useActionState<SignupFormState, FormData>(
-    signup,
-    { error: null, accountExists: false, success: false },
+export default function UpdatePasswordPage() {
+  const [state, formAction] = useActionState<UpdatePasswordFormState, FormData>(
+    updatePassword,
+    { error: null, sessionExpired: false, success: false },
   );
 
   if (state.success) {
     return (
       <div className={styles.successState}>
-        <h1 className={styles.successTitle}>Check your email</h1>
+        <h1 className={styles.successTitle}>Password updated</h1>
         <p className={styles.successMessage}>
-          We sent a confirmation link to your inbox. Click it to activate your
-          account and sign in.
+          Your password has been changed.
         </p>
         <p className={styles.navRow}>
-          Already confirmed?{" "}
-          <Link href="/login" className={styles.navLink}>
-            Sign in
+          <Link href="/" className={styles.navLink}>
+            Continue to Atlas
           </Link>
         </p>
       </div>
@@ -50,19 +48,19 @@ export default function SignupPage() {
   return (
     <>
       <div className={styles.header}>
-        <h1 className={styles.title}>Create your account</h1>
-        <p className={styles.subtitle}>Get started with Atlas today</p>
+        <h1 className={styles.title}>Set a new password</h1>
+        <p className={styles.subtitle}>Choose a new password for your account</p>
       </div>
 
       {state.error && (
         <div role="alert" className={styles.errorBanner}>
           {state.error}{" "}
-          {state.accountExists && (
+          {state.sessionExpired && (
             <Link
-              href="/login"
+              href="/reset-password"
               className={`${styles.errorLink} ${styles.accentLink}`}
             >
-              Sign in
+              Request a new reset link
             </Link>
           )}
         </div>
@@ -70,34 +68,8 @@ export default function SignupPage() {
 
       <form action={formAction} className={styles.form}>
         <div className={styles.field}>
-          <label htmlFor="name" className={styles.fieldLabel}>
-            Name
-          </label>
-          <input
-            id="name"
-            type="text"
-            name="name"
-            required
-            autoComplete="name"
-          />
-        </div>
-
-        <div className={styles.field}>
-          <label htmlFor="email" className={styles.fieldLabel}>
-            Email
-          </label>
-          <input
-            id="email"
-            type="email"
-            name="email"
-            required
-            autoComplete="email"
-          />
-        </div>
-
-        <div className={styles.field}>
           <label htmlFor="password" className={styles.fieldLabel}>
-            Password
+            New password
           </label>
           <input
             id="password"
@@ -110,7 +82,7 @@ export default function SignupPage() {
 
         <div className={styles.field}>
           <label htmlFor="confirmPassword" className={styles.fieldLabel}>
-            Confirm password
+            Confirm new password
           </label>
           <input
             id="confirmPassword"
@@ -123,15 +95,6 @@ export default function SignupPage() {
 
         <SubmitButton />
       </form>
-
-      <div className={styles.footerLinks}>
-        <p className={styles.navRow}>
-          Already have an account?{" "}
-          <Link href="/login" className={styles.navLink}>
-            Sign in
-          </Link>
-        </p>
-      </div>
     </>
   );
 }

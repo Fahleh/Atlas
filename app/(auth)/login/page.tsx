@@ -7,6 +7,7 @@ import Link from "next/link";
 import { login } from "./actions";
 import type { LoginFormState } from "./actions";
 import styles from "./login.module.css";
+import sharedStyles from "../authShared.module.css";
 
 /**
  * Submit button that derives its pending state from `useFormStatus`.
@@ -16,7 +17,11 @@ import styles from "./login.module.css";
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" disabled={pending} className={styles.submitButton}>
+    <button
+      type="submit"
+      disabled={pending}
+      className={sharedStyles.submitButton}
+    >
       {pending ? "Signing in…" : "Sign in"}
     </button>
   );
@@ -36,7 +41,7 @@ function RedirectField() {
     <>
       <input type="hidden" name="redirectTo" value={redirectTo ?? ""} />
       {confirmationError && (
-        <div role="alert" className={styles.errorBanner}>
+        <div role="alert" className={sharedStyles.errorBanner}>
           Email confirmation failed. Please try signing up again or request a
           new confirmation email.
         </div>
@@ -54,24 +59,24 @@ export default function LoginPage() {
 
   return (
     <>
-      <div className={styles.header}>
-        <h1 className={styles.title}>Welcome back</h1>
-        <p className={styles.subtitle}>Sign in to your account</p>
+      <div className={sharedStyles.header}>
+        <h1 className={sharedStyles.title}>Welcome back</h1>
+        <p className={sharedStyles.subtitle}>Sign in to your account</p>
       </div>
 
       {state.error && (
-        <div role="alert" className={styles.errorBanner}>
+        <div role="alert" className={sharedStyles.errorBanner}>
           {state.error}
         </div>
       )}
 
-      <form action={formAction} className={styles.form}>
+      <form action={formAction} className={sharedStyles.form}>
         <Suspense fallback={<div></div>}>
           <RedirectField />
         </Suspense>
 
-        <div className={styles.field}>
-          <label htmlFor="email" className={styles.fieldLabel}>
+        <div className={sharedStyles.field}>
+          <label htmlFor="email" className={sharedStyles.fieldLabel}>
             Email
           </label>
           <input
@@ -83,8 +88,8 @@ export default function LoginPage() {
           />
         </div>
 
-        <div className={styles.field}>
-          <label htmlFor="password" className={styles.fieldLabel}>
+        <div className={sharedStyles.field}>
+          <label htmlFor="password" className={sharedStyles.fieldLabel}>
             Password
           </label>
           <input
@@ -99,14 +104,13 @@ export default function LoginPage() {
         <SubmitButton />
       </form>
 
-      <div className={styles.footerLinks}>
-        {/* TODO: implement password reset */}
-        <a href="#" className={styles.forgotLink}>
+      <div className={sharedStyles.footerLinks}>
+        <Link href="/reset-password" className={styles.forgotLink}>
           Forgot password?
-        </a>
-        <p className={styles.signupRow}>
+        </Link>
+        <p className={sharedStyles.navRow}>
           Don&apos;t have an account?{" "}
-          <Link href="/signup" className={styles.signupLink}>
+          <Link href="/signup" className={sharedStyles.navLink}>
             Sign up
           </Link>
         </p>

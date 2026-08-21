@@ -1,7 +1,12 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { isValidEmail } from "@/lib/utils";
+import {
+  isValidEmail,
+  isPasswordLongEnough,
+  passwordsMatch,
+  MIN_PASSWORD_LENGTH,
+} from "@/lib/utils";
 
 export type SignupFormState = {
   error: string | null;
@@ -60,15 +65,15 @@ export async function signup(
     };
   }
 
-  if (password.length < 8) {
+  if (!isPasswordLongEnough(password)) {
     return {
-      error: "Password must be at least 8 characters long.",
+      error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters long.`,
       accountExists: false,
       success: false,
     };
   }
 
-  if (password !== confirmPassword) {
+  if (!passwordsMatch(password, confirmPassword)) {
     return {
       error: "Passwords do not match.",
       accountExists: false,

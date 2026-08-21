@@ -4,7 +4,10 @@ import {
   getInitials,
   getMemberAvatarPaletteIndex,
   isValidEmail,
+  isPasswordLongEnough,
+  passwordsMatch,
   AVATAR_PALETTE_SIZE,
+  MIN_PASSWORD_LENGTH,
 } from "@/lib/utils";
 
 describe("toCamelCase", () => {
@@ -172,5 +175,53 @@ describe("isValidEmail", () => {
 
   it("should return false for a whitespace-padded valid email, since it isn't trimmed first", () => {
     expect(isValidEmail(" user@domain.com ")).toBe(false);
+  });
+});
+
+describe("isPasswordLongEnough", () => {
+  it("should return false for a password one character under the minimum", () => {
+    expect(isPasswordLongEnough("a".repeat(MIN_PASSWORD_LENGTH - 1))).toBe(
+      false,
+    );
+  });
+
+  it("should return true for a password exactly at the minimum", () => {
+    expect(isPasswordLongEnough("a".repeat(MIN_PASSWORD_LENGTH))).toBe(true);
+  });
+
+  it("should return true for a password well over the minimum", () => {
+    expect(isPasswordLongEnough("a".repeat(MIN_PASSWORD_LENGTH + 20))).toBe(
+      true,
+    );
+  });
+
+  it("should return false for an empty string", () => {
+    expect(isPasswordLongEnough("")).toBe(false);
+  });
+});
+
+describe("passwordsMatch", () => {
+  it("should return true for two identical strings", () => {
+    expect(passwordsMatch("password123", "password123")).toBe(true);
+  });
+
+  it("should return false for two different strings", () => {
+    expect(passwordsMatch("password123", "password124")).toBe(false);
+  });
+
+  it("should return true when both are empty", () => {
+    expect(passwordsMatch("", "")).toBe(true);
+  });
+
+  it("should return false when only one is empty", () => {
+    expect(passwordsMatch("password123", "")).toBe(false);
+  });
+
+  it("should be case-sensitive", () => {
+    expect(passwordsMatch("Password123", "password123")).toBe(false);
+  });
+
+  it("should treat trailing whitespace as significant, since neither value is trimmed", () => {
+    expect(passwordsMatch("password123", "password123 ")).toBe(false);
   });
 });

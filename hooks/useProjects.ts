@@ -1,5 +1,3 @@
-// TODO: add tests
-
 import { createClient } from "@/lib/supabase/client";
 import {
   interpretSupabaseReadError,
