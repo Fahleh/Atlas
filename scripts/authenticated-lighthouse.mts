@@ -2,7 +2,9 @@
  * Standalone script, not part of the shipped app. Logs into Atlas with a
  * persistent Playwright Chromium context, then runs playwright-lighthouse's
  * playAudit against that same authenticated instance for each authenticated
- * route and preset, writing reports to the given directory.
+ * route and preset, RUNS_PER_ROUTE times each, writing reports to the given
+ * directory. lhci assert, not this script, aggregates the resulting files
+ * (median, see lighthouserc.*.json).
  *
  * One continuous authenticated browser throughout. Replaces the old
  * --extra-headers cookie hand-off (scripts/get-auth-cookie.ts, deleted):
@@ -44,6 +46,14 @@ const LOGIN_TIMEOUT_MS = 15000;
 // registered category in this installed Lighthouse version.
 const CATEGORIES = ["performance", "accessibility", "best-practices", "seo"];
 
+// A single lab run per route is not a valid sample for a performance gate;
+// lab variance alone moved TBT by 2-4x between otherwise-identical runs
+// during verification. Each route/form-factor combination is audited this
+// many times, and lhci assert (given the median aggregationMethod in
+// lighthouserc.*.json) does the actual averaging across the resulting
+// files, not this script. See docs/decisions.md.
+const RUNS_PER_ROUTE = 3;
+
 const ROUTES = [
   { name: "dashboard", path: "/" },
   { name: "profile", path: "/profile" },
@@ -69,10 +79,11 @@ async function runAudit(params: {
   page: Page;
   routeName: string;
   desktop: boolean;
+  runIndex: number;
   outputDir: string;
 }): Promise<void> {
-  const { page, routeName, desktop, outputDir } = params;
-  const name = desktop ? `${routeName}-desktop` : routeName;
+  const { page, routeName, desktop, runIndex, outputDir } = params;
+  const name = desktop ? `${routeName}-desktop-${runIndex}` : `${routeName}-${runIndex}`;
 
   await playAudit({
     page,
@@ -131,11 +142,15 @@ async function main() {
     }
 
     for (const route of ROUTES) {
-      await page.goto(`${BASE_URL}${route.path}`);
-      await runAudit({ page, routeName: route.name, desktop: false, outputDir });
+      for (let runIndex = 1; runIndex <= RUNS_PER_ROUTE; runIndex++) {
+        await page.goto(`${BASE_URL}${route.path}`);
+        await runAudit({ page, routeName: route.name, desktop: false, runIndex, outputDir });
+      }
 
-      await page.goto(`${BASE_URL}${route.path}`);
-      await runAudit({ page, routeName: route.name, desktop: true, outputDir });
+      for (let runIndex = 1; runIndex <= RUNS_PER_ROUTE; runIndex++) {
+        await page.goto(`${BASE_URL}${route.path}`);
+        await runAudit({ page, routeName: route.name, desktop: true, runIndex, outputDir });
+      }
     }
   } finally {
     await context.close();
