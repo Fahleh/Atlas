@@ -57,6 +57,7 @@ reason to document something here.
 - [Separate Route Handlers for signup confirmation and password recovery](#separate-route-handlers-for-signup-confirmation-and-password-recovery)
 - [Storage errors surface as-is, not through `interpretSupabaseWriteError`](#storage-errors-surface-as-is-not-through-interpretsupabasewriteerror)
 - [Why `loginAction.test.ts`'s malformed-`redirectTo` test uses an unclosed IPv6-bracket host](#why-loginactiontestts-malformed-redirectto-test-uses-an-unclosed-ipv6-bracket-host)
+- [CI performance gate: lab proxies, form-factor-split thresholds, and the file-count guard](#ci-performance-gate-lab-proxies-form-factor-split-thresholds-and-the-file-count-guard)
 
 ---
 
@@ -1262,3 +1263,102 @@ when a base is given. Only something shaped like a broken absolute
 URL, like an unclosed IPv6-bracket host, actually triggers the
 throw; most malformed strings never reach `login()`'s catch branch
 at all.
+
+---
+
+## CI performance gate: lab proxies, form-factor-split thresholds, and the file-count guard
+
+**Decision:** `.github/workflows/ci.yml` runs
+`scripts/authenticated-lighthouse.mts` once in `lighthouse-generate`,
+uploading the reports as a shared artifact. `lighthouse-desktop` and
+`lighthouse-mobile` each download that artifact, split out their own
+form factor, and assert against `lighthouserc.desktop.json`/
+`lighthouserc.mobile.json` independently. Desktop is required,
+mobile is not (see below).
+
+**Why lab proxies, not real Core Web Vitals.** Official Core Web
+Vitals are CrUX field data from real-user traffic. Atlas has no
+meaningful production traffic to gate on, so the honest option is
+Lighthouse's lab measurements: LCP and CLS directly, Total Blocking
+Time standing in for INP-style responsiveness (Lighthouse cannot
+measure INP at all in a lab run, it requires real interaction timing).
+
+**Why TBT's threshold comes from Lighthouse's own scoring curve.**
+LCP and CLS's assertion values aren't arbitrary, they're Lighthouse's
+own `p10` control point (the value scoring ~0.9, "good") for each
+metric, confirmed by reading
+`node_modules/lighthouse/core/audits/metrics/*.js` directly, and for
+LCP mobile that point happens to equal the official CWV "good"
+cutoff. TBT has no outside standard to check against, so the same
+method applies: its `p10` control point is the threshold. This is
+also why LCP and TBT are split by form factor (mobile `p10: 2500`/
+`200`, desktop `p10: 1200`/`150`) while CLS isn't, Lighthouse's own
+source defines separate mobile/desktop control points for LCP and
+TBT, but only one shared `p10: 0.1` for CLS.
+
+**Why two configs and two `assert` passes, not one.**
+`authenticated-lighthouse.mts` audits each route under both mobile and
+desktop, against the identical URL. `lhci assert` groups results by
+URL for reporting, so a single pass over both report sets can't apply
+different thresholds by form factor, everything in one `assert` call
+gets the same numbers. Reports are split into two directories first,
+one `assert` invocation per form factor.
+
+**Why the file-count guard exists.** `lhci assert`'s `loadSavedLHRs`
+only recognizes files matching `lhr-<n>.json`. Confirmed and
+reproduced this session: pointing it at a directory with real reports
+under a different naming pattern makes it report `0 URL(s), 0 total
+run(s)` and exit `0`, a merge gate silently passing having checked
+nothing. The workflow counts renamed files per bucket and hard-fails
+before calling `assert` if either count isn't exactly 9 (3 routes x
+3 runs each, see the multi-run entry below).
+
+**Why this audits the live Supabase project, not the local Docker
+stack.** The live project reflects real production network
+conditions, the correct default for a gate measuring what an actual
+user experiences, not a same-machine round trip. A live-vs-local
+comparison was considered but not run: the mobile TBT root cause
+(below) already shows the dominant cost is React/React-DOM's own
+hydration and scheduler runtime, not network latency, so the
+comparison would not change anything material. Running it would also
+require patching `next.config.ts`'s deliberately locked-down CSP
+`connect-src`, confirmed this session: a production build pointed at
+the local stack has every client-side Supabase fetch CSP-blocked,
+`SUPABASE_ORIGIN` only derives from env when `isDev` is true, real
+console errors observed, not inferred, for a question the TBT finding
+had already answered. Not a cost worth paying to double check a
+secondary variable.
+
+**Why each route/form-factor combination runs 3 times, median
+aggregated.** A single lab run is not a valid sample: verified this
+session, mobile TBT for the same route swung from roughly 300ms to
+750ms across otherwise-identical runs, pure lab variance. `RUNS_PER_ROUTE`
+in `authenticated-lighthouse.mts` runs each combination 3 times; the
+averaging happens in `lhci assert` itself via `aggregationMethod:
+"median"` in both configs, not in the script, `assert` already groups
+multiple LHR files by URL and aggregates them natively once given real
+samples under that URL.
+
+**Current state: mobile TBT fails on all three routes, not fixed
+here.** Root-caused via `mainthread-work-breakdown` and `bootup-time`
+across 9 real production-mode mobile runs (3 routes x 3 runs each):
+the dominant cost on every route is the same chunk, React/React-DOM's own framework
+runtime (`createRoot`, `hydrateRoot`, `unstable_scheduleCallback`,
+`useSyncExternalStore`), not a specific unnecessary script or a
+third-party dependency. Cost is roughly proportional to how much
+component tree each route hydrates, `/` and `/projects` hydrate more
+than `/profile` and cost roughly double. This is a structural
+client-JS question, not a scoped bug, and is not being fixed in this
+branch. The mobile TBT assertion ships in its current,
+currently-failing state and should not be treated as a required
+check until that separate investigation resolves it. Desktop and
+mobile's other two metrics (LCP, CLS) are unaffected and pass.
+
+**Why E2E isn't a required check yet.** The suite has never run under
+real CI conditions, only locally. Promote it once it clears **10
+non-blocking CI runs spanning at least one week, zero failures
+attributable to infrastructure** (Docker cold-start timing, or
+anything tied to the suite's `workers: 1`/`retries: 0` design under
+real CI load) rather than a genuinely caught bug. A run where E2E
+correctly catches a real regression doesn't count against this. An
+infrastructure-caused failure resets the count to zero.
