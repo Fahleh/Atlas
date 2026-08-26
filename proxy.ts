@@ -66,9 +66,6 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Redirect already-authenticated users away from /login/signup — see
-  // docs/decisions.md ("Redirecting already-authenticated users away from
-  // /login/signup"). /auth/confirm stays reachable regardless of auth state.
   if (isAuthenticated && isAuthEntryRoute(pathname)) {
     return NextResponse.redirect(new URL("/", request.url));
   }

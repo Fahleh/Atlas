@@ -6,20 +6,16 @@
  * directory. lhci assert, not this script, aggregates the resulting files
  * (median, see lighthouserc.*.json).
  *
- * One continuous authenticated browser throughout. Replaces the old
- * --extra-headers cookie hand-off (scripts/get-auth-cookie.ts, deleted):
- * that flag sets a header on outgoing requests, it never populates a
- * browser's actual cookie storage, so client-side code never had a session
- * regardless of how the cookie value was sourced. See docs/decisions.md.
+ * One continuous authenticated browser throughout, replacing the old
+ * --extra-headers cookie hand-off. See docs/decisions.md ("Replacing
+ * --extra-headers with a persistent authenticated context").
  *
  * Public routes (/login, /signup) need no session and stay on the plain
  * `lighthouse` CLI. This script only covers authenticated routes.
  *
- * Runs as native ESM (.mts, not .ts): playwright-lighthouse and lighthouse
- * are both pure ESM packages, and running through tsx triggers a known,
- * unresolved issue (privatenumber/tsx#113), a ReferenceError for __name
- * inside Playwright's in-page evaluation. ts-node's ESM loader doesn't use
- * esbuild and doesn't share that failure mode. See docs/decisions.md.
+ * Runs as native ESM (.mts, not .ts) via ts-node's ESM loader, not tsx.
+ * See docs/decisions.md ("Using ts-node's ESM loader instead of tsx for
+ * authenticated-lighthouse.mts").
  *
  * Usage: node --loader ts-node/esm scripts/authenticated-lighthouse.mts <output-directory>
  * Requires LIGHTHOUSE_AUTH_EMAIL and LIGHTHOUSE_AUTH_PASSWORD in .env.local.
@@ -40,18 +36,12 @@ const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
 const DEBUG_PORT = 9222;
 const LOGIN_TIMEOUT_MS = 15000;
 
-// The four categories this project has always measured. Passed explicitly:
-// playwright-lighthouse falls back to Object.keys(defaultThresholds) when
-// opts.onlyCategories is unset, and that default set includes "pwa", not a
-// registered category in this installed Lighthouse version.
+// Passed explicitly: playwright-lighthouse's default category set includes
+// "pwa", not registered in this installed Lighthouse version.
 const CATEGORIES = ["performance", "accessibility", "best-practices", "seo"];
 
-// A single lab run per route is not a valid sample for a performance gate;
-// lab variance alone moved TBT by 2-4x between otherwise-identical runs
-// during verification. Each route/form-factor combination is audited this
-// many times, and lhci assert (given the median aggregationMethod in
-// lighthouserc.*.json) does the actual averaging across the resulting
-// files, not this script. See docs/decisions.md.
+// See docs/decisions.md ("Why each route/form-factor combination runs 3
+// times, median aggregated").
 const RUNS_PER_ROUTE = 3;
 
 const ROUTES = [
@@ -68,9 +58,8 @@ function requireEnv(name: string): string {
   return value;
 }
 
-// playwright-lighthouse strips reports.name from its last "." onward before
-// appending the file extension, so a trailing dot is required to land on
-// the established "<name>.report.<ext>" filenames rather than "<name>.<ext>".
+// Keep the trailing dot: playwright-lighthouse strips everything from the
+// last "." onward before appending the file extension.
 function reportName(base: string): string {
   return `${base}.report.`;
 }

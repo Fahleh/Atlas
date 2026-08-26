@@ -9,10 +9,13 @@ type AuthListenerProviderProps = {
 };
 
 /**
- * Clears the React Query cache on SIGNED_OUT only — a secondary safeguard,
- * not the primary mechanism. See docs/decisions.md ("Clearing the React
- * Query cache on layout mount") for why SIGNED_IN is deliberately excluded
- * and why ClearQueryCacheOnMount.tsx is the real fix.
+ * Clears the React Query cache on SIGNED_OUT only, a secondary safeguard,
+ * not the primary mechanism. QueryProvider's own scoped mount/unmount
+ * lifecycle in `app/(dashboard)/layout.tsx` is the primary cross-user
+ * cache isolation defense; `ClearQueryCacheOnMount.tsx` is deleted. See
+ * docs/decisions.md ("Scoping QueryProvider to app/(dashboard)/layout.tsx,
+ * deleting ClearQueryCacheOnMount.tsx") for why SIGNED_IN is deliberately
+ * excluded here and why that entry's mechanism, not this one, is primary.
  *
  * @param children - React subtree that should have the listener active for its lifetime
  */
