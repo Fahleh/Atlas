@@ -75,10 +75,18 @@ jobs:
           path: lighthouse-reports
           retention-days: 7
 
-  lighthouse-desktop:
-    name: Lighthouse desktop performance budget
+  lighthouse:
+    name: Lighthouse ${{ matrix.form_factor }} performance budget
     needs: lighthouse-generate
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - form_factor: desktop
+            config: lighthouserc.desktop.json
+          - form_factor: mobile
+            config: lighthouserc.mobile.json
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -95,7 +103,7 @@ jobs:
       # lhci assert only recognizes files matching lhr-<n>.json in .lighthouseci.
       # A silent naming mismatch makes it report 0 checked files and exit 0,
       # see docs/decisions.md. This guard fails the job loudly instead.
-      - name: Split desktop reports and verify report count
+      - name: Split ${{ matrix.form_factor }} reports and verify report count
         run: |
           mkdir -p .lighthouseci
 
@@ -104,62 +112,25 @@ jobs:
           expected_count=9
 
           i=1
-          for f in lighthouse-reports/*-desktop-*.report.json; do
-            cp "$f" ".lighthouseci/lhr-$i.json"
-            i=$((i + 1))
-          done
+          if [ "${{ matrix.form_factor }}" = "desktop" ]; then
+            for f in lighthouse-reports/*-desktop-*.report.json; do
+              cp "$f" ".lighthouseci/lhr-$i.json"
+              i=$((i + 1))
+            done
+          else
+            for f in lighthouse-reports/*.report.json; do
+              case "$f" in *-desktop-*.report.json) continue ;; esac
+              cp "$f" ".lighthouseci/lhr-$i.json"
+              i=$((i + 1))
+            done
+          fi
 
           count=$(ls .lighthouseci/lhr-*.json 2>/dev/null | wc -l | tr -d ' ')
-          echo "desktop reports: $count"
+          echo "${{ matrix.form_factor }} reports: $count"
 
           if [ "$count" -ne "$expected_count" ]; then
-            echo "::error::Expected $expected_count desktop Lighthouse reports, found $count."
+            echo "::error::Expected $expected_count ${{ matrix.form_factor }} Lighthouse reports, found $count."
             exit 1
           fi
 
-      - run: npx @lhci/cli assert --config=lighthouserc.desktop.json
-
-  lighthouse-mobile:
-    name: Lighthouse mobile performance budget (not yet required, see docs/decisions.md)
-    needs: lighthouse-generate
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-      - run: npm ci
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: lighthouse-reports
-          path: lighthouse-reports
-
-      # lhci assert only recognizes files matching lhr-<n>.json in .lighthouseci.
-      # A silent naming mismatch makes it report 0 checked files and exit 0,
-      # see docs/decisions.md. This guard fails the job loudly instead.
-      - name: Split mobile reports and verify report count
-        run: |
-          mkdir -p .lighthouseci
-
-          # 3 routes x RUNS_PER_ROUTE (3) runs each.
-          # See docs/decisions.md for why the count is checked at all.
-          expected_count=9
-
-          i=1
-          for f in lighthouse-reports/*.report.json; do
-            case "$f" in *-desktop-*.report.json) continue ;; esac
-            cp "$f" ".lighthouseci/lhr-$i.json"
-            i=$((i + 1))
-          done
-
-          count=$(ls .lighthouseci/lhr-*.json 2>/dev/null | wc -l | tr -d ' ')
-          echo "mobile reports: $count"
-
-          if [ "$count" -ne "$expected_count" ]; then
-            echo "::error::Expected $expected_count mobile Lighthouse reports, found $count."
-            exit 1
-          fi
-
-      - run: npx @lhci/cli assert --config=lighthouserc.mobile.json
+      - run: npx @lhci/cli assert --config=${{ matrix.config }}

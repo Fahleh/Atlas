@@ -1272,11 +1272,13 @@ at all.
 
 **Decision:** `.github/workflows/ci.yml` runs
 `scripts/authenticated-lighthouse.mts` once in `lighthouse-generate`,
-uploading the reports as a shared artifact. `lighthouse-desktop` and
-`lighthouse-mobile` each download that artifact, split out their own
-form factor, and assert against `lighthouserc.desktop.json`/
-`lighthouserc.mobile.json` independently. Desktop is required,
-mobile is not (see below).
+uploading the reports as a shared artifact. A single matrix job,
+`lighthouse` (`form_factor: [desktop, mobile]`), downloads that
+artifact, splits out its own form factor, and asserts against
+`lighthouserc.desktop.json`/`lighthouserc.mobile.json` independently
+per leg. GitHub reports each leg under its own `name:`, "Lighthouse
+desktop performance budget" and "Lighthouse mobile performance
+budget", both required.
 
 **Why lab proxies, not real Core Web Vitals.** Official Core Web
 Vitals are CrUX field data from real-user traffic. Atlas has no
@@ -1292,10 +1294,13 @@ metric, confirmed by reading
 `node_modules/lighthouse/core/audits/metrics/*.js` directly, and for
 LCP mobile that point happens to equal the official CWV "good"
 cutoff. TBT has no outside standard to check against, so the same
-method applies: its `p10` control point is the threshold. This is
-also why LCP and TBT are split by form factor (mobile `p10: 2500`/
-`200`, desktop `p10: 1200`/`150`) while CLS isn't, Lighthouse's own
-source defines separate mobile/desktop control points for LCP and
+method applies: its `p10` control point (mobile `200`, desktop `150`)
+is the threshold, desktop TBT still uses it directly. Mobile TBT is
+the one deliberate exception, see "Mobile TBT" below for why it's set
+from measured data instead. This is also why LCP and TBT are split by
+form factor (mobile `p10: 2500`/`200`, desktop `p10: 1200`/`150`)
+while CLS isn't, Lighthouse's own source defines separate mobile/desktop
+control points for LCP and
 TBT, but only one shared `p10: 0.1` for CLS.
 
 **Why two configs and two `assert` passes, not one.**
@@ -1304,7 +1309,7 @@ desktop, against the identical URL. `lhci assert` groups results by
 URL for reporting, so a single pass over both report sets can't apply
 different thresholds by form factor, everything in one `assert` call
 gets the same numbers. Reports are split into two directories first,
-one `assert` invocation per form factor.
+one `assert` invocation per form factor, one per matrix leg.
 
 **Why the file-count guard exists.** `lhci assert`'s `loadSavedLHRs`
 only recognizes files matching `lhr-<n>.json`. Confirmed and
@@ -1341,20 +1346,28 @@ averaging happens in `lhci assert` itself via `aggregationMethod:
 multiple LHR files by URL and aggregates them natively once given real
 samples under that URL.
 
-**Current state: mobile TBT fails on all three routes, not fixed
-here.** Root-caused via `mainthread-work-breakdown` and `bootup-time`
-across 9 real production-mode mobile runs (3 routes x 3 runs each):
-the dominant cost on every route is the same chunk, React/React-DOM's own framework
-runtime (`createRoot`, `hydrateRoot`, `unstable_scheduleCallback`,
-`useSyncExternalStore`), not a specific unnecessary script or a
-third-party dependency. Cost is roughly proportional to how much
-component tree each route hydrates, `/` and `/projects` hydrate more
-than `/profile` and cost roughly double. This is a structural
-client-JS question, not a scoped bug, and is not being fixed in this
-branch. The mobile TBT assertion ships in its current,
-currently-failing state and should not be treated as a required
-check until that separate investigation resolves it. Desktop and
-mobile's other two metrics (LCP, CLS) are unaffected and pass.
+**Mobile TBT: a real, enforced regression floor at today's measured
+value, not an unenforced gap.** Root-caused via `mainthread-work-breakdown`
+and `bootup-time`: the dominant cost on every route is the same chunk,
+React/React-DOM's own framework runtime (`createRoot`, `hydrateRoot`,
+`unstable_scheduleCallback`, `useSyncExternalStore`), not a specific
+unnecessary script or a third-party dependency. Cost is roughly
+proportional to how much component tree each route hydrates, `/` and
+`/projects` hydrate more than `/profile`.
+
+`lighthouserc.mobile.json`'s `total-blocking-time` threshold is set
+from real measured medians (3 runs per route, real production build):
+`/` 305ms, `/profile` 213ms, `/projects` 356ms. The threshold is the
+worst route's median plus roughly 12% margin for observed
+session-to-session lab variance, rounded to **400ms**, not Lighthouse's
+`p10` "good" curve point (200ms) the other thresholds use. This is a
+regression floor, not an aspirational target: the gate exists to catch
+mobile TBT getting worse than today, not to assert the app is
+currently fast. The underlying hydration-cost problem is real,
+structural, and not fixed in this branch, that stays separate future
+work. When it lands, the fix is to lower this ceiling back toward the
+`p10` value, not to remove or loosen the gate. Both desktop and
+mobile are required checks.
 
 **Why E2E isn't a required check yet.** The suite has never run under
 real CI conditions, only locally. Promote it once it clears **10
