@@ -58,6 +58,8 @@ reason to document something here.
 - [Storage errors surface as-is, not through `interpretSupabaseWriteError`](#storage-errors-surface-as-is-not-through-interpretsupabasewriteerror)
 - [Why `loginAction.test.ts`'s malformed-`redirectTo` test uses an unclosed IPv6-bracket host](#why-loginactiontestts-malformed-redirectto-test-uses-an-unclosed-ipv6-bracket-host)
 - [CI performance gate: lab proxies, form-factor-split thresholds, and the file-count guard](#ci-performance-gate-lab-proxies-form-factor-split-thresholds-and-the-file-count-guard)
+- [`EntityModal.SubmitButton`'s action-identity comparison against `useFormStatus`](#entitymodalsubmitbuttons-action-identity-comparison-against-useformstatus)
+- [Using `ts-node`'s ESM loader instead of `tsx` for `authenticated-lighthouse.mts`](#using-ts-nodes-esm-loader-instead-of-tsx-for-authenticated-lighthousemts)
 
 ---
 
@@ -1362,3 +1364,52 @@ anything tied to the suite's `workers: 1`/`retries: 0` design under
 real CI load) rather than a genuinely caught bug. A run where E2E
 correctly catches a real regression doesn't count against this. An
 infrastructure-caused failure resets the count to zero.
+
+---
+
+## `EntityModal.SubmitButton`'s action-identity comparison against `useFormStatus`
+
+**Decision:** `SubmitButton` computes `isNonPrimaryActionPending` by
+comparing `useFormStatus().action` against the form's own primary
+`formAction` (from context), not just checking `status.pending` alone.
+When pending is true but the action differs, `pendingLabel` is
+suppressed and `children` renders instead.
+
+**Why:** `useFormStatus()` is scoped to the whole enclosing `<form>`,
+not to whichever button was actually clicked. `TaskModal`'s delete
+confirm button sets its own `formAction={capturedAction}` on a
+`type="submit"` button inside the same form as the primary Save
+button. Without the action-identity check, clicking delete would make
+`status.pending` true for the entire form, and the unrelated Save
+button would incorrectly show its own `pendingLabel` ("Saving…") while
+a delete was actually in flight, since both buttons share one
+`useFormStatus()` call scoped to the same `<form>`.
+
+---
+
+## Using `ts-node`'s ESM loader instead of `tsx` for `authenticated-lighthouse.mts`
+
+**Decision:** `authenticated-lighthouse.mts` runs via `node --loader
+ts-node/esm`, not `tsx`.
+
+**Why, stated at the confidence this actually has.** When this script
+was first written, running it through `tsx` produced a real failure,
+a `ReferenceError` for `__name` during Playwright's in-page
+evaluation, believed at the time to match `privatenumber/tsx#113`.
+`ts-node`'s ESM loader doesn't use `esbuild` the way `tsx` does, and
+switched to it, which worked.
+
+Re-tested this session, not assumed: three separate repros against a
+real running server (a plain typed `page.evaluate`, a full
+`playAudit()` call with all four categories, and the same call with
+`desktopConfig`) all completed cleanly under a freshly-installed
+`tsx`, no `__name` error, no crash. The original failure could not be
+reproduced against current `tsx`/`esbuild`/`playwright-lighthouse`
+versions. This doesn't mean the original failure didn't happen,
+dependency versions have moved since, only that it's no longer
+independently confirmed.
+
+**Why keep `ts-node` anyway.** It works, is already in place, and
+nothing about the current setup motivates switching back to `tsx` to
+chase a bug that may no longer exist. Revisit if `ts-node`'s ESM
+loader itself ever becomes the source of a real problem.

@@ -160,7 +160,8 @@ function CancelButton({ children }: CancelButtonProps) {
  * same component that renders the form.
  *
  * Uses action-identity comparison to detect non-primary (e.g. delete)
- * submissions and suppress `pendingLabel` accordingly — see docs/decisions.md.
+ * submissions and suppress `pendingLabel` accordingly — see docs/decisions.md
+ * ("EntityModal.SubmitButton's action-identity comparison against useFormStatus").
  *
  * @param variant - "danger" renders the button using `--color-danger`
  * @param pendingLabel - Text shown while the form's primary action is in progress
