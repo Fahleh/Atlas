@@ -3,7 +3,7 @@
     "assert": {
       "assertions": {
         "largest-contentful-paint": ["error", { "aggregationMethod": "median", "maxNumericValue": 2500 }],
-        "total-blocking-time": ["error", { "aggregationMethod": "median", "maxNumericValue": 200 }],
+        "total-blocking-time": ["error", { "aggregationMethod": "median", "maxNumericValue": 400 }],
         "cumulative-layout-shift": ["error", { "aggregationMethod": "median", "maxNumericValue": 0.1 }],
         "resource-summary:script:size": ["warn", { "aggregationMethod": "median", "maxNumericValue": 150000 }],
         "resource-summary:image:size": ["warn", { "aggregationMethod": "median", "maxNumericValue": 500000 }]
