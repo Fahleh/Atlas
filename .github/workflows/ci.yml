@@ -133,4 +133,10 @@ jobs:
             exit 1
           fi
 
+      # Reads the real per-route, per-run TBT straight from the LHR JSON
+      # files, independent of assert's pass/fail filtering. See
+      # docs/decisions.md, "CI performance gate".
+      - name: Print measured TBT per route (${{ matrix.form_factor }})
+        run: node scripts/print-lighthouse-tbt.mjs ${{ matrix.config }}
+
       - run: npx @lhci/cli assert --config=${{ matrix.config }}
