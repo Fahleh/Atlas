@@ -7,6 +7,11 @@ import { Database } from "@/types/database.types";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
+// Defense-in-depth against Next.js's Data Cache — see docs/decisions.md
+// ("Bypassing fetch caching in both Supabase clients").
+const fetchWithoutCache = (url: RequestInfo | URL, init?: RequestInit) =>
+  fetch(url, { ...init, cache: "no-store" });
+
 export async function createClient() {
   const cookieStore = await cookies();
 
@@ -20,6 +25,7 @@ export async function createClient() {
         },
         setAll(cookiesToSet) {
           try {
+            // Update the incoming request cookies
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options),
             );
@@ -29,6 +35,7 @@ export async function createClient() {
           }
         },
       },
+      global: { fetch: fetchWithoutCache },
     },
   );
 }

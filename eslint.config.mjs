@@ -12,7 +12,19 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated artifacts, not source: coverage/ from `npm test -- --coverage`,
+    // supabase/.temp/ from the local Supabase CLI. Both already gitignored.
+    "coverage/**",
+    "supabase/.temp/**",
   ]),
+  {
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_" },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

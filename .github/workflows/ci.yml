@@ -1,0 +1,142 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  test:
+    name: Unit & integration tests
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+      - run: npm test
+
+  e2e:
+    name: E2E (not yet required, see docs/decisions.md)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+
+  lighthouse-generate:
+    name: Lighthouse audit generation
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      NEXT_PUBLIC_BASE_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      - run: npm run build
+
+      - name: Start production server
+        run: |
+          npm run start &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:3000/login > /dev/null && exit 0
+            sleep 1
+          done
+          echo "::error::Production server did not become ready within 30s"
+          exit 1
+
+      # See docs/decisions.md: this hits the live Supabase project directly,
+      # not the local Docker stack the e2e job brings up.
+      - name: Run authenticated Lighthouse audits
+        env:
+          LIGHTHOUSE_AUTH_EMAIL: ${{ secrets.LIGHTHOUSE_AUTH_EMAIL }}
+          LIGHTHOUSE_AUTH_PASSWORD: ${{ secrets.LIGHTHOUSE_AUTH_PASSWORD }}
+        run: node --loader ts-node/esm scripts/authenticated-lighthouse.mts lighthouse-reports
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-reports
+          path: lighthouse-reports
+          retention-days: 7
+
+  lighthouse:
+    name: Lighthouse ${{ matrix.form_factor }} performance budget
+    needs: lighthouse-generate
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - form_factor: desktop
+            config: lighthouserc.desktop.json
+          - form_factor: mobile
+            config: lighthouserc.mobile.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: lighthouse-reports
+          path: lighthouse-reports
+
+      # lhci assert only recognizes files matching lhr-<n>.json in .lighthouseci.
+      # A silent naming mismatch makes it report 0 checked files and exit 0,
+      # see docs/decisions.md. This guard fails the job loudly instead.
+      - name: Split ${{ matrix.form_factor }} reports and verify report count
+        run: |
+          mkdir -p .lighthouseci
+
+          # 3 routes x RUNS_PER_ROUTE (3) runs each.
+          # See docs/decisions.md for why the count is checked at all.
+          expected_count=9
+
+          i=1
+          if [ "${{ matrix.form_factor }}" = "desktop" ]; then
+            for f in lighthouse-reports/*-desktop-*.report.json; do
+              cp "$f" ".lighthouseci/lhr-$i.json"
+              i=$((i + 1))
+            done
+          else
+            for f in lighthouse-reports/*.report.json; do
+              case "$f" in *-desktop-*.report.json) continue ;; esac
+              cp "$f" ".lighthouseci/lhr-$i.json"
+              i=$((i + 1))
+            done
+          fi
+
+          count=$(ls .lighthouseci/lhr-*.json 2>/dev/null | wc -l | tr -d ' ')
+          echo "${{ matrix.form_factor }} reports: $count"
+
+          if [ "$count" -ne "$expected_count" ]; then
+            echo "::error::Expected $expected_count ${{ matrix.form_factor }} Lighthouse reports, found $count."
+            exit 1
+          fi
+
+      # Reads the real per-route, per-run TBT straight from the LHR JSON
+      # files, independent of assert's pass/fail filtering. See
+      # docs/decisions.md, "CI performance gate".
+      - name: Print measured TBT per route (${{ matrix.form_factor }})
+        run: node scripts/print-lighthouse-tbt.mjs ${{ matrix.config }}
+
+      - run: npx @lhci/cli assert --config=${{ matrix.config }}

@@ -1,7 +1,59 @@
 import type { NextConfig } from "next";
+import { SKELETON_STYLE_HASHES } from "./scripts/generate-skeleton-hashes.mjs";
+
+const isDev = process.env.NODE_ENV === "development";
+
+// Dev-only derivation, not always-from-env: see docs/decisions.md
+// ("Deriving SUPABASE_ORIGIN from env in dev only").
+const SUPABASE_ORIGIN =
+  isDev && process.env.NEXT_PUBLIC_SUPABASE_URL
+    ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).origin
+    : "https://hgyygkysbljijxmltbgt.supabase.co";
+
+const CSP_HEADER = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+  `style-src 'self'${isDev ? " 'unsafe-inline'" : ""}`,
+  `style-src-attr 'unsafe-hashes' ${SKELETON_STYLE_HASHES.join(" ")}`,
+  "img-src 'self'",
+  "font-src 'self'",
+  `connect-src 'self' ${SUPABASE_ORIGIN}`,
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+  "upgrade-insecure-requests",
+  ...(isDev
+    ? []
+    : ["require-trusted-types-for 'script'", "trusted-types default"]),
+].join("; ");
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "hgyygkysbljijxmltbgt.supabase.co",
+        pathname: "/storage/v1/object/public/avatars/**",
+      },
+    ],
+  },
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          { key: "Content-Security-Policy", value: CSP_HEADER },
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=63072000; includeSubDomains",
+          },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

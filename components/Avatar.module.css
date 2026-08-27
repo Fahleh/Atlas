@@ -1,0 +1,84 @@
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.avatarDefault {
+  width: 34px;
+  height: 34px;
+}
+
+.avatarSmall {
+  width: 32px;
+  height: 32px;
+}
+
+.avatarMedium {
+  width: 36px;
+  height: 36px;
+}
+
+.avatarLarge {
+  width: 150px;
+  height: 150px;
+}
+
+.initials {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+/* Non-token hex colors: fixed deterministic avatar palette, no semantic
+   meaning — see lib/utils.ts's getMemberAvatarPaletteIndex. */
+.palette0 {
+  background-color: #ede9fe;
+  color: #7c3aed;
+} /* purple */
+.palette1 {
+  background-color: #cffafe;
+  color: #0e7490;
+} /* cyan */
+.palette2 {
+  background-color: #fce7f3;
+  color: #be185d;
+} /* pink */
+.palette3 {
+  background-color: #ccfbf1;
+  color: #0f766e;
+} /* teal */
+.palette4 {
+  background-color: #e0e7ff;
+  color: #4338ca;
+} /* indigo */
+.palette5 {
+  background-color: #fef9c3;
+  color: #a16207;
+} /* warm yellow — distinct from accent */
+
+.image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.overflow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background-color: var(--color-surface-raised);
+  color: var(--color-text-muted);
+  border: 2px solid var(--color-surface);
+  border-radius: 50%;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}

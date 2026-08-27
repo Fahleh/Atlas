@@ -1,7 +1,11 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 import { Menu } from "lucide-react";
+import { Avatar } from "@/components/Avatar";
+import { Skeleton } from "@/components/Skeleton";
+import { useCurrentUserProfile } from "@/hooks/useCurrentUserProfile";
 import styles from "./Header.module.css";
 
 type HeaderProps = {
@@ -30,6 +34,8 @@ function getPageTitle(pathname: string): string {
 export function Header({ onMenuClick }: HeaderProps) {
   const pathname = usePathname();
   const pageTitle = getPageTitle(pathname);
+  const { data: profile, isError, error: profileError } =
+    useCurrentUserProfile();
 
   return (
     <header className={styles.header} aria-label="Page header">
@@ -44,13 +50,38 @@ export function Header({ onMenuClick }: HeaderProps) {
         <h1 className={styles.pageTitle}>{pageTitle}</h1>
       </div>
 
-      <div className="flex items-center gap-3">
-        {/* TODO: replace initials and name with authenticated user data from Supabase */}
-        <span className={styles.userName}>Fahleh</span>
-        <div className={styles.avatar} aria-hidden="true">
-          FA
+      {profile ? (
+        <div className="flex items-center gap-3">
+          <span className={styles.userName}>{profile.name}</span>
+          <Avatar name={profile.name} avatarUrl={profile.avatarUrl} size="small" />
         </div>
-      </div>
+      ) : isError ? (
+        <div className="flex items-center gap-3" role="alert">
+          {profileError?.errorKind === "sessionExpired" ? (
+            <Link href="/login" className={styles.sessionExpiredLink}>
+              Log in
+            </Link>
+          ) : (
+            <span className={styles.userName}>—</span>
+          )}
+        </div>
+      ) : (
+        <div
+          className="flex items-center gap-3"
+          role="status"
+          aria-live="polite"
+          aria-label="Loading user profile"
+        >
+          <span className={styles.userName}>
+            <Skeleton width="70px" height="0.875rem" />
+          </span>
+          <Skeleton
+            width="32px"
+            height="32px"
+            borderRadius="var(--radius-pill)"
+          />
+        </div>
+      )}
     </header>
   );
 }

@@ -45,18 +45,21 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          updated_at: string
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
           id: string
           name: string
+          updated_at?: string
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
           id?: string
           name?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -100,26 +103,32 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
+          due_date: string | null
           id: string
           name: string
           owner_id: string
           status: string | null
+          updated_at: string
         }
         Insert: {
           created_at?: string
           description?: string | null
+          due_date?: string | null
           id?: string
           name: string
           owner_id: string
           status?: string | null
+          updated_at?: string
         }
         Update: {
           created_at?: string
           description?: string | null
+          due_date?: string | null
           id?: string
           name?: string
           owner_id?: string
           status?: string | null
+          updated_at?: string
         }
         Relationships: [
           {
@@ -141,6 +150,7 @@ export type Database = {
           project_id: string
           status: string | null
           title: string
+          updated_at: string
         }
         Insert: {
           assignee_id?: string | null
@@ -151,6 +161,7 @@ export type Database = {
           project_id: string
           status?: string | null
           title: string
+          updated_at?: string
         }
         Update: {
           assignee_id?: string | null
@@ -161,6 +172,7 @@ export type Database = {
           project_id?: string
           status?: string | null
           title?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -181,10 +193,29 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      project_task_stats: {
+        Row: {
+          done_tasks: number | null
+          project_id: string | null
+          total_tasks: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
-      [_ in never]: never
+      is_project_member: {
+        Args: { _project_id: string; _user_id: string }
+        Returns: boolean
+      }
+      lookup_user_id_by_email: { Args: { _email: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never

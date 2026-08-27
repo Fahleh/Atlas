@@ -49,7 +49,7 @@
 .logo {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
-  color: var(--color-accent);
+  color: var(--color-text-accent);
   text-decoration: none;
   transition: color 150ms ease;
 }
@@ -170,6 +170,23 @@
 .themeToggle:hover {
   background-color: var(--color-surface-raised);
   color: var(--color-text-primary);
+}
+
+.themeTogglePending {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.themeTogglePending:hover {
+  background-color: transparent;
+  color: var(--color-text-secondary);
+}
+
+.themeIconPlaceholder {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }
 
 /* Desktop overrides */

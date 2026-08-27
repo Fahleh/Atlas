@@ -1,0 +1,414 @@
+"use client";
+
+import { useState, useMemo, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { Plus, AlertCircle, Sparkles, SearchX } from "lucide-react";
+import { ActionErrorMessage } from "@/components/ActionErrorMessage";
+import { useQueryClient } from "@tanstack/react-query";
+import { useProjects } from "@/hooks/useProjects";
+import { useMembersByProject } from "@/hooks/useMembersByProject";
+import { useTaskCountsByProject } from "@/hooks/useTaskCountsByProject";
+import { Skeleton } from "@/components/Skeleton";
+import type { Project, ProjectStatus } from "@/types/atlas.types";
+import { ProjectCard } from "./ProjectCard";
+import { ProjectListTable } from "./ProjectListTable";
+import { ProjectSlideOver } from "./ProjectSlideOver";
+import { ProjectModal } from "./ProjectModal";
+import { createProjectAction } from "./projectActions";
+import styles from "./ProjectList.module.css";
+import layoutStyles from "@/styles/layout.module.css";
+
+type StatusFilter = "all" | ProjectStatus;
+type ViewMode = "grid" | "list";
+
+const SKELETON_CARD_COUNT = 6;
+
+const STATUS_FILTERS: { label: string; value: StatusFilter }[] = [
+  { label: "All", value: "all" },
+  { label: "Active", value: "active" },
+  { label: "Completed", value: "completed" },
+  { label: "Archived", value: "archived" },
+];
+
+/**
+ * Full projects page content: stats, search/filter toolbar, card grid,
+ * and slide-over panel. Orchestrates useProjects() and the URL's `project`
+ * search param, which is the sole source of truth for slide-over selection.
+ */
+export function ProjectList() {
+  const {
+    data: projects = [],
+    isLoading,
+    isError,
+    error: projectsError,
+    refetch,
+  } = useProjects();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const selectedProjectId = searchParams.get("project");
+  const queryClient = useQueryClient();
+
+  // Same-route selection change, not a new destination: replace, not push.
+  // Keeps one history entry for "/projects". See docs/decisions.md.
+  function selectProject(id: string) {
+    router.replace(`/projects?project=${id}`);
+  }
+
+  function closeProject() {
+    router.replace("/projects");
+  }
+
+  // Full unfiltered project ID list: member data shouldn't refetch on every
+  // search/filter change, only when the underlying project set changes.
+  const projectIds = useMemo(() => projects.map((p) => p.id), [projects]);
+  const {
+    data: membersByProject = {},
+    isError: isMembersError,
+    error: membersError,
+    refetch: refetchMembers,
+  } = useMembersByProject(projectIds);
+  const {
+    data: taskCountsByProject = {},
+    isError: isTaskCountsError,
+    error: taskCountsError,
+    refetch: refetchTaskCounts,
+  } = useTaskCountsByProject(projectIds);
+
+  // Derived from the React Query cache on every render, not stored separately.
+  // Edits and deletions resolve automatically; see docs/architecture.md.
+
+  const selectedProject =
+    projects.find((p) => p.id === selectedProjectId) ?? null;
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+
+  // ---- Project modal state -------------------------------------------------
+
+  const editingProjectRef = useRef<Project | null>(null);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [modalResetKey, setModalResetKey] = useState(0);
+
+  // False positive in eslint-plugin-react-hooks@7.1.1: the rule flags any ref
+  // passed to a function during render, but editingProjectRef.current is only
+  // read inside the returned async callback at form-submit time, never during
+  // the useMemo factory's synchronous execution. Open upstream bugs:
+  // https://github.com/facebook/react/issues/34954
+  // https://github.com/facebook/react/issues/35813
+  const projectAction = useMemo(
+    () =>
+      // eslint-disable-next-line react-hooks/refs
+      createProjectAction({
+        editingProjectRef,
+        queryClient,
+        setIsModalOpen: setIsProjectModalOpen,
+      }),
+    [queryClient],
+  );
+
+  function openProjectModalForCreate() {
+    editingProjectRef.current = null;
+    setEditingProject(null);
+    setModalResetKey((k) => k + 1);
+    setIsProjectModalOpen(true);
+  }
+
+  function openProjectModalForEdit(project: Project) {
+    editingProjectRef.current = project;
+    setEditingProject(project);
+    setModalResetKey((k) => k + 1);
+    setIsProjectModalOpen(true);
+  }
+
+  const filteredProjects = useMemo(() => {
+    return projects.filter((project) => {
+      const query = searchQuery.toLowerCase();
+      const matchesSearch =
+        query === "" ||
+        project.name.toLowerCase().includes(query) ||
+        (project.description ?? "").toLowerCase().includes(query);
+
+      const matchesStatus =
+        statusFilter === "all" || project.status === statusFilter;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [projects, searchQuery, statusFilter]);
+
+  const hasNoProjects = !isLoading && !isError && projects.length === 0;
+  const hasNoResults =
+    !isLoading &&
+    !isError &&
+    projects.length > 0 &&
+    filteredProjects.length === 0;
+  const showGrid = !isLoading && !isError && filteredProjects.length > 0;
+
+  return (
+    <div className={layoutStyles.pageContainer}>
+      {/* Page header */}
+      <div className="flex items-center justify-end">
+        <button
+          type="button"
+          onClick={openProjectModalForCreate}
+          className={styles.newButton}
+        >
+          <Plus size={16} aria-hidden="true" />
+          New project
+        </button>
+      </div>
+
+      {/* Toolbar: search, status filter, view toggle */}
+      <div className="flex items-center gap-4 flex-wrap">
+        <label htmlFor="project-search" className={styles.srOnly}>
+          Search projects
+        </label>
+        <input
+          id="project-search"
+          type="search"
+          className={styles.searchInput}
+          placeholder="Search projects by name or description..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+
+        <div
+          role="tablist"
+          aria-label="Filter projects by status"
+          className={styles.filterTabs}
+        >
+          {STATUS_FILTERS.map((filter) => (
+            <button
+              key={filter.value}
+              type="button"
+              role="tab"
+              aria-selected={statusFilter === filter.value}
+              onClick={() => setStatusFilter(filter.value)}
+              className={`${styles.filterTab} ${
+                statusFilter === filter.value ? styles.filterTabActive : ""
+              }`}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
+
+        <div role="group" aria-label="View mode" className={styles.viewToggle}>
+          <button
+            type="button"
+            aria-label="Grid view"
+            aria-pressed={viewMode === "grid"}
+            onClick={() => setViewMode("grid")}
+            className={`${styles.viewButton} ${
+              viewMode === "grid" ? styles.viewButtonActive : ""
+            }`}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <rect x="1" y="1" width="6" height="6" rx="1" />
+              <rect x="9" y="1" width="6" height="6" rx="1" />
+              <rect x="1" y="9" width="6" height="6" rx="1" />
+              <rect x="9" y="9" width="6" height="6" rx="1" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            aria-label="List view"
+            aria-pressed={viewMode === "list"}
+            onClick={() => setViewMode("list")}
+            className={`${styles.viewButton} ${
+              viewMode === "list" ? styles.viewButtonActive : ""
+            }`}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <rect x="1" y="2" width="14" height="2" rx="1" />
+              <rect x="1" y="7" width="14" height="2" rx="1" />
+              <rect x="1" y="12" width="14" height="2" rx="1" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Partial-failure note: projects loaded fine, only per-card
+          member/task-count data failed. Non-blocking. */}
+      {(isTaskCountsError || isMembersError) && (
+        <ActionErrorMessage
+          error={
+            (taskCountsError ?? membersError)?.message ??
+            "Some project details couldn't load."
+          }
+          errorKind={(taskCountsError ?? membersError)?.errorKind}
+          onRetry={() => {
+            if (isTaskCountsError) refetchTaskCounts();
+            if (isMembersError) refetchMembers();
+          }}
+          className={styles.partialError}
+        />
+      )}
+
+      {/* Loading state */}
+      {isLoading && (
+        <div
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+          role="status"
+          aria-live="polite"
+          aria-label="Loading projects"
+        >
+          {Array.from({ length: SKELETON_CARD_COUNT }).map((_, i) => (
+            <div key={i} className={styles.skeletonCard}>
+              <div className={styles.skeletonCardHeader}>
+                <Skeleton
+                  width="36px"
+                  height="36px"
+                  borderRadius="var(--radius-md)"
+                />
+                <Skeleton
+                  width="80px"
+                  height="1.25rem"
+                  borderRadius="var(--radius-pill)"
+                />
+              </div>
+              <div className={styles.skeletonCardBody}>
+                <Skeleton width="70%" height="1rem" />
+                <Skeleton width="100%" height="0.75rem" />
+                <Skeleton width="55%" height="0.75rem" />
+              </div>
+              <Skeleton
+                width="100%"
+                height="4px"
+                borderRadius="var(--radius-pill)"
+              />
+              <div className={styles.skeletonAvatars}>
+                <Skeleton
+                  width="28px"
+                  height="28px"
+                  borderRadius="var(--radius-pill)"
+                />
+                <Skeleton
+                  width="28px"
+                  height="28px"
+                  borderRadius="var(--radius-pill)"
+                />
+                <Skeleton
+                  width="28px"
+                  height="28px"
+                  borderRadius="var(--radius-pill)"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Error state */}
+      {isError && !isLoading && (
+        <div className={styles.stateContainer} role="alert">
+          <AlertCircle
+            size={48}
+            className={`${styles.stateIcon} ${styles.stateIconDanger}`}
+            aria-hidden="true"
+          />
+          <p className={styles.stateMessage}>
+            {projectsError?.message ?? "Failed to load projects."}
+          </p>
+          {projectsError?.errorKind === "sessionExpired" ? (
+            <Link href="/login" className={styles.retryButton}>
+              Log in
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className={styles.retryButton}
+            >
+              Try again
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Empty state: no projects exist */}
+      {hasNoProjects && (
+        <div className={styles.stateContainer}>
+          <Sparkles size={48} className={styles.stateIcon} aria-hidden="true" />
+          <p className={styles.stateMessage}>No projects yet.</p>
+          <p className={styles.stateSubtitle}>
+            Create your first project to get started.
+          </p>
+        </div>
+      )}
+
+      {/* Empty state: search/filter returned no results */}
+      {hasNoResults && (
+        <div className={styles.stateContainer}>
+          <SearchX size={48} className={styles.stateIcon} aria-hidden="true" />
+          <p className={styles.stateMessage}>No projects match your search.</p>
+        </div>
+      )}
+
+      {/* Project grid */}
+      {showGrid && viewMode === "grid" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredProjects.map((project) => (
+            <ProjectCard
+              key={project.id}
+              project={project}
+              replaceHistory
+              members={membersByProject[project.id] ?? []}
+              taskCounts={
+                taskCountsByProject[project.id] ?? {
+                  total: 0,
+                  done: 0,
+                }
+              }
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Project list (table view) */}
+      {showGrid && viewMode === "list" && (
+        <ProjectListTable
+          projects={filteredProjects}
+          onSelect={selectProject}
+          membersByProject={membersByProject}
+          taskCountsByProject={taskCountsByProject}
+        />
+      )}
+
+      {/* Slide-over panel: always in DOM, CSS-controlled visibility */}
+      <ProjectSlideOver
+        project={selectedProject}
+        onClose={closeProject}
+        onEditProject={openProjectModalForEdit}
+        members={
+          selectedProject ? (membersByProject[selectedProject.id] ?? []) : []
+        }
+      />
+
+      {/* Project create/edit modal, keyed by modalResetKey so the form resets
+          on every open. disableScrollLock when the slide-over is already open. */}
+      <ProjectModal
+        key={modalResetKey}
+        open={isProjectModalOpen}
+        onOpenChange={setIsProjectModalOpen}
+        action={projectAction}
+        editingProject={editingProject}
+        disableScrollLock={selectedProjectId !== null}
+      />
+    </div>
+  );
+}

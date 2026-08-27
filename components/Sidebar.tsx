@@ -14,6 +14,8 @@ import {
 import Link from "next/link";
 import styles from "./Sidebar.module.css";
 import { useTheme } from "@/providers/ThemeContext";
+import { useDisplayedTheme } from "@/providers/useDisplayedTheme";
+import { logout } from "@/app/(dashboard)/actions";
 
 type SidebarProps = {
   isOpen: boolean;
@@ -49,7 +51,9 @@ function isLinkActive(href: string, pathname: string): boolean {
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const sidebarRef = useRef<HTMLElement>(null);
-  const { theme, toggleTheme } = useTheme();
+  const { toggleTheme } = useTheme();
+  const displayedTheme = useDisplayedTheme();
+  const isThemePending = displayedTheme === "pending";
 
   // Focus trap for mobile overlay mode
   useEffect(() => {
@@ -184,25 +188,42 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className={styles.footer}>
           <button
             onClick={toggleTheme}
+            disabled={isThemePending}
+            aria-busy={isThemePending}
             aria-label={
-              theme === "light" ? "Switch to dark mode" : "Switch to light mode"
+              isThemePending
+                ? "Loading theme preference"
+                : displayedTheme === "light"
+                  ? "Switch to dark mode"
+                  : "Switch to light mode"
             }
-            className={styles.themeToggle}
+            className={`${styles.themeToggle} ${
+              isThemePending ? styles.themeTogglePending : ""
+            }`}
           >
-            {theme === "light" ? (
+            {isThemePending ? (
+              <span aria-hidden="true" className={styles.themeIconPlaceholder} />
+            ) : displayedTheme === "light" ? (
               <Moon size={20} className={styles.navIcon} />
             ) : (
               <Sun size={20} className={styles.navIcon} />
             )}
 
-            <span>{theme === "light" ? "Dark mode" : "Light mode"}</span>
+            <span>
+              {isThemePending
+                ? "Theme"
+                : displayedTheme === "light"
+                  ? "Dark mode"
+                  : "Light mode"}
+            </span>
           </button>
 
-          <button className={styles.logoutButton}>
-            {/* TODO: wire to Supabase auth logout */}
-            <LogOut size={20} className={styles.navIcon} />
-            <span>Logout</span>
-          </button>
+          <form action={logout}>
+            <button type="submit" className={styles.logoutButton}>
+              <LogOut size={20} className={styles.navIcon} />
+              <span>Logout</span>
+            </button>
+          </form>
         </div>
       </aside>
     </>

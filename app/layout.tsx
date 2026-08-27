@@ -2,12 +2,17 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/providers/ThemeContext";
 import "../styles/global.css";
-import { QueryProvider } from "@/providers/QueryProvider";
 
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
 });
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   title: "Atlas",
@@ -26,6 +31,13 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
+        {/* Must be registered as "default": Turbopack's own chunk loader
+            writes script.src directly, never through a named policy. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `if(window.trustedTypes&&window.trustedTypes.createPolicy){window.trustedTypes.createPolicy('default',{createScriptURL:function(u){if(!/^\\/_next\\/static\\/chunks\\/[a-zA-Z0-9_-]+\\.js(\\?.*)?$/.test(u)){throw new TypeError('blocked script url: '+u);}return u;}});}`,
+          }}
+        />
         {/* Runs before React hydrates to set data-theme without flash */}
         <script
           dangerouslySetInnerHTML={{
@@ -33,7 +45,7 @@ export default function RootLayout({
           }}
         />
         <ThemeProvider>
-          <QueryProvider>{children}</QueryProvider>
+          {children}
         </ThemeProvider>
       </body>
     </html>
