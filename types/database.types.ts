@@ -39,6 +39,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_log: {
+        Row: {
+          actor_id: string | null
+          actor_name: string
+          created_at: string
+          entity_id: string | null
+          entity_name: string
+          entity_type: string
+          id: string
+          metadata: Json
+          project_id: string
+          verb: string
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_name: string
+          created_at?: string
+          entity_id?: string | null
+          entity_name: string
+          entity_type: string
+          id?: string
+          metadata?: Json
+          project_id: string
+          verb: string
+        }
+        Update: {
+          actor_id?: string | null
+          actor_name?: string
+          created_at?: string
+          entity_id?: string | null
+          entity_name?: string
+          entity_type?: string
+          id?: string
+          metadata?: Json
+          project_id?: string
+          verb?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_log_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_log_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -211,6 +265,7 @@ export type Database = {
       }
     }
     Functions: {
+      activity_actor_name: { Args: { _user_id: string }; Returns: string }
       is_project_member: {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean

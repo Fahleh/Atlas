@@ -15,6 +15,7 @@ jest.mock("@/hooks/useTasks", () => ({ useTasks: jest.fn() }));
 jest.mock("@/hooks/useDueSoonTaskCount", () => ({
   useDueSoonTaskCount: jest.fn(),
 }));
+jest.mock("@/hooks/useActivityLog", () => ({ useActivityLog: jest.fn() }));
 
 import { render } from "@testing-library/react";
 import DashboardPage from "@/app/(dashboard)/page";
@@ -23,6 +24,7 @@ import { useTaskCountsByProject } from "@/hooks/useTaskCountsByProject";
 import { useMembersByProject } from "@/hooks/useMembersByProject";
 import { useTasks } from "@/hooks/useTasks";
 import { useDueSoonTaskCount } from "@/hooks/useDueSoonTaskCount";
+import { useActivityLog } from "@/hooks/useActivityLog";
 import type { Project } from "@/types/atlas.types";
 import type { TaskCounts } from "@/hooks/useTaskCountsByProject";
 
@@ -36,6 +38,9 @@ const mockUseMembersByProject = useMembersByProject as jest.MockedFunction<
 const mockUseTasks = useTasks as jest.MockedFunction<typeof useTasks>;
 const mockUseDueSoonTaskCount = useDueSoonTaskCount as jest.MockedFunction<
   typeof useDueSoonTaskCount
+>;
+const mockUseActivityLog = useActivityLog as jest.MockedFunction<
+  typeof useActivityLog
 >;
 
 function buildProject(id: string, overrides: Partial<Project>): Project {
@@ -86,6 +91,13 @@ function setUp(projects: Project[], taskCounts: Record<string, TaskCounts>) {
     isError: false,
     refetch: jest.fn(),
   } as unknown as ReturnType<typeof useDueSoonTaskCount>);
+  mockUseActivityLog.mockReturnValue({
+    data: [],
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: jest.fn(),
+  } as unknown as ReturnType<typeof useActivityLog>);
 }
 
 function lastRequestedProjectId(): string {

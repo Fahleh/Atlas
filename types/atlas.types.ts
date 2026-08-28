@@ -56,3 +56,30 @@ export type UpdateTaskInput = {
   description: string;
   dueDate: Date | null;
 };
+
+export type ActivityVerb =
+  | "project_created"
+  | "project_updated"
+  | "task_created"
+  | "task_status_changed"
+  | "task_updated"
+  | "task_deleted"
+  | "member_added"
+  | "member_removed";
+
+export type ActivityEntityType = "project" | "task" | "project_member";
+
+export type ActivityLogEntry = {
+  id: string;
+  projectId: string;
+  projectName: string | null;
+  actorId: string | null;
+  actorName: string;
+  actorAvatarUrl: string | null;
+  verb: ActivityVerb;
+  entityType: ActivityEntityType;
+  entityId: string | null;
+  entityName: string;
+  metadata: unknown;
+  createdAt: Date;
+};
