@@ -49,6 +49,7 @@ reason to document something here.
 - [Zero-exception style-src-attr: class refactors, a generated hash allowlist, and native `<progress>`](#zero-exception-style-src-attr-class-refactors-a-generated-hash-allowlist-and-native-progress)
 - [Trusted Types and style-src: production-only enforcement](#trusted-types-and-style-src-production-only-enforcement)
 - [Splitting `--color-accent` into a background token and a text token, and fixing the two gray text tokens alongside it](#splitting-color-accent-into-a-background-token-and-a-text-token-and-fixing-the-two-gray-text-tokens-alongside-it)
+- [Theme toggle reads via `useSyncExternalStore`, not `ThemeContext`'s own state](#theme-toggle-reads-via-usesyncexternalstore-not-themecontexts-own-state)
 - [`ProjectCard` moved from a `role="button"` div to a real `<Link>`](#projectcard-moved-from-a-rolebutton-div-to-a-real-link)
 - [`npm test` runs with `--forceExit`: MSW leaves an open handle for any FormData request body](#npm-test-runs-with---forceexit-msw-leaves-an-open-handle-for-any-formdata-request-body)
 - [Deriving SUPABASE_ORIGIN from env in dev only](#deriving-supabase_origin-from-env-in-dev-only)
@@ -60,6 +61,7 @@ reason to document something here.
 - [CI performance gate: lab proxies, form-factor-split thresholds, and the file-count guard](#ci-performance-gate-lab-proxies-form-factor-split-thresholds-and-the-file-count-guard)
 - [`EntityModal.SubmitButton`'s action-identity comparison against `useFormStatus`](#entitymodalsubmitbuttons-action-identity-comparison-against-useformstatus)
 - [Using `ts-node`'s ESM loader instead of `tsx` for `authenticated-lighthouse.mts`](#using-ts-nodes-esm-loader-instead-of-tsx-for-authenticated-lighthousemts)
+- [Trusted Types createScriptURL: default policy design and the Next.js 16.3 immutable-assets update](#trusted-types-createscripturl-default-policy-design-and-the-nextjs-163-immutable-assets-update)
 
 ---
 
@@ -880,6 +882,10 @@ and trusted-types default) and style-src's strict policy (no 'unsafe-inline')
 both only apply in production, gated the same way script-src's 'unsafe-eval'
 already is.
 
+See "Trusted Types createScriptURL: default policy design and the
+Next.js 16.3 immutable-assets update" for why the policy is shaped
+this way. This entry only covers when it is active.
+
 **Why. Incident: confirmed via a real `npm run dev` session, not
 assumed from the production result.** Both had only ever been
 verified against `npm run build && npm run start`. Running them under
@@ -1426,3 +1432,82 @@ independently confirmed.
 nothing about the current setup motivates switching back to `tsx` to
 chase a bug that may no longer exist. Revisit if `ts-node`'s ESM
 loader itself ever becomes the source of a real problem.
+
+---
+
+## Trusted Types createScriptURL: default policy design and the Next.js 16.3 immutable-assets update
+
+**Decision:** `app/layout.tsx` registers a Trusted Types policy named
+`"default"` whose only defined method is `createScriptURL`, which
+validates the URL against a path pattern before returning it.
+`createHTML` and `createScript` are not defined on this policy at all.
+
+See "Trusted Types and style-src: production-only enforcement" for
+when this policy is active, production only. This entry covers why
+it is shaped the way it is.
+
+**Why the policy is registered as "default", not a named policy.**
+Turbopack's own chunk loader writes `script.src` directly, it never
+calls a named Trusted Types policy the way app code could be written
+to. The Trusted Types spec reserves the name `"default"` for exactly
+this case, a policy the browser falls back to automatically for any
+assignment that doesn't go through an explicit named policy call. A
+named policy here would never see Turbopack's own script loads at
+all, and enforcement would do nothing.
+
+**Why createScriptURL validates the path instead of passing strings
+through unchanged.** A policy that returns its input unchanged
+satisfies the browser's Trusted Types requirement, the assignment no
+longer throws, but does none of the actual security work. The point
+of the check is to make sure only Atlas's own known chunk paths can
+ever become a script URL, so that an attacker-controlled string,
+however it got onto the page, cannot itself become a live script
+load. Passing through would make Trusted Types enforcement a no-op
+dressed up as a security control.
+
+**Why createHTML and createScript are left undefined.** An undefined
+policy method is not a silent pass-through, the browser blocks that
+sink outright the moment something tries to use it. Verified this
+session, not assumed: grepped the full codebase for `eval(` and
+`document.write`, zero matches outside `node_modules`. Nothing in
+Atlas calls either sink, so leaving both undefined costs nothing
+today and blocks them by default if that ever changes without a
+matching, deliberate policy update.
+
+**On the "Security headers" entry's dangerouslySetInnerHTML count,
+now stale.** That entry states a full sink audit found exactly one
+`dangerouslySetInnerHTML` in the codebase, the theme-flash script.
+That count was accurate when written. It is now two: this policy's
+own script, added by PR #23 (`security/trusted-types`) after that
+entry was written, is a second `dangerouslySetInnerHTML` in
+`app/layout.tsx`. What that entry's `unsafe-inline` conclusion
+actually depends on is not the count but whether every sink is
+static, developer-authored, and free of user-controlled input.
+Checked directly: both sinks are inline template literals with no
+prop, variable, or request-derived interpolation, hardcoded
+JavaScript strings only, no exceptions. The conclusion holds.
+
+**Why the path pattern changed. Incident: confirmed directly against
+the real deployed HTML, not inferred, 2026-08-27.** Next.js 16's Build
+Adapters API is what actually produces the `immutable/` path segment,
+this is specific to how Vercel's hosting adapter transforms build output
+at deploy time, not something `next build` itself emits.
+Confirmed directly: an identical Next.js 16.3.0 build served via
+`npm run build && npm run start` locally produces the plain
+`/_next/static/chunks/` shape, no `immutable/` segment, while the same
+build deployed to Vercel serves `/_next/static/immutable/chunks/`. The
+validator's path pattern had only ever matched the local shape, so
+real Vercel-served production chunk loads started failing
+`createScriptURL`'s check, breaking login and logout.
+
+**Why one universal regex accepting both shapes, not an
+environment-conditional pattern.** A build-time branch on
+`process.env.VERCEL`, picking one pattern or the other, was considered
+and rejected. That would mean the exact validator logic shipped to
+production is never the one exercised by a local production build,
+reintroducing the same class of unverified-in-the-real-environment gap
+this fix exists to close. The fix instead widens the pattern to accept
+both real shapes, `/_next/static/chunks/<hash>.js` and
+`/_next/static/immutable/chunks/<hash>.js`, with a non-capturing
+optional `immutable/` segment, same character class and optional query
+suffix as before, nothing broadened beyond that one segment.
