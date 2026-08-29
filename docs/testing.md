@@ -13,18 +13,17 @@ build checks, browser verification requirements, and debugging process.
 - Add component tests where behavior is non-trivial.
 - Integration tests live in `tests/integration/`.
 - Playwright E2E tests live in `tests/e2e/`.
-- React Query hook tests are a deliberate coverage gap. Do not add them
-  unprompted without discussion.
 - React Query hook tests: previously deferred deliberately (hooks
   sit on Server Actions and MSW infrastructure that didn't exist yet).
   That infrastructure is now built; hook tests now live in
   tests/integration/, same convention as Server Action tests.
 
-Current automated coverage covers the early reference-only `lib/` utilities
-plus layer 1 (pure utilities and error-interpretation logic: `lib/utils.ts`,
-`lib/supabase/errors.ts`, `projectUtils.ts`). Everything beyond that,
-Server Actions, hooks, most components, may have no automated coverage by
-deliberate deferral.
+Current automated coverage is broad, not limited to early lib/ utilities.
+tests/unit/ has 29 files: pure utilities, error interpretation, and
+component behavior. tests/integration/ has 15 files: Server Actions and
+React Query hooks against mocked Supabase responses via MSW. tests/e2e/
+has 8 Playwright specs covering full flows, login, signup, project and
+task CRUD, membership, and cross-user data isolation.
 
 `jest.config.ts` has `collectCoverage`/`collectCoverageFrom` configured
 (`npm test -- --coverage` reports real numbers) but no `coverageThreshold`.

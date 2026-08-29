@@ -25,7 +25,7 @@ import {
   type ProjectFormState,
 } from "./projectActions";
 import sharedStyles from "./projectShared.module.css";
-import { STATUS_LABELS } from "./projectUtils";
+import { DATE_FORMAT, STATUS_LABELS } from "./projectUtils";
 
 /**
  * Submit button for the add-member form. Must be a descendant of the form
@@ -144,12 +144,6 @@ const STATUS_BADGE_CLASS: Record<ProjectStatus, string> = {
   active: styles.statusActive,
   completed: styles.statusCompleted,
   archived: styles.statusArchived,
-};
-
-const DATE_FORMAT: Intl.DateTimeFormatOptions = {
-  year: "numeric",
-  month: "long",
-  day: "numeric",
 };
 
 const DUE_DATE_LONG_FORMAT: Intl.DateTimeFormatOptions = {

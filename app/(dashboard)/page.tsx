@@ -13,13 +13,14 @@ import { Skeleton } from "@/components/Skeleton";
 import { ProjectStats } from "@/features/projects/ProjectStats";
 import { ProjectCard } from "@/features/projects/ProjectCard";
 import { VelocityStatus } from "@/features/projects/VelocityStatus";
+import { ActivityFeed } from "@/features/activity/ActivityFeed";
 import { DUE_DATE_FORMAT } from "@/features/projects/projectUtils";
 import { STATUS_CONFIG } from "@/features/tasks/taskUtils";
 import layoutStyles from "@/styles/layout.module.css";
 import dotStyles from "@/styles/statusDot.module.css";
 import styles from "./page.module.css";
 
-const RECENT_PROJECTS_COUNT = 4;
+const RECENT_PROJECTS_COUNT = 2;
 const UPCOMING_TASKS_COUNT = 5;
 const TASK_SKELETON_ROW_COUNT = 5;
 
@@ -237,6 +238,13 @@ export default function DashboardPage() {
                 ))}
               </div>
             )}
+          </section>
+
+          <section>
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.sectionTitle}>Recent Activity</h2>
+            </div>
+            <ActivityFeed now={now} />
           </section>
         </div>
 

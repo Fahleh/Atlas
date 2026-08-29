@@ -38,7 +38,7 @@ export type CreateProjectActionDeps = {
  *
  * @param projectId - ID of the project to delete
  * @param queryClient - TanStack QueryClient for cache invalidation
- * @returns `{ error, errorKind }` — both null on success
+ * @returns `{ error, errorKind }`, both null on success
  */
 export async function deleteProject(
   projectId: string,
@@ -55,6 +55,7 @@ export async function deleteProject(
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: ["projects"] }),
     queryClient.invalidateQueries({ queryKey: ["tasks", projectId] }),
+    queryClient.invalidateQueries({ queryKey: ["activityLog"] }),
   ]);
   return { error: null, errorKind: null };
 }
@@ -69,7 +70,7 @@ export async function deleteProject(
  * @param projectId - ID of the project to add the member to
  * @param email - Email address of the Atlas account to add
  * @param queryClient - TanStack QueryClient for cache invalidation
- * @returns `{ error, errorKind }` — both null on success
+ * @returns `{ error, errorKind }`, both null on success
  */
 export async function addMember(
   projectId: string,
@@ -104,13 +105,16 @@ export async function addMember(
     return interpretSupabaseWriteError(insertError, supabase);
   }
 
-  await queryClient.invalidateQueries({ queryKey: ["projectMembers"] });
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["projectMembers"] }),
+    queryClient.invalidateQueries({ queryKey: ["activityLog"] }),
+  ]);
   return { error: null, errorKind: null };
 }
 
 /**
  * Removes a member from a project. RLS ("project_members: owner can delete")
- * already enforces owner-only at the database layer — no additional
+ * already enforces owner-only at the database layer. No additional
  * server-side check needed here.
  *
  * @param projectId - ID of the project to remove the member from
@@ -132,7 +136,10 @@ export async function removeMember(
 
   if (error) return interpretSupabaseWriteError(error, supabase);
 
-  await queryClient.invalidateQueries({ queryKey: ["projectMembers"] });
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["projectMembers"] }),
+    queryClient.invalidateQueries({ queryKey: ["activityLog"] }),
+  ]);
   return { error: null, errorKind: null };
 }
 
@@ -150,11 +157,11 @@ function isProjectStatus(value: string): value is ProjectStatus {
 
 /**
  * Returns a React 19 form action for creating and editing projects.
- * Follows the same factory pattern as `createTaskAction` — accepts stable
+ * Follows the same factory pattern as `createTaskAction`, accepts stable
  * component references as deps rather than closing over component scope directly.
  *
  * Security: `owner_id` on create is derived from `supabase.auth.getClaims()`
- * (the browser client's JWT claims) — never from FormData or any client-supplied
+ * (the browser client's JWT claims), never from FormData or any client-supplied
  * value. RLS enforces the ownership invariant at the database layer
  * (`owner_id = auth.uid()`), so this read is a convenience, not the trust boundary.
  *
@@ -214,7 +221,7 @@ export function createProjectAction(
 
       if (error) return interpretSupabaseWriteError(error, supabase);
     } else {
-      // Create — owner_id from JWT claims, never from FormData
+      // Create, owner_id from JWT claims, never from FormData
       const { data: claimsData } = await supabase.auth.getClaims();
       const ownerId = claimsData?.claims?.sub;
 
@@ -235,7 +242,10 @@ export function createProjectAction(
       if (error) return interpretSupabaseWriteError(error, supabase);
     }
 
-    await queryClient.invalidateQueries({ queryKey: ["projects"] });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["projects"] }),
+      queryClient.invalidateQueries({ queryKey: ["activityLog"] }),
+    ]);
     setIsModalOpen(false);
     return { error: null, errorKind: null };
   };

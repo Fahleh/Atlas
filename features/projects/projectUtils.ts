@@ -29,6 +29,12 @@ export const DUE_DATE_FORMAT: Intl.DateTimeFormatOptions = {
   timeZone: "UTC",
 };
 
+export const DATE_FORMAT: Intl.DateTimeFormatOptions = {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+};
+
 const DESCRIPTION_MAX_LENGTH = 72;
 
 /**

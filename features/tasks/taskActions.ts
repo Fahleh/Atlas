@@ -18,7 +18,7 @@ export type CreateTaskActionDeps = {
 
 // ---- Invalidation helper -----------------------------------------------------
 
-// Runs both invalidations in parallel — they're independent of each other.
+// Runs both invalidations in parallel. They're independent of each other.
 async function invalidateTaskQueries(
   queryClient: QueryClient,
   taskQueryKey: QueryKey,
@@ -26,6 +26,7 @@ async function invalidateTaskQueries(
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: taskQueryKey }),
     queryClient.invalidateQueries({ queryKey: ["taskCountsByProject"] }),
+    queryClient.invalidateQueries({ queryKey: ["activityLog"] }),
   ]);
 }
 
@@ -124,7 +125,7 @@ export function createTaskAction(
     const currentTask = editingTaskRef.current;
 
     if (currentTask) {
-      // Edit — apply general changes then status change, merge into one update.
+      // Edit. Apply general changes then status change, merge into one update.
       const withChanges = updateTask(currentTask, {
         title,
         description,
