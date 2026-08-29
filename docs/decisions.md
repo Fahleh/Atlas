@@ -62,6 +62,7 @@ reason to document something here.
 - [`EntityModal.SubmitButton`'s action-identity comparison against `useFormStatus`](#entitymodalsubmitbuttons-action-identity-comparison-against-useformstatus)
 - [Using `ts-node`'s ESM loader instead of `tsx` for `authenticated-lighthouse.mts`](#using-ts-nodes-esm-loader-instead-of-tsx-for-authenticated-lighthousemts)
 - [Trusted Types createScriptURL: default policy design and the Next.js 16.3 immutable-assets update](#trusted-types-createscripturl-default-policy-design-and-the-nextjs-163-immutable-assets-update)
+- [Extending `authenticated-lighthouse.mts` for CSP violation checks, and sharing the chunk URL regex](#extending-authenticated-lighthousemts-for-csp-violation-checks-and-sharing-the-chunk-url-regex)
 
 ---
 
@@ -1487,7 +1488,7 @@ prop, variable, or request-derived interpolation, hardcoded
 JavaScript strings only, no exceptions. The conclusion holds.
 
 **Why the path pattern changed. Incident: confirmed directly against
-the real deployed HTML, not inferred, 2026-08-27.** Next.js 16's Build
+the real deployed HTML, not inferred.** Next.js 16's Build
 Adapters API is what actually produces the `immutable/` path segment,
 this is specific to how Vercel's hosting adapter transforms build output
 at deploy time, not something `next build` itself emits.
@@ -1510,3 +1511,39 @@ both real shapes, `/_next/static/chunks/<hash>.js` and
 `/_next/static/immutable/chunks/<hash>.js`, with a non-capturing
 optional `immutable/` segment, same character class and optional query
 suffix as before, nothing broadened beyond that one segment.
+
+---
+
+## Extending `authenticated-lighthouse.mts` for CSP violation checks, and sharing the chunk URL regex
+
+**Decision:** The CSP violation check lives inside
+`scripts/authenticated-lighthouse.mts` itself, not a new Playwright
+spec or project. The Trusted Types chunk URL regex, previously a
+hand-escaped literal that existed only inside `app/layout.tsx`'s
+inline script, now lives in `lib/trustedTypesChunkUrlPattern.ts` and
+is embedded into that inline script via `JSON.stringify(source)`.
+
+**Why extend the existing script instead of writing a new spec.**
+`authenticated-lighthouse.mts` already builds and logs into a real
+production instance, one persistent authenticated context navigating
+real routes. A new spec would duplicate all of that, its own build
+cycle, its own login, its own context, for the same requirement.
+Extending it means the CSP check runs against the exact same real
+conditions the performance audit already does, not a second copy
+that could drift from the first.
+
+**Why the regex became a shared, importable source.** Before this,
+the pattern existed only as a hand-escaped literal inline in
+`app/layout.tsx`, no test coverage, no way to reuse the same rule
+elsewhere without retyping the same escaped regex and risking drift.
+Moving it to `lib/trustedTypesChunkUrlPattern.ts` gives it one real
+source and a direct unit test
+(`tests/unit/trustedTypesChunkUrlPattern.test.ts`) that can catch a
+future accidental narrowing, someone simplifying it back to requiring
+`immutable/` unconditionally, without needing a browser or a
+production build. `JSON.stringify(source)` embeds it correctly by
+construction instead of by hand-counting backslashes.
+
+**Collection and gating stay separate**, same precedent already
+established in "CI performance gate" for `lhci assert`, not a new
+pattern.
