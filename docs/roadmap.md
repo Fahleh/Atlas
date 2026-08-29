@@ -25,12 +25,7 @@ own plan.
    was chosen for aesthetic and brand reasons (see `docs/decisions.md`),
    not verified against AA contrast minimums.
 
-3. **Singular/plural copy convention.** No consistent handling of
-   count-based copy exists app-wide: `ProjectCard`'s task count is
-   hardcoded plural, while the new `VelocityStatus` card has a real
-   singular guard. Worth reconciling into one convention later.
-
-4. **Production-build Trusted Types E2E coverage.** No test, unit or E2E,
+3. **Production-build Trusted Types E2E coverage.** No test, unit or E2E,
    runs the production build with Trusted Types enforced and confirms a
    real script chunk load succeeds. The current E2E suite (`tests/e2e/`)
    runs against `npm run dev` via `playwright.config.ts`'s `webServer`,

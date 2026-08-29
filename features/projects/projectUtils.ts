@@ -71,3 +71,19 @@ export function calculateProgressPercent(taskCounts: TaskCounts): number {
   if (done === total) return 100;
   return Math.min(99, Math.max(1, Math.round((done / total) * 100)));
 }
+
+/**
+ * Formats a count with its correctly pluralized noun.
+ *
+ * @param count - The quantity to format
+ * @param singular - Singular form of the noun, e.g. "task"
+ * @param plural - Plural form, defaults to singular with an "s" appended
+ * @returns "{count} {noun}", pluralized correctly for count
+ */
+export function pluralize(
+  count: number,
+  singular: string,
+  plural = `${singular}s`,
+): string {
+  return `${count} ${count === 1 ? singular : plural}`;
+}

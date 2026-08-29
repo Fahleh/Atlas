@@ -69,7 +69,7 @@ A curated selection. Full reasoning for each, and everything else, lives in
 
 - 29 unit test files (`tests/unit/`): pure utilities, error interpretation, and component behavior.
 - 15 integration test files (`tests/integration/`): Server Actions and React Query hooks against mocked Supabase responses via MSW.
-- 8 Playwright E2E specs (`tests/e2e/`): full flows including login, signup, project and task CRUD, membership, and cross-user data isolation, run against a local Supabase stack.
+- 9 Playwright E2E spec files (`tests/e2e/`): full flows including login, signup, project and task CRUD, membership, cross-user data isolation, and an authorization boundary check confirming a collaborator cannot remove a member even by calling the API directly, run against a local Supabase stack.
 - CI runs the unit and integration suite (`npm test`) on every pull request to develop & main, required to merge.
 - E2E runs in CI but is **not yet a required check**. It needs to clear 10 consecutive non-blocking CI runs across at least a week with zero infrastructure-caused failures before it gates merges, a bar it hasn't cleared yet. Full reasoning in [docs/decisions.md](docs/decisions.md#ci-performance-gate-lab-proxies-form-factor-split-thresholds-and-the-file-count-guard).
 - A Lighthouse-based performance budget also runs in CI, required, split by desktop and mobile thresholds.
