@@ -1,5 +1,6 @@
 import { Skeleton } from "@/components/Skeleton";
 import styles from "./VelocityStatus.module.css";
+import { pluralize } from "./projectUtils";
 
 export type VelocityStatusProps = {
   dueSoonTaskCount: number;
@@ -26,6 +27,7 @@ export function VelocityStatus({
   onRetry,
 }: VelocityStatusProps) {
   const variant = dueSoonTaskCount > 0 ? "due" : "clear";
+  const isSingular = dueSoonTaskCount === 1;
 
   const narrative =
     dueSoonTaskCount === 0 ? (
@@ -34,17 +36,15 @@ export function VelocityStatus({
         days. <strong className={styles.emphasis}>No!</strong> That does not
         mean ignore responsibilities.
       </>
-    ) : dueSoonTaskCount === 1 ? (
-      <>
-        <strong className={styles.emphasis}>1 task</strong> is due within the
-        next 7 days.{" "}
-        <strong className={styles.emphasis}>Time to lock in!</strong>
-      </>
     ) : (
       <>
-        <strong className={styles.emphasis}>{dueSoonTaskCount} tasks</strong>{" "}
-        are due within the next 7 days.{" "}
-        <strong className={styles.emphasis}>Time to lock in.</strong>
+        <strong className={styles.emphasis}>
+          {pluralize(dueSoonTaskCount, "task")}
+        </strong>{" "}
+        {isSingular ? "is" : "are"} due within the next 7 days.{" "}
+        <strong className={styles.emphasis}>
+          Time to lock in{isSingular ? "!" : "."}
+        </strong>
       </>
     );
 
