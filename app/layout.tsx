@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/providers/ThemeContext";
+import { TRUSTED_TYPES_CHUNK_URL_SOURCE } from "@/lib/trustedTypesChunkUrlPattern";
 import "../styles/global.css";
 
 const inter = Inter({
@@ -24,6 +25,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const chunkUrlPatternSource = JSON.stringify(TRUSTED_TYPES_CHUNK_URL_SOURCE);
+
   return (
     <html
       lang="en"
@@ -35,7 +38,7 @@ export default function RootLayout({
             writes script.src directly, never through a named policy. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `if(window.trustedTypes&&window.trustedTypes.createPolicy){window.trustedTypes.createPolicy('default',{createScriptURL:function(u){if(!/^\\/_next\\/static\\/(?:immutable\\/)?chunks\\/[a-zA-Z0-9_-]+\\.js(\\?.*)?$/.test(u)){throw new TypeError('blocked script url: '+u);}return u;}});}`,
+            __html: `if(window.trustedTypes&&window.trustedTypes.createPolicy){window.trustedTypes.createPolicy('default',{createScriptURL:function(u){if(!new RegExp(${chunkUrlPatternSource}).test(u)){throw new TypeError('blocked script url: '+u);}return u;}});}`,
           }}
         />
         {/* Runs before React hydrates to set data-theme without flash */}

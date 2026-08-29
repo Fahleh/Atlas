@@ -21,7 +21,7 @@
  * Requires LIGHTHOUSE_AUTH_EMAIL and LIGHTHOUSE_AUTH_PASSWORD in .env.local.
  */
 import { config } from "dotenv";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -49,6 +49,13 @@ const ROUTES = [
   { name: "profile", path: "/profile" },
   { name: "projects", path: "/projects" },
 ];
+
+type CspViolation = {
+  violatedDirective: string;
+  blockedURI: string;
+  sourceFile: string | null;
+  lineNumber: number | null;
+};
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -110,6 +117,25 @@ async function main() {
     args: [`--remote-debugging-port=${DEBUG_PORT}`],
   });
 
+  const cspViolations: CspViolation[] = [];
+
+  // Bound on the context, not the page, so it survives every page.goto()
+  // in the route loop below, not just the first navigation.
+  await context.exposeFunction("__reportCspViolation", (violation: CspViolation) => {
+    cspViolations.push(violation);
+  });
+
+  await context.addInitScript(() => {
+    document.addEventListener("securitypolicyviolation", (event) => {
+      (window as unknown as { __reportCspViolation: (v: unknown) => void }).__reportCspViolation({
+        violatedDirective: event.violatedDirective,
+        blockedURI: event.blockedURI,
+        sourceFile: event.sourceFile,
+        lineNumber: event.lineNumber,
+      });
+    });
+  });
+
   try {
     const page = await context.newPage();
     await page.goto(`${BASE_URL}/login`);
@@ -142,6 +168,10 @@ async function main() {
       }
     }
   } finally {
+    writeFileSync(
+      path.join(outputDir, "csp-violations.json"),
+      JSON.stringify(cspViolations, null, 2),
+    );
     await context.close();
   }
 }
