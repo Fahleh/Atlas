@@ -45,5 +45,5 @@ test("creating a task updates the project card's task count without a manual ref
 
   await slideOver.getByRole("button", { name: "Close project details" }).click();
 
-  await expect(card.getByText("0/1 tasks")).toBeVisible();
+  await expect(card.getByText("0/1 task")).toBeVisible();
 });

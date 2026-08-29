@@ -22,7 +22,7 @@ Current automated coverage is broad, not limited to early lib/ utilities.
 tests/unit/ has 29 files: pure utilities, error interpretation, and
 component behavior. tests/integration/ has 15 files: Server Actions and
 React Query hooks against mocked Supabase responses via MSW. tests/e2e/
-has 9 Playwright specs covering full flows, login, signup, project and
+has 9 Playwright spec files covering full flows, login, signup, project and
 task CRUD, membership, cross-user data isolation, and an authorization
 boundary check confirming a collaborator cannot remove a member even
 by calling the API directly.
