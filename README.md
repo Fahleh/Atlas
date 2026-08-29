@@ -76,6 +76,8 @@ A curated selection. Full reasoning for each, and everything else, lives in
 
 ## Local setup
 
+Requires Node 24, see `.nvmrc`.
+
 ```bash
 git clone https://github.com/Fahleh/Atlas.git
 cd Atlas
