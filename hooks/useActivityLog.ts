@@ -13,9 +13,8 @@ import { useQuery } from "@tanstack/react-query";
 
 const RECENT_ACTIVITY_LIMIT = 4;
 
-// toCamelCase only transforms top-level keys, so the nested `profiles` and
-// `projects` objects (embedded via the Supabase join) keep their snake_case
-// column names.
+// toCamelCase only transforms top-level keys, so the nested `profiles`
+// and `projects` objects keep their snake_case column names.
 type ActivityLogRow = {
   id: string;
   projectId: string;
