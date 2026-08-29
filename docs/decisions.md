@@ -434,8 +434,7 @@ hand-duplicating the Inter font setup and the theme-flash-prevention script,
 real cost against a genuinely low-risk surface, especially now that root
 `app/error.tsx` (see the entry above) already catches everything nested below
 root layout, including a throw in `Sidebar.tsx`/`Header.tsx`. What's left
-uncovered is narrowly root `app/layout.tsx`'s own minimal code. Tracked in
-`docs/roadmap.md` rather than silently dropped.
+uncovered is narrowly root `app/layout.tsx`'s own minimal code.
 
 ---
 

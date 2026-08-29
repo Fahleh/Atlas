@@ -30,11 +30,7 @@ own plan.
    hardcoded plural, while the new `VelocityStatus` card has a real
    singular guard. Worth reconciling into one convention later.
 
-4. **`app/global-error.tsx`.** Deferred; a throw inside root `app/layout.tsx`
-   itself currently falls through to Next's default unstyled error UI. See
-   `docs/decisions.md`.
-
-5. **Production-build Trusted Types E2E coverage.** No test, unit or E2E,
+4. **Production-build Trusted Types E2E coverage.** No test, unit or E2E,
    runs the production build with Trusted Types enforced and confirms a
    real script chunk load succeeds. The current E2E suite (`tests/e2e/`)
    runs against `npm run dev` via `playwright.config.ts`'s `webServer`,
@@ -84,13 +80,6 @@ own plan.
   any "assigned to me" style view is meaningful, deferred because it
   needs its own design pass (assignee picker, likely sourced from
   `useMembersByProject`'s already-fetched project members).
-
-- **Activity/audit log.** A real event feed ("Priya moved X to Review",
-  "Jonas opened a PR") needs a new `activity_log` table, instrumentation
-  on every mutation site across `projectActions.ts`/`taskActions.ts`, and
-  its own RLS scoping. Deferred in favor of the dashboard's lighter
-  `updated_at`-based "Recent Projects"/"Upcoming Tasks" substitutes,
-  which needed no new schema.
 
 ---
 
