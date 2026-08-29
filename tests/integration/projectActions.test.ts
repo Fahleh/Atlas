@@ -315,6 +315,48 @@ describe("removeMember", () => {
     });
     expect(invalidateSpy).not.toHaveBeenCalled();
   });
+
+  it("should return sessionExpired for a 42501 delete failure when getClaims finds no session", async () => {
+    server.use(
+      http.delete(`${SUPABASE_URL}/rest/v1/project_members`, () =>
+        postgrestError({ code: "42501", message: "permission denied" }, 401),
+      ),
+    );
+    mockNoSession();
+    const queryClient = new QueryClient();
+
+    const result = await removeMember(
+      crypto.randomUUID(),
+      crypto.randomUUID(),
+      queryClient,
+    );
+
+    expect(result).toEqual({
+      error: "Your session has expired. Log in again to continue.",
+      errorKind: "sessionExpired",
+    });
+  });
+
+  it("should return forbidden for a 42501 delete failure when getClaims finds a live session", async () => {
+    server.use(
+      http.delete(`${SUPABASE_URL}/rest/v1/project_members`, () =>
+        postgrestError({ code: "42501", message: "permission denied" }, 401),
+      ),
+    );
+    mockLiveSession();
+    const queryClient = new QueryClient();
+
+    const result = await removeMember(
+      crypto.randomUUID(),
+      crypto.randomUUID(),
+      queryClient,
+    );
+
+    expect(result).toEqual({
+      error: "You don't have permission to perform that action.",
+      errorKind: "forbidden",
+    });
+  });
 });
 
 describe("createProjectAction, create branch", () => {

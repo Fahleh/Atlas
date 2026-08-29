@@ -12,7 +12,7 @@ own plan.
 
 ---
 
-## Current version, remaining work (in planned order)
+## Current version, remaining work
 
 1. **Screen reader testing.** No automated or manual screen reader testing
    (NVDA, VoiceOver, JAWS) has been performed against any part of the app.
@@ -24,38 +24,6 @@ own plan.
    run against the token palette in either light or dark mode. The palette
    was chosen for aesthetic and brand reasons (see `docs/decisions.md`),
    not verified against AA contrast minimums.
-
-3. **Singular/plural copy convention.** No consistent handling of
-   count-based copy exists app-wide: `ProjectCard`'s task count is
-   hardcoded plural, while the new `VelocityStatus` card has a real
-   singular guard. Worth reconciling into one convention later.
-
-4. **`app/global-error.tsx`.** Deferred; a throw inside root `app/layout.tsx`
-   itself currently falls through to Next's default unstyled error UI. See
-   `docs/decisions.md`.
-
-5. **Production-build Trusted Types E2E coverage.** No test, unit or E2E,
-   runs the production build with Trusted Types enforced and confirms a
-   real script chunk load succeeds. The current E2E suite (`tests/e2e/`)
-   runs against `npm run dev` via `playwright.config.ts`'s `webServer`,
-   and Trusted Types enforcement is production-only (see
-   `docs/decisions.md`), so the existing suite cannot catch a regression
-   here without a separate production-build run. The validator is now one
-   shared implementation covering both real chunk-path shapes (see
-   `docs/decisions.md`), so a local `npm run build && npm run start` E2E
-   run would exercise the real production code, just against the local
-   shape, `/_next/static/chunks/`, not the Vercel `immutable/` shape.
-   Confirming the `immutable/` branch actually validates against genuine
-   Vercel-served HTML needs a real preview deployment, local build output
-   never produces that shape. Proposed shape: a separate Playwright
-   project or `webServer` config that builds and starts the production
-   server locally, with a `securitypolicyviolation` listener attached,
-   asserting zero violations during a real login, covering the shared
-   mechanism and the local branch. A pre-merge smoke check against an
-   actual Vercel preview deployment is the only way to confirm the
-   Vercel-specific `immutable/` branch before this reaches production
-   again, a separate check the local E2E run cannot provide. Not yet
-   scheduled, sequencing relative to the items above still to be decided.
 
 ---
 
@@ -84,13 +52,6 @@ own plan.
   any "assigned to me" style view is meaningful, deferred because it
   needs its own design pass (assignee picker, likely sourced from
   `useMembersByProject`'s already-fetched project members).
-
-- **Activity/audit log.** A real event feed ("Priya moved X to Review",
-  "Jonas opened a PR") needs a new `activity_log` table, instrumentation
-  on every mutation site across `projectActions.ts`/`taskActions.ts`, and
-  its own RLS scoping. Deferred in favor of the dashboard's lighter
-  `updated_at`-based "Recent Projects"/"Upcoming Tasks" substitutes,
-  which needed no new schema.
 
 ---
 
