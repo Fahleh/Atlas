@@ -104,11 +104,8 @@ describe("buildActivityMessage", () => {
   });
 
   it("should not crash or route through PROJECT_STATUS_CONFIG for a task-entity status change", () => {
-    // Real triggers never put "status" in task_updated's changes array today,
-    // task status changes go through task_status_changed instead. This proves
-    // the entityType guard holds even if that trigger behavior ever changes.
-    // "done" is not a key in PROJECT_STATUS_CONFIG, so if the guard were
-    // missing this would throw instead of returning a plain string.
+    // Real triggers never send a task status change this way, but this
+    // proves the entityType guard holds: without it, "done" would throw.
     const entry = buildEntry({
       verb: "task_updated",
       entityType: "task",
@@ -180,11 +177,8 @@ describe("buildActivityMessage", () => {
 });
 
 describe("formatRelativeTime", () => {
-  // Noon UTC keeps the calendar date stable across every timezone from
-  // UTC-11 through UTC+11, which covers every contributor machine and CI
-  // runner this project actually runs on. It is not proof against a
-  // timezone at UTC+12 or beyond, just a deliberate safe choice for the
-  // environments in play here.
+  // Noon UTC keeps the date stable across UTC-11 through UTC+11, every
+  // real contributor machine and CI runner, not proof beyond that range.
   const now = new Date("2026-01-08T12:00:00.000Z").getTime();
 
   it("should say just now for anything under 60 seconds old", () => {

@@ -191,10 +191,8 @@ export function ProjectSlideOver({
   const editingTaskRef = useRef<Task | null>(null);
   // Incremented on every open so the modal remounts and resets form values.
   const [modalResetKey, setModalResetKey] = useState(0);
-  // Reset alongside modalResetKey in openForCreate/openForEdit below — this
-  // state lives here, not inside TaskModal, since TaskModal is compound and
-  // its fields are actually rendered by this component. Sticky once true,
-  // not fully re-derived on every keystroke, see docs/decisions.md.
+  // Lives here, not in TaskModal, since this component renders the fields.
+  // Sticky once true, not re-derived per keystroke, see docs/decisions.md.
   const [isTaskDirty, setIsTaskDirty] = useState(false);
   const queryClient = useQueryClient();
 
@@ -202,12 +200,8 @@ export function ProjectSlideOver({
     if (editingTask && current !== original) setIsTaskDirty(true);
   }
 
-  // False positive in eslint-plugin-react-hooks@7.1.1: the rule flags any ref
-  // passed to a function during render, but editingTaskRef.current is only read
-  // inside the returned async callback at form-submit time, never during the
-  // useMemo factory's synchronous execution. Open upstream bugs:
-  // https://github.com/facebook/react/issues/34954
-  // https://github.com/facebook/react/issues/35813
+  // False positive in eslint-plugin-react-hooks@7.1.1, ref is only read at
+  // submit time, not during render. See facebook/react#34954 and #35813.
   const taskAction = useMemo(
     // eslint-disable-next-line react-hooks/refs
     () => createTaskAction({ editingTaskRef, queryClient, setIsModalOpen }),
@@ -253,10 +247,8 @@ export function ProjectSlideOver({
 
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Move focus to the Cancel button when the trash icon swaps to the
-  // Cancel/Confirm pair — otherwise focus falls back to browser-default
-  // behavior (reverts toward body, Tab resumes from DOM order) rather than
-  // being explicitly managed.
+  // Explicitly focuses Cancel when the trash icon swaps to Cancel/Confirm,
+  // otherwise focus falls back to unreliable browser-default behavior.
   useEffect(() => {
     if (!confirmingMemberId) return;
     cancelButtonRef.current?.focus();

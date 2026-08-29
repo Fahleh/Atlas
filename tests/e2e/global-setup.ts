@@ -30,6 +30,8 @@ export default async function globalSetup(): Promise<void> {
   const status = parseEnvOutput(supabaseCli(["status", "-o", "env"]));
   process.env.SUPABASE_URL = status.API_URL;
   process.env.SUPABASE_SECRET_KEY = status.SECRET_KEY;
+  process.env.NEXT_PUBLIC_SUPABASE_URL = status.API_URL;
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = status.PUBLISHABLE_KEY;
 
   await seedE2eAccounts();
 }
