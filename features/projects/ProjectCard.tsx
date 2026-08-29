@@ -10,6 +10,7 @@ import {
   DUE_DATE_FORMAT,
   STATUS_LABELS,
   calculateProgressPercent,
+  pluralize,
 } from "./projectUtils";
 import styles from "./ProjectCard.module.css";
 import sharedStyles from "./projectShared.module.css";
@@ -86,7 +87,7 @@ export function ProjectCard({
           aria-label="Project progress"
         />
         <span className={styles.taskCount}>
-          {taskCounts.done}/{taskCounts.total} tasks
+          {taskCounts.done}/{pluralize(taskCounts.total, "task")}
         </span>
       </div>
 

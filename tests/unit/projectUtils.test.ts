@@ -1,6 +1,7 @@
 import {
   truncateDescription,
   calculateProgressPercent,
+  pluralize,
 } from "@/features/projects/projectUtils";
 
 describe("truncateDescription", () => {
@@ -68,5 +69,23 @@ describe("calculateProgressPercent", () => {
 
   it("should clamp down to 99 rather than round up to 100", () => {
     expect(calculateProgressPercent({ done: 999, total: 1000 })).toBe(99);
+  });
+});
+
+describe("pluralize", () => {
+  it("should use the singular form for a count of 1", () => {
+    expect(pluralize(1, "task")).toBe("1 task");
+  });
+
+  it("should use the plural form for a count of 0", () => {
+    expect(pluralize(0, "task")).toBe("0 tasks");
+  });
+
+  it("should use the plural form for a count above 1", () => {
+    expect(pluralize(5, "task")).toBe("5 tasks");
+  });
+
+  it("should use a custom plural argument instead of the default +s", () => {
+    expect(pluralize(3, "person", "people")).toBe("3 people");
   });
 });
