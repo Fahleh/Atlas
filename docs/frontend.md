@@ -428,6 +428,14 @@ Use CSS Modules for:
 
 Never use Tailwind color classes or arbitrary color values.
 
+Exception: `ProjectStats.module.css`'s four-cell stats bar keeps its
+grid/flex breakpoint switch in CSS Modules rather than Tailwind. The
+row divider needs `:nth-child(-n+2)` combined with `:last-child`
+targeting four fixed cells, expressible in Tailwind only through
+arbitrary-variant syntax that turns messier than the CSS Module
+version for this exact shape. Checked directly against the real
+properties involved before deciding, not a default.
+
 ### Tokens
 
 Use `styles/tokens.css` for all visual values:
@@ -586,8 +594,12 @@ Never use a fixed width alone.
 ### Cascade order
 
 - Base rules before media-query overrides.
-- Merge identical breakpoints into one block at the bottom.
-- Never split one breakpoint across multiple blocks.
+- Same breakpoint, multiple selectors: merge into one block, don't
+  repeat the query.
+- Different breakpoints, each overriding a single selector: keep the
+  block next to that selector, don't force it to the bottom.
+- Never repeat the same breakpoint condition across multiple blocks
+  in one file.
 
 ### Responsive breakpoints
 

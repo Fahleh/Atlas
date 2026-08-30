@@ -1,5 +1,6 @@
 .statsBar {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -8,7 +9,6 @@
 }
 
 .stat {
-  flex: 1;
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -18,6 +18,22 @@
 
 .stat:last-child {
   border-right: none;
+}
+
+.stat:nth-child(-n+2) {
+  border-bottom: 1px solid var(--color-border);
+}
+
+@media (min-width: 640px) {
+  .statsBar {
+    display: flex;
+    grid-template-columns: none;
+  }
+
+  .stat {
+    flex: 1;
+    border-bottom: none;
+  }
 }
 
 .label {
