@@ -154,7 +154,7 @@ export default function DashboardPage() {
         isLoading={isLoading}
       />
 
-      <div className={styles.dashboardGrid}>
+      <div className="grid grid-cols-1 lg:grid-cols-[4fr_2fr] gap-10 mt-2">
         <div className={styles.dashboardColumn}>
           <section>
             <div className={styles.sectionHeader}>
@@ -166,7 +166,7 @@ export default function DashboardPage() {
 
             {isLoading ? (
               <div
-                className={styles.recentProjectsGrid}
+                className="grid grid-cols-1 sm:grid-cols-2 gap-y-10 gap-x-6"
                 role="status"
                 aria-live="polite"
                 aria-label="Loading recent projects"
@@ -225,7 +225,7 @@ export default function DashboardPage() {
                 </p>
               </div>
             ) : (
-              <div className={styles.recentProjectsGrid}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-10 gap-x-6">
                 {recentProjects.map((project) => (
                   <ProjectCard
                     key={project.id}
