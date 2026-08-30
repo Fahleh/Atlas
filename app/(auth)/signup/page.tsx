@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 import Link from "next/link";
 import { signup } from "./actions";
 import type { SignupFormState } from "./actions";
+import { PasswordInput } from "@/components/PasswordInput";
 import styles from "../authShared.module.css";
 
 /**
@@ -99,9 +100,8 @@ export default function SignupPage() {
           <label htmlFor="password" className={styles.fieldLabel}>
             Password
           </label>
-          <input
+          <PasswordInput
             id="password"
-            type="password"
             name="password"
             required
             autoComplete="new-password"
@@ -112,9 +112,8 @@ export default function SignupPage() {
           <label htmlFor="confirmPassword" className={styles.fieldLabel}>
             Confirm password
           </label>
-          <input
+          <PasswordInput
             id="confirmPassword"
-            type="password"
             name="confirmPassword"
             required
             autoComplete="new-password"

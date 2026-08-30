@@ -386,6 +386,69 @@ Storage details live in `docs/database.md`.
 
 ---
 
+## PasswordInput
+
+`components/PasswordInput.tsx` is global and feature-agnostic, same tier as
+`Avatar` and `StatusBox`. Login, signup, and update-password each render it;
+three real call sites is what moved this out of per-form inputs, matching
+the `.pageContainer` duplication rule above.
+
+Props:
+
+```typescript
+type PasswordInputProps = {
+  id: string;
+  name: string;
+  required?: boolean;
+  autoComplete?: string;
+  defaultValue?: string;
+};
+```
+
+The native `<input>` stays uncontrolled, same as any other text field:
+`name`, `defaultValue`, read through `FormData` in the action. Only the
+show/hide flag is local `useState`. Each rendered instance gets its own
+state slot, so two `PasswordInput`s on the same form (password and confirm
+password) toggle independently, nothing extra needed.
+
+### Focus and selection across the type swap
+
+Chrome drops focus and resets the caret to position 0 when the attribute changes,
+and does it a second time on the next animation frame, after a plain effect
+has already tried to restore it. The fix runs the restore inside
+`requestAnimationFrame` so it lands after that second reset.
+
+The toggle button also calls `preventDefault()` on `mousedown`, not
+`click`. A button normally takes focus on mousedown, before the click
+handler runs, which would make the input's focus state look wrong by the
+time we read it. Blocking that keeps focus wherever it already was through
+the click, so the handler reads the input's real focus state, not the button's.
+
+Behavior once that's in place: if the input was focused, its cursor
+position or active selection is captured before the toggle and reapplied
+after. If it was not focused, the toggle only swaps visibility and does
+not touch focus.
+
+jsdom does not reproduce any of this. A bare `<input>` with no React
+involved, tested directly, keeps its selection and focus across a
+`type` change in jsdom, so there is nothing there for the restore
+logic to fix in the first place. This behavior is verified only by
+real browser testing, not by `tests/unit/PasswordInput.test.tsx`.
+
+### Accessibility
+
+Icon-only toggle button, `aria-label` swaps with state, same pattern as
+Sidebar's theme toggle (`Sidebar.tsx`, `"Switch to dark mode"` /
+`"Switch to light mode"`):
+
+```tsx
+aria-label={showPassword ? "Hide password" : "Show password"}
+```
+
+Icons are `Eye`/`EyeOff` from `lucide-react`.
+
+---
+
 ## CSS Strategy
 
 ### Page-level layout
