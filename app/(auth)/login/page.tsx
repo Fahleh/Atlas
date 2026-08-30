@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { login } from "./actions";
 import type { LoginFormState } from "./actions";
+import { PasswordInput } from "@/components/PasswordInput";
 import styles from "./login.module.css";
 import sharedStyles from "../authShared.module.css";
 
@@ -91,9 +92,8 @@ export default function LoginPage() {
           <label htmlFor="password" className={sharedStyles.fieldLabel}>
             Password
           </label>
-          <input
+          <PasswordInput
             id="password"
-            type="password"
             name="password"
             required
             autoComplete="current-password"
