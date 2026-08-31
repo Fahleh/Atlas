@@ -189,6 +189,16 @@ export function createProjectAction(
     const name = nameRaw?.trim();
     if (!name)
       return { error: "Project name is required.", errorKind: null };
+    if (name.length > 100)
+      return {
+        error: "Project name must be at most 100 characters long.",
+        errorKind: null,
+      };
+    if (description.length > 2000)
+      return {
+        error: "Description must be at most 2000 characters long.",
+        errorKind: null,
+      };
 
     let status: ProjectStatus = "active";
     if (statusRaw && isProjectStatus(statusRaw)) {
