@@ -19,7 +19,7 @@ build checks, browser verification requirements, and debugging process.
   tests/integration/, same convention as Server Action tests.
 
 Current automated coverage is broad, not limited to early lib/ utilities.
-tests/unit/ has 31 files: pure utilities, error interpretation, and
+tests/unit/ has 32 files: pure utilities, error interpretation, and
 component behavior. tests/integration/ has 15 files: Server Actions and
 React Query hooks against mocked Supabase responses via MSW. tests/e2e/
 has 9 Playwright spec files covering full flows, login, signup, project and

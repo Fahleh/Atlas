@@ -63,6 +63,7 @@ reason to document something here.
 - [Using `ts-node`'s ESM loader instead of `tsx` for `authenticated-lighthouse.mts`](#using-ts-nodes-esm-loader-instead-of-tsx-for-authenticated-lighthousemts)
 - [Trusted Types createScriptURL: default policy design and the Next.js 16.3 immutable-assets update](#trusted-types-createscripturl-default-policy-design-and-the-nextjs-163-immutable-assets-update)
 - [Extending `authenticated-lighthouse.mts` for CSP violation checks, and sharing the chunk URL regex](#extending-authenticated-lighthousemts-for-csp-violation-checks-and-sharing-the-chunk-url-regex)
+- [Why `authenticated-lighthouse.mts` doesn't import `lib/baseUrl.ts`](#why-authenticated-lighthousemts-doesnt-import-libbaseurlts)
 
 ---
 
@@ -1547,3 +1548,29 @@ construction instead of by hand-counting backslashes.
 **Collection and gating stay separate**, same precedent already
 established in "CI performance gate" for `lhci assert`, not a new
 pattern.
+
+---
+
+## Why `authenticated-lighthouse.mts` doesn't import `lib/baseUrl.ts`
+
+**Decision:** `scripts/authenticated-lighthouse.mts` keeps its own
+`process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000"` line
+instead of importing `getBaseUrl()` from `lib/baseUrl.ts`, even though
+`login/actions.ts` uses that shared function for the same fallback.
+
+**Why. Confirmed directly, not assumed.** This script runs under
+ts-node's ESM loader (see the entry above on why tsx wasn't used
+instead), which compiles `lib/` as CommonJS since `package.json` has no
+`"type": "module"`, while this file is explicit ESM. Importing across
+that boundary fails on named-export interop, confirmed by testing it
+directly rather than assuming. The `@/` alias also isn't available
+here regardless, that's a Next.js/Jest-only resolution.
+
+**Why the duplication is safe.** This script only ever runs in GitHub
+Actions, which never sets `VERCEL`, so `getBaseUrl()`'s Vercel-gated
+throw would never fire here regardless. Both this literal and
+`getBaseUrl()` take the identical local-fallback branch in every
+environment this script actually runs in. If the import problem is
+ever fixed, for example by adding `"type": "module"` project-wide,
+replace this literal with a real import instead of hand-copying the
+logic further.
