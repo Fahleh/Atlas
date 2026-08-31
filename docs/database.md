@@ -94,7 +94,10 @@ It returns:
 - `done_tasks`.
 
 Aggregation uses `count(*)`, filtered counts, and `GROUP BY` on the server. The
-view naturally inherits RLS from source tables.
+view sets `security_invoker = true`. That setting, not anything automatic
+about views, is what makes it respect the querying user's RLS on the
+underlying tables. Confirmed by direct testing, not assumed, see
+017_fix_view_rls_and_search_path.sql.
 
 Supabase-generated view types may mark non-null columns as nullable. Consumers
 must handle this deliberately rather than silently discarding rows.
@@ -134,6 +137,7 @@ RLS is enabled and policies exist on:
 - `projects`;
 - `project_members`;
 - `tasks`.
+- `activity_log`.
 
 Check current policy state before treating policy creation as open work.
 
@@ -240,6 +244,18 @@ This class of bug has already occurred for:
 - original tables before explicit grants were added.
 
 Never loosen RLS to work around a missing grant.
+
+A view's ownership and its `security_invoker` setting are a third, separate
+layer from both grants and RLS policies. A view can have a correct grant
+and query tables with correct RLS, and still bypass that RLS entirely if
+it's owned by a role RLS doesn't apply to, the default, and
+`security_invoker` isn't set. `project_task_stats` has had two confirmed
+incidents now, on two different layers: a missing grant
+(`008_grant_project_task_stats_select.sql`) and a missing
+`security_invoker` (`017_fix_view_rls_and_search_path.sql`). Any new view
+over an RLS-protected table needs `security_invoker = true` checked
+explicitly, confirmed by querying as a real non-privileged user, not
+assumed from the view's SQL looking correct.
 
 ---
 
