@@ -174,4 +174,4 @@ page's full HTML where a valid `robots.txt` should be.
 matcher didn't exclude `/robots.txt`, redirecting requests into
 login. Both fixed together: `app/robots.ts` added, matcher updated
 alongside `favicon.ico`. Verified: direct `curl`, no redirect, `200`
-with the intended body. See `docs/decisions.md`.
+with the intended body.
