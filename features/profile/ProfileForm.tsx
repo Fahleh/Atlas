@@ -168,6 +168,18 @@ export function ProfileForm() {
             errorKind: null,
             success: false,
           };
+        if (name.length < 3)
+          return {
+            error: "Display name must be at least 3 characters long.",
+            errorKind: null,
+            success: false,
+          };
+        if (name.length > 100)
+          return {
+            error: "Display name must be at most 100 characters long.",
+            errorKind: null,
+            success: false,
+          };
 
         const result = await updateProfile(
           currentUser.id,
@@ -298,6 +310,7 @@ export function ProfileForm() {
           name="name"
           type="text"
           required
+          maxLength={100}
           value={nameInput}
           onChange={(e) => setNameInput(e.target.value)}
           className={styles.nameInput}

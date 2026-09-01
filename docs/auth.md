@@ -162,6 +162,24 @@ Protocol-relative URLs such as `//evil.com` pass that check.
 After validation, redirect with the relative path, not the absolute URL. This
 keeps custom domains, preview deployments, and reverse proxies working.
 
+`lib/baseUrl.ts`'s `getBaseUrl()` is the actual source for
+`NEXT_PUBLIC_BASE_URL`, not a direct env read at each call site. It gates
+on `process.env.VERCEL`, not `NODE_ENV`/`isDev`. The question that matters
+here is whether the code is genuinely running on Vercel's infrastructure,
+not whether it's a dev build, and a missing `NEXT_PUBLIC_BASE_URL` on
+Vercel should fail loud rather than silently validate redirects against
+`localhost:3000` in a real deployment. Everywhere else (local dev, CI,
+any other host), an unset var falls back to `http://localhost:3000` the
+same way it always has.
+
+Confirmed against Vercel's own docs: `VERCEL` is only populated when the
+project's "Enable access to System Environment Variables" setting is
+turned on in the dashboard. It is not on by default for every project.
+If that setting is ever off for Atlas's Vercel project, `VERCEL` will
+never be set, and `getBaseUrl()` will silently take the local-fallback
+branch even in production, the exact failure this gate exists to avoid.
+Check that setting is on before trusting this gate in production.
+
 ---
 
 ## Auth Confirmation

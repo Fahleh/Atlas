@@ -633,6 +633,7 @@ export function ProjectSlideOver({
                 id="task-title"
                 name="title"
                 defaultValue={editingTask?.title ?? ""}
+                maxLength={100}
                 onChange={(e) =>
                   markTaskDirtyIfChanged(
                     e.target.value,
@@ -648,6 +649,7 @@ export function ProjectSlideOver({
                 id="task-description"
                 name="description"
                 defaultValue={editingTask?.description ?? ""}
+                maxLength={2000}
                 onChange={(e) =>
                   markTaskDirtyIfChanged(
                     e.target.value,

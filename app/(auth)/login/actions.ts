@@ -1,5 +1,6 @@
 "use server";
 
+import { getBaseUrl } from "@/lib/baseUrl";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
@@ -35,7 +36,7 @@ export async function login(
     return { error: "Invalid email or password." };
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+  const baseUrl = getBaseUrl();
   let destination = "/";
 
   try {

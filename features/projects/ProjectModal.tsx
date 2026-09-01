@@ -84,6 +84,7 @@ export function ProjectModal({
             type="text"
             name="name"
             defaultValue={editingProject?.name ?? ""}
+            maxLength={100}
             onChange={(e) =>
               markDirtyIfChanged(e.target.value, editingProject?.name ?? "")
             }
@@ -97,6 +98,7 @@ export function ProjectModal({
             id="project-description"
             name="description"
             defaultValue={editingProject?.description ?? ""}
+            maxLength={2000}
             onChange={(e) =>
               markDirtyIfChanged(
                 e.target.value,

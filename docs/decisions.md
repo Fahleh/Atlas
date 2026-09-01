@@ -35,7 +35,6 @@ reason to document something here.
 - [Three-tier error boundary structure, not root-only or global-error](#three-tier-error-boundary-structure-not-root-only-or-global-error)
 - [Deferring `app/global-error.tsx`](#deferring-appglobal-errortsx)
 - [Scoped `console.error` exception in error boundaries](#scoped-consoleerror-exception-in-error-boundaries)
-- [Branch workflow: PR-based merges from Production Readiness onward](#branch-workflow-pr-based-merges-from-production-readiness-onward)
 - [Moving `AuthListenerProvider` from root `app/layout.tsx` into `app/(dashboard)/layout.tsx`](#moving-authlistenerprovider-from-root-applayouttsx-into-appdashboardlayouttsx)
 - [Distinguishing `sessionExpired` from `forbidden` on failed Postgrest writes](#distinguishing-sessionexpired-from-forbidden-on-failed-postgrest-writes)
 - [`isDirty` is sticky, not re-derived per keystroke, in TaskModal/ProjectModal's edit-mode Save disabling](#isdirty-is-sticky-not-re-derived-per-keystroke-in-taskmodalprojectmodals-edit-mode-save-disabling)
@@ -44,7 +43,6 @@ reason to document something here.
 - [Read-side error interpretation is a distinct, narrower function than the write side](#read-side-error-interpretation-is-a-distinct-narrower-function-than-the-write-side)
 - [Reverted: `TaskList`'s empty-result membership recheck](#reverted-tasklists-empty-result-membership-recheck)
 - [Replacing --extra-headers with a persistent authenticated context](#replacing---extra-headers-with-a-persistent-authenticated-context)
-- [Blanket `robots.txt` disallow, no per-route rules](#blanket-robotstxt-disallow-no-per-route-rules)
 - [Security headers: `unsafe-inline` for `script-src`, no HSTS preload, strict COOP](#security-headers-unsafe-inline-for-script-src-no-hsts-preload-strict-coop)
 - [Zero-exception style-src-attr: class refactors, a generated hash allowlist, and native `<progress>`](#zero-exception-style-src-attr-class-refactors-a-generated-hash-allowlist-and-native-progress)
 - [Trusted Types and style-src: production-only enforcement](#trusted-types-and-style-src-production-only-enforcement)
@@ -63,6 +61,7 @@ reason to document something here.
 - [Using `ts-node`'s ESM loader instead of `tsx` for `authenticated-lighthouse.mts`](#using-ts-nodes-esm-loader-instead-of-tsx-for-authenticated-lighthousemts)
 - [Trusted Types createScriptURL: default policy design and the Next.js 16.3 immutable-assets update](#trusted-types-createscripturl-default-policy-design-and-the-nextjs-163-immutable-assets-update)
 - [Extending `authenticated-lighthouse.mts` for CSP violation checks, and sharing the chunk URL regex](#extending-authenticated-lighthousemts-for-csp-violation-checks-and-sharing-the-chunk-url-regex)
+- [Why `authenticated-lighthouse.mts` doesn't import `lib/baseUrl.ts`](#why-authenticated-lighthousemts-doesnt-import-libbaseurlts)
 
 ---
 
@@ -456,19 +455,6 @@ error-reporting service is ever integrated.
 
 ---
 
-## Branch workflow: PR-based merges from Production Readiness onward
-
-**Why:** Earlier work merged branches to `develop` locally, a solo,
-low-ceremony shortcut with no reviewer involved. From Production
-Readiness onward, branches are pushed and merged via GitHub PRs
-instead, still solo, no second reviewer. This is to display the 
-ability to work in small, review-ready increments (real branch
-boundaries, a written PR description explaining what and why)
-Earlier history stays as local merges, not retrofitted; this is 
-forward-only.
-
----
-
 ## Moving `AuthListenerProvider` from root `app/layout.tsx` into `app/(dashboard)/layout.tsx`
 
 **Decision:** `AuthListenerProvider` now mounts only in
@@ -721,20 +707,53 @@ anyway.
 
 ---
 
-## Blanket `robots.txt` disallow, no per-route rules
+## Security headers: `unsafe-inline` for `script-src`, no HSTS preload, strict COOP
 
-**Decision:** `app/robots.ts` returns
-`{ rules: { userAgent: "*", disallow: "/" } }`, no `sitemap` field.
-`/robots.txt` is exempted from `proxy.ts`'s auth redirect through
-`config.matcher`'s negative-lookahead pattern, alongside `favicon.ico`.
+**Decision:** `next.config.ts`'s CSP uses
+`script-src 'self' 'unsafe-inline'` (plus `'unsafe-eval'` in
+development only), not a nonce or hash. `Strict-Transport-Security`
+ships without `preload`. `Cross-Origin-Opener-Policy` is set to the
+strict `same-origin`, not `same-origin-allow-popups`.
 
-**Why blanket disallow, not a per-route allow/disallow list:** every
-route in Atlas is either an auth page (`/login`, `/signup`) with nothing
-meant for indexing, or auth-gated (`/`, `/projects`, `/profile`) with
-nothing a crawler could render without a session anyway. A per-route
-rules list would need upkeep on every future route addition for a
-benefit that doesn't exist, no public marketing content is planned. No
-`sitemap` field for the same reason, nothing to list.
+**Why `unsafe-inline`, not a nonce.** CSP's defense against injected
+inline scripts is given up here deliberately. The
+nonce alternative was rejected because Next.js requires dynamic
+rendering on every nonced route (confirmed in Next's own CSP guide),
+conflicting directly with `docs/findings.md`'s open LCP render-delay
+finding. Partial Prerendering (Next 16's `cacheComponents` flag) was
+investigated as a possible middle ground and confirmed incompatible
+with nonce-based CSP, per Next's own docs: static shell scripts have
+no nonce to carry regardless of what streams in dynamically.
+
+**Why the current risk is narrow.** A full sink audit found exactly
+one `dangerouslySetInnerHTML` in the codebase, `app/layout.tsx`'s
+static, developer-authored theme-flash script: no other instance, no
+raw `innerHTML` assignment, no `document.write`. Everything else
+renders through React's default JSX escaping. `'unsafe-inline'`
+widens what an XSS payload could do if one ever landed, but nothing
+in the current codebase gives an attacker a way to get arbitrary
+content into that script or elsewhere.
+
+**Reopen this decision if:** a future feature ever renders
+user-controlled content without React's normal escaping, for
+example a `dangerouslySetInnerHTML` fed by request data, user input,
+or an external API response. That is the point where
+`'unsafe-inline'` stops being a narrow, audited exception and starts
+being a real hole.
+
+**Why HSTS omits preload:** browser preload-list submission is
+effectively irreversible for a long time once accepted, sites stay
+hard to remove even after disabling HSTS elsewhere. That deserves
+its own deliberate decision, not a default bundled into the general
+header rollout. Deferred, not rejected.
+
+**Why COOP uses strict same-origin:** confirmed, by grepping the
+entire codebase, that no cross-origin popup or window-based flow
+exists anywhere, auth or otherwise: no `window.open`, no
+`postMessage`, no `window.opener`, no OAuth popup sign-in. Atlas's
+auth is entirely cookie-based via `@supabase/ssr`. Nothing depends
+on `window.opener` access, so the strict value has no downside to
+weigh against.
 
 ---
 
@@ -822,56 +841,6 @@ uses this same code path, so a change here wouldn't show up as one
 broken component, it would show up as every user photo losing its
 alt-text-hiding behavior at once, worth naming as the specific, narrow
 risk this acceptance carries forward.
-
----
-
-## Security headers: `unsafe-inline` for `script-src`, no HSTS preload, strict COOP
-
-**Decision:** `next.config.ts`'s CSP uses
-`script-src 'self' 'unsafe-inline'` (plus `'unsafe-eval'` in
-development only), not a nonce or hash. `Strict-Transport-Security`
-ships without `preload`. `Cross-Origin-Opener-Policy` is set to the
-strict `same-origin`, not `same-origin-allow-popups`.
-
-**Why `unsafe-inline`, not a nonce.** CSP's defense against injected
-inline scripts is given up here deliberately. The
-nonce alternative was rejected because Next.js requires dynamic
-rendering on every nonced route (confirmed in Next's own CSP guide),
-conflicting directly with `docs/findings.md`'s open LCP render-delay
-finding. Partial Prerendering (Next 16's `cacheComponents` flag) was
-investigated as a possible middle ground and confirmed incompatible
-with nonce-based CSP, per Next's own docs: static shell scripts have
-no nonce to carry regardless of what streams in dynamically.
-
-**Why the current risk is narrow.** A full sink audit found exactly
-one `dangerouslySetInnerHTML` in the codebase, `app/layout.tsx`'s
-static, developer-authored theme-flash script: no other instance, no
-raw `innerHTML` assignment, no `document.write`. Everything else
-renders through React's default JSX escaping. `'unsafe-inline'`
-widens what an XSS payload could do if one ever landed, but nothing
-in the current codebase gives an attacker a way to get arbitrary
-content into that script or elsewhere.
-
-**Reopen this decision if:** a future feature ever renders
-user-controlled content without React's normal escaping, for
-example a `dangerouslySetInnerHTML` fed by request data, user input,
-or an external API response. That is the point where
-`'unsafe-inline'` stops being a narrow, audited exception and starts
-being a real hole.
-
-**Why HSTS omits preload:** browser preload-list submission is
-effectively irreversible for a long time once accepted, sites stay
-hard to remove even after disabling HSTS elsewhere. That deserves
-its own deliberate decision, not a default bundled into the general
-header rollout. Deferred, not rejected.
-
-**Why COOP uses strict same-origin:** confirmed, by grepping the
-entire codebase, that no cross-origin popup or window-based flow
-exists anywhere, auth or otherwise: no `window.open`, no
-`postMessage`, no `window.opener`, no OAuth popup sign-in. Atlas's
-auth is entirely cookie-based via `@supabase/ssr`. Nothing depends
-on `window.opener` access, so the strict value has no downside to
-weigh against.
 
 ---
 
@@ -1238,14 +1207,12 @@ the same origin.
 
 ## Separate Route Handlers for signup confirmation and password recovery
 
-**Decision:** `app/auth/confirm/route.ts` (signup) and
+`app/auth/confirm/route.ts` (signup) and
 `app/auth/recovery-confirm/route.ts` (recovery) are separate handlers,
-not one branching on `type`.
-
-**Why:** Their failure redirects genuinely differ, a failed recovery
-link has nothing useful to do on `/login`, unlike a failed signup
-confirmation. Branching one handler on `type` would add indirection
-for that single difference, not remove any real duplication.
+not one branching on `type`, since their failure redirects genuinely
+differ, a failed recovery link has nothing useful to do on `/login`.
+Branching one handler on `type` would add indirection for that single
+difference, not remove any real duplication.
 
 ---
 
@@ -1532,18 +1499,36 @@ Extending it means the CSP check runs against the exact same real
 conditions the performance audit already does, not a second copy
 that could drift from the first.
 
-**Why the regex became a shared, importable source.** Before this,
-the pattern existed only as a hand-escaped literal inline in
-`app/layout.tsx`, no test coverage, no way to reuse the same rule
-elsewhere without retyping the same escaped regex and risking drift.
-Moving it to `lib/trustedTypesChunkUrlPattern.ts` gives it one real
-source and a direct unit test
-(`tests/unit/trustedTypesChunkUrlPattern.test.ts`) that can catch a
-future accidental narrowing, someone simplifying it back to requiring
-`immutable/` unconditionally, without needing a browser or a
-production build. `JSON.stringify(source)` embeds it correctly by
-construction instead of by hand-counting backslashes.
+The regex itself moved to `lib/trustedTypesChunkUrlPattern.ts` with its
+own unit test, ordinary extract-and-test practice for a pattern that
+used to exist only as a hand-escaped literal inline in `app/layout.tsx`.
 
 **Collection and gating stay separate**, same precedent already
 established in "CI performance gate" for `lhci assert`, not a new
 pattern.
+
+---
+
+## Why `authenticated-lighthouse.mts` doesn't import `lib/baseUrl.ts`
+
+**Decision:** `scripts/authenticated-lighthouse.mts` keeps its own
+`process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000"` line
+instead of importing `getBaseUrl()` from `lib/baseUrl.ts`, even though
+`login/actions.ts` uses that shared function for the same fallback.
+
+**Why. Confirmed directly, not assumed.** This script runs under
+ts-node's ESM loader (see the entry above on why tsx wasn't used
+instead), which compiles `lib/` as CommonJS since `package.json` has no
+`"type": "module"`, while this file is explicit ESM. Importing across
+that boundary fails on named-export interop, confirmed by testing it
+directly rather than assuming. The `@/` alias also isn't available
+here regardless, that's a Next.js/Jest-only resolution.
+
+**Why the duplication is safe.** This script only ever runs in GitHub
+Actions, which never sets `VERCEL`, so `getBaseUrl()`'s Vercel-gated
+throw would never fire here regardless. Both this literal and
+`getBaseUrl()` take the identical local-fallback branch in every
+environment this script actually runs in. If the import problem is
+ever fixed, for example by adding `"type": "module"` project-wide,
+replace this literal with a real import instead of hand-copying the
+logic further.

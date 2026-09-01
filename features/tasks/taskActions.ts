@@ -115,6 +115,16 @@ export function createTaskAction(
 
     const title = titleRaw?.trim();
     if (!title) return { error: "Title is required", errorKind: null };
+    if (title.length > 100)
+      return {
+        error: "Title must be at most 100 characters long.",
+        errorKind: null,
+      };
+    if (description.length > 2000)
+      return {
+        error: "Description must be at most 2000 characters long.",
+        errorKind: null,
+      };
 
     let status: TaskStatus = "todo";
     if (statusRaw && isTaskStatus(statusRaw)) {

@@ -32,6 +32,8 @@ import desktopConfig from "lighthouse/core/config/desktop-config.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 config({ path: path.join(__dirname, "..", ".env.local") });
 
+// Can't import lib/baseUrl.ts here, see docs/decisions.md for why.
+// This script never runs on Vercel, so this matches its fallback exactly.
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
 const DEBUG_PORT = 9222;
 const LOGIN_TIMEOUT_MS = 15000;
