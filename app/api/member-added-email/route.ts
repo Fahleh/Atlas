@@ -35,7 +35,12 @@ async function sendWithRetry(
 }
 
 export async function POST(request: NextRequest) {
-  const body: unknown = await request.json();
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid request." }, { status: 400 });
+  }
   const { projectId, email } = (body ?? {}) as {
     projectId?: unknown;
     email?: unknown;
