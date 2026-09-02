@@ -63,6 +63,7 @@ reason to document something here.
 - [Extending `authenticated-lighthouse.mts` for CSP violation checks, and sharing the chunk URL regex](#extending-authenticated-lighthousemts-for-csp-violation-checks-and-sharing-the-chunk-url-regex)
 - [Why `authenticated-lighthouse.mts` doesn't import `lib/baseUrl.ts`](#why-authenticated-lighthousemts-doesnt-import-libbaseurlts)
 - [Hardcoded hex colors in the Supabase email templates, not CSS custom properties](#hardcoded-hex-colors-in-the-supabase-email-templates-not-css-custom-properties)
+- [A Route Handler side channel for addMember's notification email, not a Server Action conversion](#a-route-handler-side-channel-for-addmembers-notification-email-not-a-server-action-conversion)
 
 ---
 
@@ -1555,3 +1556,38 @@ since no matching token exists yet. This is scoped narrowly to these two
 templates. It is not a general exception to the no-hardcoded-colors rule,
 and no other part of the codebase should point to this entry to justify a
 hardcoded hex value.
+
+---
+
+## A Route Handler side channel for addMember's notification email, not a Server Action conversion
+
+**Decision:** `addMember` in `features/projects/projectActions.ts` stays a
+client-rendered direct function call, unchanged. After its insert succeeds,
+it fires an unawaited `fetch()` (own `.catch()`, outside the existing
+cache-invalidation `Promise.all`) to a new Route Handler,
+`app/api/member-added-email/route.ts`, which independently re-checks
+ownership and membership before sending anything.
+
+**Why:** `docs/architecture.md`'s feature-actions/route-actions split is
+about how a mutation is invoked, form vs. direct call, not about what
+capabilities the code behind it can reach. It never anticipated a
+client-rendered action needing something that can only safely exist
+server-side, an SMTP credential here. Putting the send inside `addMember`
+would ship that credential to the browser. The Route Handler exists to
+hold that one capability; `addMember` itself needed no other reason to
+change.
+
+**Why authorization lives in `lib/authorizeMemberAddedEmail.ts` instead of
+directly in the route, unlike `app/auth/confirm/route.ts` and
+`app/auth/recovery-confirm/route.ts`.** Neither of those two Route Handlers
+has any Jest coverage today, they're only exercised through Playwright e2e
+specs against a real running server. Confirmed directly in Next's source:
+`lib/supabase/server.ts`'s `createClient()` calls `cookies()`, which throws
+(`` `cookies` was called outside a request scope ``) the moment neither of
+Next's request-scoped async storages has a store, exactly the case calling a
+route's exported `POST` straight from Jest. `authorizeMemberAddedEmail` takes
+a plain `SupabaseClient`, not the server client's specific return type, so
+its own test can construct the browser client instead, which needs no
+`cookies()` call and builds synchronously outside any request context,
+letting the authorization logic get real MSW-mocked coverage without needing
+a Next request to exist at all.

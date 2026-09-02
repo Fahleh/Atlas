@@ -30,6 +30,9 @@ atlas/
 │   ├── auth/
 │   │   └── confirm/
 │   │       └── route.ts
+│   ├── api/
+│   │   └── member-added-email/
+│   │       └── route.ts
 │   └── (dashboard)/
 │       ├── layout.tsx
 │       ├── layout.module.css
@@ -105,7 +108,7 @@ atlas/
 │   │   └── errors.ts
 │   └── index.ts
 ├── providers/
-│   ├── ThemeProvider.tsx
+│   ├── ThemeContext.tsx
 │   ├── QueryProvider.tsx
 │   └── AuthListenerProvider.tsx
 ├── styles/
@@ -193,8 +196,10 @@ app/(auth)/signup/actions.ts
 app/(dashboard)/actions.ts
 ```
 
-Shared Supabase client creation stays in `lib/supabase/` because it is
-infrastructure, not business logic.
+Shared Supabase client creation stays in `lib/supabase/`, and other real
+I/O infrastructure like `lib/email/sendMemberAddedEmail.ts`'s SMTP send
+lives in its own `lib/` subfolder, because both are infrastructure, not
+business logic.
 
 Client-rendered task/project mutation logic is not a Next.js Server Action.
 Keep it in feature action files:
@@ -217,6 +222,23 @@ Use plain async functions for direct non-form interactions:
 addMember(projectId, email, queryClient)
 removeMember(projectId, userId, queryClient)
 ```
+
+A third shape exists for logic that needs a real Supabase client but isn't
+invoked as either a Server Action or a feature action: an injected-client
+function, a plain function that takes an already-constructed client and is
+called from a Route Handler.
+
+```text
+lib/authorizeMemberAddedEmail.ts
+```
+
+```typescript
+authorizeMemberAddedEmail(supabase, { projectId, email })
+```
+
+Deliberately shaped this way for testability without a real Next request
+context. See `docs/decisions.md`'s "A Route Handler side channel for
+addMember's notification email" entry for why.
 
 ---
 
@@ -242,6 +264,13 @@ a visually similar component is compound.
 - Never redirect or link to `/dashboard` as the authenticated home.
 - `app/auth/confirm/route.ts` is a Route Handler outside route groups.
 - The auth-confirm route must remain publicly reachable through `proxy.ts`.
+- `app/api/member-added-email/route.ts` is a Route Handler under `app/api/`,
+  called internally via `fetch()` from client code
+  (`features/projects/projectActions.ts`'s `addMember`), never reached by
+  external navigation. `app/api/` is the convention for that shape.
+  `app/auth/*/route.ts` is reserved for routes reached by an external link,
+  an email confirmation or password-reset link, not an internal fetch call.
+  A future Route Handler's location follows this same distinction.
 
 ---
 

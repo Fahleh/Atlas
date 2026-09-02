@@ -33,6 +33,7 @@ Live demo: https://atlas-murex-nine.vercel.app
 - Supabase: PostgreSQL, Auth, Storage
 - `@supabase/ssr`, `^0.10.3`
 - `@supabase/supabase-js`, `^2.107.0`
+- `nodemailer`, `^9.1.1`
 
 **Testing**
 - Jest `^30.4.2` with `ts-jest` and `@testing-library/react`
@@ -46,7 +47,7 @@ Live demo: https://atlas-murex-nine.vercel.app
 ## Key features
 
 - Project and task CRUD with status tracking
-- Project membership: add and remove collaborators by email, owner/collaborator roles
+- Project membership: add and remove collaborators by email, owner/collaborator roles, with a notification email sent to a newly added collaborator
 - Dashboard with recent projects, upcoming tasks, a velocity indicator, and a recent activity feed
 - Append-only activity log, written entirely by database triggers, never by application code
 - Row-level security scoping every table to a user's actual project membership
@@ -67,8 +68,8 @@ A curated selection. Full reasoning for each, and everything else, lives in
 
 ## Testing strategy
 
-- 32 unit test files (`tests/unit/`): pure utilities, error interpretation, and component behavior.
-- 15 integration test files (`tests/integration/`): Server Actions and React Query hooks against mocked Supabase responses via MSW.
+- 33 unit test files (`tests/unit/`): pure utilities, error interpretation, and component behavior.
+- 16 integration test files (`tests/integration/`): Server Actions, React Query hooks, and other business logic against mocked Supabase responses via MSW.
 - 9 Playwright E2E spec files (`tests/e2e/`): full flows including login, signup, project and task CRUD, membership, cross-user data isolation, and an authorization boundary check confirming a collaborator cannot remove a member even by calling the API directly, run against a local Supabase stack.
 - CI runs the unit and integration suite (`npm test`) on every pull request to develop & main, required to merge.
 - E2E runs in CI but is **not yet a required check**. It needs to clear 10 consecutive non-blocking CI runs across at least a week with zero infrastructure-caused failures before it gates merges, a bar it hasn't cleared yet. Full reasoning in [docs/decisions.md](docs/decisions.md#ci-performance-gate-lab-proxies-form-factor-split-thresholds-and-the-file-count-guard).
