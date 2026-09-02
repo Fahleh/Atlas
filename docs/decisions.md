@@ -62,6 +62,7 @@ reason to document something here.
 - [Trusted Types createScriptURL: default policy design and the Next.js 16.3 immutable-assets update](#trusted-types-createscripturl-default-policy-design-and-the-nextjs-163-immutable-assets-update)
 - [Extending `authenticated-lighthouse.mts` for CSP violation checks, and sharing the chunk URL regex](#extending-authenticated-lighthousemts-for-csp-violation-checks-and-sharing-the-chunk-url-regex)
 - [Why `authenticated-lighthouse.mts` doesn't import `lib/baseUrl.ts`](#why-authenticated-lighthousemts-doesnt-import-libbaseurlts)
+- [Hardcoded hex colors in the Supabase email templates, not CSS custom properties](#hardcoded-hex-colors-in-the-supabase-email-templates-not-css-custom-properties)
 
 ---
 
@@ -1532,3 +1533,25 @@ environment this script actually runs in. If the import problem is
 ever fixed, for example by adding `"type": "module"` project-wide,
 replace this literal with a real import instead of hand-copying the
 logic further.
+
+---
+
+## Hardcoded hex colors in the Supabase email templates, not CSS custom properties
+
+**Decision:** `supabase/templates/confirmation.html` and `recovery.html`
+write hex values directly everywhere they'd otherwise reference a design
+token, backgrounds, borders, text colors, and the accent button, instead
+of `var(--color-*)`.
+
+**Why:** These templates render in email clients, not the app's own CSS
+pipeline, and Outlook desktop's Word-based rendering engine doesn't support
+CSS custom properties at all, `var()` would just fail to resolve. Every
+hex that has a real counterpart in `styles/tokens.css` was checked against
+it and matches that token's actual value, not a guess. A few values used
+purely for typographic hierarchy within the template (secondary text
+grays, the recovery template's warning callout) have no corresponding
+token today and were chosen locally for the template rather than sourced,
+since no matching token exists yet. This is scoped narrowly to these two
+templates. It is not a general exception to the no-hardcoded-colors rule,
+and no other part of the codebase should point to this entry to justify a
+hardcoded hex value.
