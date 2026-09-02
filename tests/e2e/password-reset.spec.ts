@@ -15,7 +15,7 @@ test("requesting a reset, following the real email, and setting a new password r
 
   const recoveryLink = await getLatestEmailLink(
     RESET_ACCOUNT.email,
-    "Reset password",
+    "Choose a new password",
   );
 
   await page.goto(recoveryLink);

@@ -18,7 +18,7 @@ export async function loginAs(
   ]);
 }
 
-// Fixed port from supabase/config.toml's [inbucket] section. Runs in the
+// Fixed port from supabase/config.toml's [local_smtp] section. Runs in the
 // Playwright test process itself, not the spawned Next.js server.
 const MAILPIT_URL = "http://127.0.0.1:54324";
 
@@ -33,7 +33,7 @@ type MailpitMessage = { HTML: string };
  *
  * @param recipientEmail - The address the email was sent to
  * @param linkText - Exact visible text of the `<a>` tag to extract, e.g.
- *   "Reset password" or "Confirm email address"
+ *   "Choose a new password" or "Confirm email address"
  * @returns The absolute URL from the matched link's href
  */
 export async function getLatestEmailLink(
@@ -54,7 +54,7 @@ export async function getLatestEmailLink(
       );
       const { HTML }: MailpitMessage = await messageResponse.json();
       const match = HTML.match(
-        new RegExp(`<a href="([^"]+)">${linkText}</a>`),
+        new RegExp(`<a\\s+href="([^"]+)"[^>]*>\\s*${linkText}\\s*</a>`),
       );
       if (match) return match[1];
     }
