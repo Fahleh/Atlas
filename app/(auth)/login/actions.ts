@@ -4,12 +4,17 @@ import { getBaseUrl } from "@/lib/baseUrl";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
-export type LoginFormState = { error: string | null };
+export type LoginFormState = { error: string | null; email: string };
 
 /**
  * Server Action for email/password sign-in.
  * Conforms to the `useActionState` signature: `(prevState, formData) => newState`.
  * On success, redirects. Never returns. On failure, returns an error state.
+ *
+ * React 19 clears every uncontrolled form field once the action's promise
+ * settles, regardless of outcome, so email is returned here and read back
+ * via `defaultValue` to survive an error. Password is never returned; it
+ * clears on error by design.
  *
  * @param _prevState - Previous action state (unused; required by useActionState contract)
  * @param formData - Form data containing email, password, and optional redirectTo
@@ -24,16 +29,19 @@ export async function login(
   const redirectTo = formData.get("redirectTo") as string | null;
 
   if (!email?.trim() || !password?.trim())
-    return { error: "Email and password are required." };
+    return { error: "Email and password are required.", email: email ?? "" };
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
     if (error.code === "email_not_confirmed") {
-      return { error: "Please confirm your email before signing in." };
+      return {
+        error: "Please confirm your email before signing in.",
+        email,
+      };
     }
-    return { error: "Invalid email or password." };
+    return { error: "Invalid email or password.", email };
   }
 
   const baseUrl = getBaseUrl();

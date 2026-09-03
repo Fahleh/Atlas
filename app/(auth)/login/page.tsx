@@ -55,6 +55,7 @@ function RedirectField() {
 export default function LoginPage() {
   const [state, formAction] = useActionState<LoginFormState, FormData>(login, {
     error: null,
+    email: "",
   });
 
   return (
@@ -85,6 +86,7 @@ export default function LoginPage() {
             name="email"
             required
             autoComplete="email"
+            defaultValue={state.email}
           />
         </div>
 

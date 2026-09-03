@@ -54,6 +54,7 @@ reason to document something here.
 - [Removing `.env.development.local`](#removing-envdevelopmentlocal)
 - [Matching `supabase/config.toml`'s `site_url` to `localhost`, not `127.0.0.1`](#matching-supabaseconfigtomls-site_url-to-localhost-not-127001)
 - [Separate Route Handlers for signup confirmation and password recovery](#separate-route-handlers-for-signup-confirmation-and-password-recovery)
+- [Restoring non-sensitive fields via defaultValue on login, signup, and reset-password errors](#restoring-non-sensitive-fields-via-defaultvalue-on-login-signup-and-reset-password-errors)
 - [Storage errors surface as-is, not through `interpretSupabaseWriteError`](#storage-errors-surface-as-is-not-through-interpretsupabasewriteerror)
 - [Why `loginAction.test.ts`'s malformed-`redirectTo` test uses an unclosed IPv6-bracket host](#why-loginactiontestts-malformed-redirectto-test-uses-an-unclosed-ipv6-bracket-host)
 - [CI performance gate: lab proxies, form-factor-split thresholds, and the file-count guard](#ci-performance-gate-lab-proxies-form-factor-split-thresholds-and-the-file-count-guard)
@@ -1215,6 +1216,47 @@ not one branching on `type`, since their failure redirects genuinely
 differ, a failed recovery link has nothing useful to do on `/login`.
 Branching one handler on `type` would add indirection for that single
 difference, not remove any real duplication.
+
+---
+
+## Restoring non-sensitive fields via defaultValue on login, signup, and reset-password errors
+
+**Decision:** `LoginFormState`, `SignupFormState`, and
+`RequestPasswordResetFormState` each return their non-sensitive submitted
+field values (`email` on login and reset-password, `name` and `email` on
+signup) alongside the existing `error`/`accountExists` fields. The
+corresponding inputs read `defaultValue` from that returned state.
+Password and confirmPassword are never included and are left
+uncontrolled, so they clear on error.
+
+**Why. Confirmed against React's own v19 release notes and the commit
+that added it, then reproduced directly in this codebase.** React 19's
+default `<form action>` behavior resets every uncontrolled field once
+the action's promise settles, regardless of whether the action reports
+success or failure internally. This isn't scoped to the field that
+actually caused the error, it's every field in the form. Confirmed with
+a real browser (Playwright driving actual Chromium) against all three
+forms here: a wrong password on login cleared both email and password,
+mismatched passwords on signup cleared name and email along with both
+password fields, and an invalid email on reset-password cleared the one
+field the form has. Losing email or name on a validation error is a
+real usability cost with no security upside, unlike password, which
+should clear on error as a matter of convention.
+
+**Why defaultValue and not switching these inputs to controlled state.**
+These forms otherwise stay uncontrolled by convention (matching the
+rest of the codebase's form handling), and full controlled state would
+mean tracking every keystroke through onChange just to survive one
+specific reset behavior. Returning the value from the action and
+reading it back through defaultValue on the next render is the
+smaller, more targeted fix, and it composes cleanly with how
+useActionState already works here.
+
+**Why the shape isn't identical across all three.** Login and
+reset-password each have one non-sensitive field to restore, signup has
+two. Forcing a shared type or a generic field bag across all three
+would be an abstraction with no real payoff for three call sites with
+genuinely different field lists.
 
 ---
 

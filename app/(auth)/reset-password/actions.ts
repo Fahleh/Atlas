@@ -6,6 +6,7 @@ import { isValidEmail } from "@/lib/utils";
 export type RequestPasswordResetFormState = {
   error: string | null;
   success: boolean;
+  email: string;
 };
 
 /**
@@ -15,6 +16,10 @@ export type RequestPasswordResetFormState = {
  * belongs to a real account. Supabase's `resetPasswordForEmail()` itself
  * never reveals account existence (it responds identically either way), and
  * this action must not reintroduce that leak by branching on its result.
+ *
+ * React 19 clears every uncontrolled form field once the action's promise
+ * settles, regardless of outcome, so email is returned here and read back
+ * via `defaultValue` to survive an error.
  *
  * @param _prevState - Previous action state (unused; required by useActionState contract)
  * @param formData - Form data containing email
@@ -27,7 +32,11 @@ export async function requestPasswordReset(
   const email = formData.get("email") as string | null;
 
   if (!email?.trim() || !isValidEmail(email)) {
-    return { error: "Please enter a valid email address.", success: false };
+    return {
+      error: "Please enter a valid email address.",
+      success: false,
+      email: email ?? "",
+    };
   }
 
   const supabase = await createClient();
@@ -36,5 +45,5 @@ export async function requestPasswordReset(
   // email matched a real account, and this action must not either.
   await supabase.auth.resetPasswordForEmail(email);
 
-  return { error: null, success: true };
+  return { error: null, success: true, email: "" };
 }
