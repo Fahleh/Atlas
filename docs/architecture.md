@@ -15,20 +15,29 @@ atlas/
 │   ├── error.module.css
 │   ├── not-found.tsx
 │   ├── not-found.module.css
+│   ├── robots.ts
 │   ├── (auth)/
 │   │   ├── layout.tsx
 │   │   ├── error.tsx
 │   │   ├── error.module.css
+│   │   ├── authShared.module.css
 │   │   ├── login/
 │   │   │   ├── page.tsx
 │   │   │   ├── login.module.css
 │   │   │   └── actions.ts
-│   │   └── signup/
+│   │   ├── signup/
+│   │   │   ├── page.tsx
+│   │   │   └── actions.ts
+│   │   ├── reset-password/
+│   │   │   ├── page.tsx
+│   │   │   └── actions.ts
+│   │   └── update-password/
 │   │       ├── page.tsx
-│   │       ├── signup.module.css
 │   │       └── actions.ts
 │   ├── auth/
-│   │   └── confirm/
+│   │   ├── confirm/
+│   │   │   └── route.ts
+│   │   └── recovery-confirm/
 │   │       └── route.ts
 │   ├── api/
 │   │   └── member-added-email/
@@ -42,8 +51,7 @@ atlas/
 │       ├── page.tsx
 │       ├── page.module.css
 │       ├── profile/
-│       │   ├── page.tsx
-│       │   └── page.module.css
+│       │   └── page.tsx
 │       └── projects/
 │           └── page.tsx
 ├── components/
@@ -51,6 +59,12 @@ atlas/
 │   ├── StatusBox.tsx
 │   ├── Avatar.tsx
 │   ├── Skeleton.tsx
+│   ├── Header.tsx
+│   ├── Header.module.css
+│   ├── Sidebar.tsx
+│   ├── Sidebar.module.css
+│   ├── PasswordInput.tsx
+│   ├── PasswordInput.module.css
 │   ├── ActionErrorMessage.tsx
 │   └── ActionErrorMessage.module.css
 ├── features/
@@ -68,7 +82,6 @@ atlas/
 │   │   ├── ProjectSlideOver.tsx
 │   │   ├── ProjectSlideOver.module.css
 │   │   ├── ProjectModal.tsx
-│   │   ├── ProjectModal.module.css
 │   │   ├── projectActions.ts
 │   │   ├── projectShared.module.css
 │   │   └── projectUtils.ts
@@ -80,10 +93,15 @@ atlas/
 │   │   ├── TaskModal.module.css
 │   │   ├── taskActions.ts
 │   │   └── taskUtils.ts
-│   └── profile/
-│       ├── ProfileForm.tsx
-│       ├── ProfileForm.module.css
-│       └── profileActions.ts
+│   ├── profile/
+│   │   ├── ProfileForm.tsx
+│   │   ├── ProfileForm.module.css
+│   │   └── profileActions.ts
+│   └── activity/
+│       ├── ActivityFeed.tsx
+│       ├── ActivityFeed.module.css
+│       ├── ActivityItem.tsx
+│       └── activityUtils.ts
 ├── hooks/
 │   ├── useCurrentUser.ts
 │   ├── useCurrentUserProfile.ts
@@ -91,17 +109,23 @@ atlas/
 │   ├── useTasks.ts
 │   ├── useMembersByProject.ts
 │   ├── useTaskCountsByProject.ts
-│   └── useDueSoonTaskCount.ts
+│   ├── useDueSoonTaskCount.ts
+│   └── useActivityLog.ts
 ├── lib/
 │   ├── asyncQueue.ts
+│   ├── authorizeMemberAddedEmail.ts
+│   ├── baseUrl.ts
 │   ├── createCache.ts
 │   ├── createCounter.ts
 │   ├── createStore.ts
 │   ├── entityFactory.ts
 │   ├── errorHandler.ts
 │   ├── fetcher.ts
+│   ├── trustedTypesChunkUrlPattern.ts
 │   ├── updateImmutable.ts
 │   ├── utils.ts
+│   ├── email/
+│   │   └── sendMemberAddedEmail.ts
 │   ├── supabase/
 │   │   ├── client.ts
 │   │   ├── server.ts
@@ -109,12 +133,14 @@ atlas/
 │   └── index.ts
 ├── providers/
 │   ├── ThemeContext.tsx
+│   ├── useDisplayedTheme.ts
 │   ├── QueryProvider.tsx
 │   └── AuthListenerProvider.tsx
 ├── styles/
 │   ├── tokens.css
 │   ├── global.css
-│   └── layout.module.css
+│   ├── layout.module.css
+│   └── statusDot.module.css
 ├── tests/
 │   ├── unit/
 │   ├── integration/
@@ -123,7 +149,10 @@ atlas/
 │   ├── atlas.types.ts
 │   └── database.types.ts
 ├── supabase/
-│   └── migrations/
+│   ├── config.toml
+│   ├── migrations/
+│   ├── snippets/
+│   └── templates/
 ├── scripts/
 │   └── authenticated-lighthouse.mts
 └── docs/
@@ -134,6 +163,7 @@ atlas/
     ├── auth.md
     ├── deployment.md
     ├── decisions.md
+    ├── findings.md
     ├── roadmap.md
     └── a11y.md
 ```
@@ -193,6 +223,8 @@ Server Actions colocate with their route:
 ```text
 app/(auth)/login/actions.ts
 app/(auth)/signup/actions.ts
+app/(auth)/reset-password/actions.ts
+app/(auth)/update-password/actions.ts
 app/(dashboard)/actions.ts
 ```
 
@@ -262,7 +294,8 @@ a visually similar component is compound.
 - Parenthesized route groups do not appear in URLs.
 - `app/(dashboard)/page.tsx` renders at `/`, not `/dashboard`.
 - Never redirect or link to `/dashboard` as the authenticated home.
-- `app/auth/confirm/route.ts` is a Route Handler outside route groups.
+- `app/auth/confirm/route.ts` and `app/auth/recovery-confirm/route.ts` are
+  Route Handlers outside route groups.
 - The auth-confirm route must remain publicly reachable through `proxy.ts`.
 - `app/api/member-added-email/route.ts` is a Route Handler under `app/api/`,
   called internally via `fetch()` from client code
