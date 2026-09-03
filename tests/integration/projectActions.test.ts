@@ -109,19 +109,33 @@ describe("deleteProject", () => {
 });
 
 describe("addMember", () => {
-  it("should add a member and invalidate projectMembers on success", async () => {
+  it("should add a member, invalidate projectMembers, and notify the new route on success", async () => {
     const queryClient = new QueryClient();
     const invalidateSpy = jest.spyOn(queryClient, "invalidateQueries");
+    // MSW patches global.fetch too; this mock falls through to it for
+    // the Supabase calls, or the RPC lookup breaks.
+    const realFetch = global.fetch;
+    const fetchSpy = jest
+      .spyOn(global, "fetch")
+      .mockImplementation((input, init) => {
+        if (input === "/api/member-added-email") {
+          return Promise.resolve(new Response(null, { status: 200 }));
+        }
+        return realFetch(input, init);
+      });
+    const projectId = crypto.randomUUID();
+    const email = "new-member@example.com";
 
-    const result = await addMember(
-      crypto.randomUUID(),
-      "new-member@example.com",
-      queryClient,
-    );
+    const result = await addMember(projectId, email, queryClient);
 
     expect(result).toEqual({ error: null, errorKind: null });
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ["projectMembers"],
+    });
+    expect(fetchSpy).toHaveBeenCalledWith("/api/member-added-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId, email }),
     });
   });
 

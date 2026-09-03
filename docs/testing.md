@@ -19,13 +19,15 @@ build checks, browser verification requirements, and debugging process.
   tests/integration/, same convention as Server Action tests.
 
 Current automated coverage is broad, not limited to early lib/ utilities.
-tests/unit/ has 32 files: pure utilities, error interpretation, and
-component behavior. tests/integration/ has 15 files: Server Actions and
-React Query hooks against mocked Supabase responses via MSW. tests/e2e/
-has 9 Playwright spec files covering full flows, login, signup, project and
-task CRUD, membership, cross-user data isolation, and an authorization
+tests/unit/ has 33 files: pure utilities, error interpretation, and
+component behavior. tests/integration/ has 16 files: Server Actions, React
+Query hooks, and other business logic against mocked Supabase responses via
+MSW. tests/e2e/
+has 10 Playwright spec files covering full flows, login, signup, project and
+task CRUD, membership, cross-user data isolation, an authorization
 boundary check confirming a collaborator cannot remove a member even
-by calling the API directly.
+by calling the API directly, and React 19's field-reset-on-error behavior
+across login, signup, and reset-password.
 
 `jest.config.ts` has `collectCoverage`/`collectCoverageFrom` configured
 (`npm test -- --coverage` reports real numbers) but no `coverageThreshold`.

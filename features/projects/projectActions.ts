@@ -109,6 +109,15 @@ export async function addMember(
     queryClient.invalidateQueries({ queryKey: ["projectMembers"] }),
     queryClient.invalidateQueries({ queryKey: ["activityLog"] }),
   ]);
+
+  // Fire-and-forget, must never affect this function's result. See
+  // docs/decisions.md.
+  fetch("/api/member-added-email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ projectId, email }),
+  }).catch(() => {});
+
   return { error: null, errorKind: null };
 }
 

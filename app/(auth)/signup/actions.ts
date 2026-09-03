@@ -12,6 +12,8 @@ export type SignupFormState = {
   error: string | null;
   accountExists: boolean;
   success: boolean;
+  name: string;
+  email: string;
 };
 
 /**
@@ -19,6 +21,11 @@ export type SignupFormState = {
  * Conforms to the `useActionState` signature: `(prevState, formData) => newState`.
  * On success, returns `{ success: true }` — no redirect, as the session does not
  * exist until the user confirms their email.
+ *
+ * React 19 clears every uncontrolled form field once the action's promise
+ * settles, regardless of outcome, so name and email are returned here and
+ * read back via `defaultValue` to survive an error. Password and
+ * confirmPassword are never returned; they clear on error by design.
  *
  * @param _prevState - Previous action state (unused; required by useActionState contract)
  * @param formData - Form data containing name, email, password, and confirmPassword
@@ -38,6 +45,8 @@ export async function signup(
       error: "All fields are required.",
       accountExists: false,
       success: false,
+      name: name ?? "",
+      email: email ?? "",
     };
   }
 
@@ -46,6 +55,8 @@ export async function signup(
       error: "Name must be at least 3 characters long.",
       accountExists: false,
       success: false,
+      name,
+      email,
     };
   }
 
@@ -54,6 +65,8 @@ export async function signup(
       error: "Name must be at most 100 characters long.",
       accountExists: false,
       success: false,
+      name,
+      email,
     };
   }
 
@@ -62,6 +75,8 @@ export async function signup(
       error: "Please enter a valid email address.",
       accountExists: false,
       success: false,
+      name,
+      email,
     };
   }
 
@@ -70,6 +85,8 @@ export async function signup(
       error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters long.`,
       accountExists: false,
       success: false,
+      name,
+      email,
     };
   }
 
@@ -78,6 +95,8 @@ export async function signup(
       error: "Passwords do not match.",
       accountExists: false,
       success: false,
+      name,
+      email,
     };
   }
 
@@ -95,14 +114,24 @@ export async function signup(
           "An account with this email already exists. Try logging in instead.",
         accountExists: true,
         success: false,
+        name,
+        email,
       };
     }
     return {
       error: "Something went wrong. Please try again.",
       accountExists: false,
       success: false,
+      name,
+      email,
     };
   }
 
-  return { error: null, accountExists: false, success: true };
+  return {
+    error: null,
+    accountExists: false,
+    success: true,
+    name: "",
+    email: "",
+  };
 }

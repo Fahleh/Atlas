@@ -34,55 +34,58 @@ describe("requestPasswordReset", () => {
     );
 
     const result = await requestPasswordReset(
-      { error: null, success: false },
+      { error: null, success: false, email: "" },
       buildFormData({ email: "not-an-email" }),
     );
 
     expect(result).toEqual({
       error: "Please enter a valid email address.",
       success: false,
+      email: "not-an-email",
     });
     expect(recoverCalled).toBe(false);
   });
 
   it("should return a validation error for a blank email", async () => {
     const result = await requestPasswordReset(
-      { error: null, success: false },
+      { error: null, success: false, email: "" },
       buildFormData({ email: "  " }),
     );
 
     expect(result).toEqual({
       error: "Please enter a valid email address.",
       success: false,
+      email: "  ",
     });
   });
 
   it("should succeed for a valid, real request", async () => {
     const result = await requestPasswordReset(
-      { error: null, success: false },
+      { error: null, success: false, email: "" },
       buildFormData({ email: "user@example.com" }),
     );
 
-    expect(result).toEqual({ error: null, success: true });
+    expect(result).toEqual({ error: null, success: true, email: "" });
   });
 
   it("should return the exact same success state whether or not the account exists", async () => {
-    // The real non-enumeration guarantee lives in Supabase's own /recover
-    // endpoint (identical response either way), but this action must not
-    // reintroduce a leak by branching on the result — so this asserts the
-    // action's own output is identical for both cases, not just that the
-    // code has no visible branch.
+    // Asserts the action's output is identical for both cases, not just
+    // that the code has no visible branch.
     const existingAccountResult = await requestPasswordReset(
-      { error: null, success: false },
+      { error: null, success: false, email: "" },
       buildFormData({ email: "existing@example.com" }),
     );
 
     const noAccountResult = await requestPasswordReset(
-      { error: null, success: false },
+      { error: null, success: false, email: "" },
       buildFormData({ email: "no-such-account@example.com" }),
     );
 
     expect(existingAccountResult).toEqual(noAccountResult);
-    expect(existingAccountResult).toEqual({ error: null, success: true });
+    expect(existingAccountResult).toEqual({
+      error: null,
+      success: true,
+      email: "",
+    });
   });
 });

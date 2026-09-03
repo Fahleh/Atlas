@@ -54,6 +54,7 @@ reason to document something here.
 - [Removing `.env.development.local`](#removing-envdevelopmentlocal)
 - [Matching `supabase/config.toml`'s `site_url` to `localhost`, not `127.0.0.1`](#matching-supabaseconfigtomls-site_url-to-localhost-not-127001)
 - [Separate Route Handlers for signup confirmation and password recovery](#separate-route-handlers-for-signup-confirmation-and-password-recovery)
+- [Restoring non-sensitive fields via defaultValue on login, signup, and reset-password errors](#restoring-non-sensitive-fields-via-defaultvalue-on-login-signup-and-reset-password-errors)
 - [Storage errors surface as-is, not through `interpretSupabaseWriteError`](#storage-errors-surface-as-is-not-through-interpretsupabasewriteerror)
 - [Why `loginAction.test.ts`'s malformed-`redirectTo` test uses an unclosed IPv6-bracket host](#why-loginactiontestts-malformed-redirectto-test-uses-an-unclosed-ipv6-bracket-host)
 - [CI performance gate: lab proxies, form-factor-split thresholds, and the file-count guard](#ci-performance-gate-lab-proxies-form-factor-split-thresholds-and-the-file-count-guard)
@@ -62,6 +63,8 @@ reason to document something here.
 - [Trusted Types createScriptURL: default policy design and the Next.js 16.3 immutable-assets update](#trusted-types-createscripturl-default-policy-design-and-the-nextjs-163-immutable-assets-update)
 - [Extending `authenticated-lighthouse.mts` for CSP violation checks, and sharing the chunk URL regex](#extending-authenticated-lighthousemts-for-csp-violation-checks-and-sharing-the-chunk-url-regex)
 - [Why `authenticated-lighthouse.mts` doesn't import `lib/baseUrl.ts`](#why-authenticated-lighthousemts-doesnt-import-libbaseurlts)
+- [Hardcoded hex colors in the Supabase email templates, not CSS custom properties](#hardcoded-hex-colors-in-the-supabase-email-templates-not-css-custom-properties)
+- [A Route Handler side channel for addMember's notification email, not a Server Action conversion](#a-route-handler-side-channel-for-addmembers-notification-email-not-a-server-action-conversion)
 
 ---
 
@@ -1216,6 +1219,47 @@ difference, not remove any real duplication.
 
 ---
 
+## Restoring non-sensitive fields via defaultValue on login, signup, and reset-password errors
+
+**Decision:** `LoginFormState`, `SignupFormState`, and
+`RequestPasswordResetFormState` each return their non-sensitive submitted
+field values (`email` on login and reset-password, `name` and `email` on
+signup) alongside the existing `error`/`accountExists` fields. The
+corresponding inputs read `defaultValue` from that returned state.
+Password and confirmPassword are never included and are left
+uncontrolled, so they clear on error.
+
+**Why. Confirmed against React's own v19 release notes and the commit
+that added it, then reproduced directly in this codebase.** React 19's
+default `<form action>` behavior resets every uncontrolled field once
+the action's promise settles, regardless of whether the action reports
+success or failure internally. This isn't scoped to the field that
+actually caused the error, it's every field in the form. Confirmed with
+a real browser (Playwright driving actual Chromium) against all three
+forms here: a wrong password on login cleared both email and password,
+mismatched passwords on signup cleared name and email along with both
+password fields, and an invalid email on reset-password cleared the one
+field the form has. Losing email or name on a validation error is a
+real usability cost with no security upside, unlike password, which
+should clear on error as a matter of convention.
+
+**Why defaultValue and not switching these inputs to controlled state.**
+These forms otherwise stay uncontrolled by convention (matching the
+rest of the codebase's form handling), and full controlled state would
+mean tracking every keystroke through onChange just to survive one
+specific reset behavior. Returning the value from the action and
+reading it back through defaultValue on the next render is the
+smaller, more targeted fix, and it composes cleanly with how
+useActionState already works here.
+
+**Why the shape isn't identical across all three.** Login and
+reset-password each have one non-sensitive field to restore, signup has
+two. Forcing a shared type or a generic field bag across all three
+would be an abstraction with no real payoff for three call sites with
+genuinely different field lists.
+
+---
+
 ## Storage errors surface as-is, not through `interpretSupabaseWriteError`
 
 **Decision:** `profileActions.ts`'s avatar upload failure surfaces
@@ -1532,3 +1576,60 @@ environment this script actually runs in. If the import problem is
 ever fixed, for example by adding `"type": "module"` project-wide,
 replace this literal with a real import instead of hand-copying the
 logic further.
+
+---
+
+## Hardcoded hex colors in the Supabase email templates, not CSS custom properties
+
+**Decision:** `supabase/templates/confirmation.html` and `recovery.html`
+write hex values directly everywhere they'd otherwise reference a design
+token, backgrounds, borders, text colors, and the accent button, instead
+of `var(--color-*)`.
+
+**Why:** These templates render in email clients, not the app's own CSS
+pipeline, and Outlook desktop's Word-based rendering engine doesn't support
+CSS custom properties at all, `var()` would just fail to resolve. Every
+hex that has a real counterpart in `styles/tokens.css` was checked against
+it and matches that token's actual value, not a guess. A few values used
+purely for typographic hierarchy within the template (secondary text
+grays, the recovery template's warning callout) have no corresponding
+token today and were chosen locally for the template rather than sourced,
+since no matching token exists yet. This is scoped narrowly to these two
+templates. It is not a general exception to the no-hardcoded-colors rule,
+and no other part of the codebase should point to this entry to justify a
+hardcoded hex value.
+
+---
+
+## A Route Handler side channel for addMember's notification email, not a Server Action conversion
+
+**Decision:** `addMember` in `features/projects/projectActions.ts` stays a
+client-rendered direct function call, unchanged. After its insert succeeds,
+it fires an unawaited `fetch()` (own `.catch()`, outside the existing
+cache-invalidation `Promise.all`) to a new Route Handler,
+`app/api/member-added-email/route.ts`, which independently re-checks
+ownership and membership before sending anything.
+
+**Why:** `docs/architecture.md`'s feature-actions/route-actions split is
+about how a mutation is invoked, form vs. direct call, not about what
+capabilities the code behind it can reach. It never anticipated a
+client-rendered action needing something that can only safely exist
+server-side, an SMTP credential here. Putting the send inside `addMember`
+would ship that credential to the browser. The Route Handler exists to
+hold that one capability; `addMember` itself needed no other reason to
+change.
+
+**Why authorization lives in `lib/authorizeMemberAddedEmail.ts` instead of
+directly in the route, unlike `app/auth/confirm/route.ts` and
+`app/auth/recovery-confirm/route.ts`.** Neither of those two Route Handlers
+has any Jest coverage today, they're only exercised through Playwright e2e
+specs against a real running server. Confirmed directly in Next's source:
+`lib/supabase/server.ts`'s `createClient()` calls `cookies()`, which throws
+(`` `cookies` was called outside a request scope ``) the moment neither of
+Next's request-scoped async storages has a store, exactly the case calling a
+route's exported `POST` straight from Jest. `authorizeMemberAddedEmail` takes
+a plain `SupabaseClient`, not the server client's specific return type, so
+its own test can construct the browser client instead, which needs no
+`cookies()` call and builds synchronously outside any request context,
+letting the authorization logic get real MSW-mocked coverage without needing
+a Next request to exist at all.
