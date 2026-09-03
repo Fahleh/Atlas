@@ -14,6 +14,7 @@ type SmtpConfig = {
   port: number;
   user: string;
   password: string;
+  from: string;
 };
 
 // ---- Config -----------------------------------------------------------------
@@ -26,26 +27,28 @@ type SmtpConfig = {
  * getBaseUrl(), that gating exists to protect build-time CSP, which has no
  * equivalent concern here since this only ever runs at request time.
  *
- * @returns the validated SMTP host, port, user, and password
- * @throws when any of SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD is unset
+ * @returns the validated SMTP host, port, user, password, and from address
+ * @throws when any of SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_FROM is unset
  */
 export function getSmtpConfig(): SmtpConfig {
   const host = process.env.SMTP_HOST;
   const port = process.env.SMTP_PORT;
   const user = process.env.SMTP_USER;
   const password = process.env.SMTP_PASSWORD;
+  const from = process.env.SMTP_FROM;
 
   if (!host) throw new Error("SMTP_HOST is not set.");
   if (!port) throw new Error("SMTP_PORT is not set.");
   if (!user) throw new Error("SMTP_USER is not set.");
   if (!password) throw new Error("SMTP_PASSWORD is not set.");
+  if (!from) throw new Error("SMTP_FROM is not set.");
 
   const parsedPort = Number(port);
   if (!Number.isInteger(parsedPort) || parsedPort < 1 || parsedPort > 65535) {
     throw new Error("SMTP_PORT is not a valid port number.");
   }
 
-  return { host, port: parsedPort, user, password };
+  return { host, port: parsedPort, user, password, from };
 }
 
 // ---- Template -----------------------------------------------------------------
@@ -167,7 +170,7 @@ export async function sendMemberAddedEmail(
   });
 
   await transporter.sendMail({
-    from: smtp.user,
+    from: smtp.from,
     to: input.to,
     subject: "You've been added to a project on Atlas",
     html: buildMemberAddedEmailHtml(input),

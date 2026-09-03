@@ -32,6 +32,7 @@ describe("getSmtpConfig", () => {
     SMTP_PORT: process.env.SMTP_PORT,
     SMTP_USER: process.env.SMTP_USER,
     SMTP_PASSWORD: process.env.SMTP_PASSWORD,
+    SMTP_FROM: process.env.SMTP_FROM,
   };
 
   beforeEach(() => {
@@ -39,6 +40,7 @@ describe("getSmtpConfig", () => {
     process.env.SMTP_PORT = "587";
     process.env.SMTP_USER = "notifications@example.com";
     process.env.SMTP_PASSWORD = "a-real-password";
+    process.env.SMTP_FROM = "notifications@example.com";
   });
 
   afterEach(() => {
@@ -48,12 +50,13 @@ describe("getSmtpConfig", () => {
     }
   });
 
-  it("returns the parsed config when all four vars are set", () => {
+  it("returns the parsed config when all five vars are set", () => {
     expect(getSmtpConfig()).toEqual({
       host: "smtp.office365.com",
       port: 587,
       user: "notifications@example.com",
       password: "a-real-password",
+      from: "notifications@example.com",
     });
   });
 
@@ -75,5 +78,10 @@ describe("getSmtpConfig", () => {
   it("throws naming SMTP_PASSWORD when it's missing", () => {
     delete process.env.SMTP_PASSWORD;
     expect(() => getSmtpConfig()).toThrow("SMTP_PASSWORD is not set.");
+  });
+
+  it("throws naming SMTP_FROM when it's missing", () => {
+    delete process.env.SMTP_FROM;
+    expect(() => getSmtpConfig()).toThrow("SMTP_FROM is not set.");
   });
 });
