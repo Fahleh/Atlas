@@ -27,7 +27,7 @@ function SubmitButton() {
 export default function SignupPage() {
   const [state, formAction] = useActionState<SignupFormState, FormData>(
     signup,
-    { error: null, accountExists: false, success: false },
+    { error: null, accountExists: false, success: false, name: "", email: "" },
   );
 
   if (state.success) {
@@ -80,6 +80,7 @@ export default function SignupPage() {
             name="name"
             required
             autoComplete="name"
+            defaultValue={state.name}
           />
         </div>
 
@@ -93,6 +94,7 @@ export default function SignupPage() {
             name="email"
             required
             autoComplete="email"
+            defaultValue={state.email}
           />
         </div>
 

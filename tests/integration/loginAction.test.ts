@@ -36,12 +36,13 @@ describe("login", () => {
     );
 
     const result = await login(
-      { error: null },
+      { error: null, email: "" },
       buildFormData({ email: "  ", password: "  " }),
     );
 
     expect(result).toEqual({
       error: "Email and password are required.",
+      email: "  ",
     });
     expect(tokenCalled).toBe(false);
     expect(redirect).not.toHaveBeenCalled();
@@ -55,12 +56,13 @@ describe("login", () => {
     );
 
     const result = await login(
-      { error: null },
+      { error: null, email: "" },
       buildFormData({ email: "user@example.com", password: "password123" }),
     );
 
     expect(result).toEqual({
       error: "Please confirm your email before signing in.",
+      email: "user@example.com",
     });
     expect(redirect).not.toHaveBeenCalled();
   });
@@ -68,7 +70,7 @@ describe("login", () => {
   it("should redirect to / when signInWithPassword succeeds with no redirectTo", async () => {
     await expect(
       login(
-        { error: null },
+        { error: null, email: "" },
         buildFormData({ email: "user@example.com", password: "password123" }),
       ),
     ).rejects.toThrow("NEXT_REDIRECT");
@@ -79,7 +81,7 @@ describe("login", () => {
   it("should redirect to a same-origin relative redirectTo on success", async () => {
     await expect(
       login(
-        { error: null },
+        { error: null, email: "" },
         buildFormData({
           email: "user@example.com",
           password: "password123",
@@ -94,7 +96,7 @@ describe("login", () => {
   it("should fall back to / for a different-origin redirectTo, not follow it", async () => {
     await expect(
       login(
-        { error: null },
+        { error: null, email: "" },
         buildFormData({
           email: "user@example.com",
           password: "password123",
@@ -111,7 +113,7 @@ describe("login", () => {
     // test uses an unclosed IPv6-bracket host").
     await expect(
       login(
-        { error: null },
+        { error: null, email: "" },
         buildFormData({
           email: "user@example.com",
           password: "password123",

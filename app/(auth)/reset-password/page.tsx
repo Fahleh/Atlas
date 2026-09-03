@@ -45,7 +45,7 @@ export default function ResetPasswordPage() {
   const [state, formAction] = useActionState<
     RequestPasswordResetFormState,
     FormData
-  >(requestPasswordReset, { error: null, success: false });
+  >(requestPasswordReset, { error: null, success: false, email: "" });
 
   if (state.success) {
     return (
@@ -94,6 +94,7 @@ export default function ResetPasswordPage() {
             name="email"
             required
             autoComplete="email"
+            defaultValue={state.email}
           />
         </div>
 

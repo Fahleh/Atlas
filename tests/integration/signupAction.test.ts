@@ -35,7 +35,7 @@ const validFields = {
 describe("signup", () => {
   it("should require all fields", async () => {
     const result = await signup(
-      { error: null, accountExists: false, success: false },
+      { error: null, accountExists: false, success: false, name: "", email: "" },
       buildFormData({ ...validFields, name: "" }),
     );
 
@@ -43,12 +43,14 @@ describe("signup", () => {
       error: "All fields are required.",
       accountExists: false,
       success: false,
+      name: "",
+      email: "jane@example.com",
     });
   });
 
   it("should reject a name shorter than 3 characters", async () => {
     const result = await signup(
-      { error: null, accountExists: false, success: false },
+      { error: null, accountExists: false, success: false, name: "", email: "" },
       buildFormData({ ...validFields, name: "Al" }),
     );
 
@@ -56,12 +58,14 @@ describe("signup", () => {
       error: "Name must be at least 3 characters long.",
       accountExists: false,
       success: false,
+      name: "Al",
+      email: "jane@example.com",
     });
   });
 
   it("should reject a name longer than 100 characters", async () => {
     const result = await signup(
-      { error: null, accountExists: false, success: false },
+      { error: null, accountExists: false, success: false, name: "", email: "" },
       buildFormData({ ...validFields, name: "A".repeat(101) }),
     );
 
@@ -69,12 +73,14 @@ describe("signup", () => {
       error: "Name must be at most 100 characters long.",
       accountExists: false,
       success: false,
+      name: "A".repeat(101),
+      email: "jane@example.com",
     });
   });
 
   it("should reject an invalid email format", async () => {
     const result = await signup(
-      { error: null, accountExists: false, success: false },
+      { error: null, accountExists: false, success: false, name: "", email: "" },
       buildFormData({ ...validFields, email: "not-an-email" }),
     );
 
@@ -82,12 +88,14 @@ describe("signup", () => {
       error: "Please enter a valid email address.",
       accountExists: false,
       success: false,
+      name: "Jane Doe",
+      email: "not-an-email",
     });
   });
 
   it("should reject a password shorter than 8 characters", async () => {
     const result = await signup(
-      { error: null, accountExists: false, success: false },
+      { error: null, accountExists: false, success: false, name: "", email: "" },
       buildFormData({ ...validFields, password: "short1", confirmPassword: "short1" }),
     );
 
@@ -95,12 +103,14 @@ describe("signup", () => {
       error: "Password must be at least 8 characters long.",
       accountExists: false,
       success: false,
+      name: "Jane Doe",
+      email: "jane@example.com",
     });
   });
 
   it("should reject mismatched passwords", async () => {
     const result = await signup(
-      { error: null, accountExists: false, success: false },
+      { error: null, accountExists: false, success: false, name: "", email: "" },
       buildFormData({ ...validFields, confirmPassword: "somethingElse123" }),
     );
 
@@ -108,6 +118,8 @@ describe("signup", () => {
       error: "Passwords do not match.",
       accountExists: false,
       success: false,
+      name: "Jane Doe",
+      email: "jane@example.com",
     });
   });
 
@@ -119,7 +131,7 @@ describe("signup", () => {
     );
 
     const result = await signup(
-      { error: null, accountExists: false, success: false },
+      { error: null, accountExists: false, success: false, name: "", email: "" },
       buildFormData(validFields),
     );
 
@@ -128,12 +140,14 @@ describe("signup", () => {
         "An account with this email already exists. Try logging in instead.",
       accountExists: true,
       success: false,
+      name: "Jane Doe",
+      email: "jane@example.com",
     });
   });
 
   it("should return success with no error and no accountExists on success", async () => {
     const result = await signup(
-      { error: null, accountExists: false, success: false },
+      { error: null, accountExists: false, success: false, name: "", email: "" },
       buildFormData(validFields),
     );
 
@@ -141,6 +155,8 @@ describe("signup", () => {
       error: null,
       accountExists: false,
       success: true,
+      name: "",
+      email: "",
     });
     expect(redirect).not.toHaveBeenCalled();
   });
