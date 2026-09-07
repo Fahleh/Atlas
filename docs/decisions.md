@@ -65,6 +65,7 @@ reason to document something here.
 - [Why `authenticated-lighthouse.mts` doesn't import `lib/baseUrl.ts`](#why-authenticated-lighthousemts-doesnt-import-libbaseurlts)
 - [Hardcoded hex colors in the Supabase email templates, not CSS custom properties](#hardcoded-hex-colors-in-the-supabase-email-templates-not-css-custom-properties)
 - [A Route Handler side channel for addMember's notification email, not a Server Action conversion](#a-route-handler-side-channel-for-addmembers-notification-email-not-a-server-action-conversion)
+- [Staying on Office 365 SMTP after diagnosing spam-folder delivery as an SCL reputation issue, not misconfiguration](#staying-on-office-365-smtp-after-diagnosing-spam-folder-delivery-as-an-scl-reputation-issue-not-misconfiguration)
 
 ---
 
@@ -1633,3 +1634,27 @@ its own test can construct the browser client instead, which needs no
 `cookies()` call and builds synchronously outside any request context,
 letting the authorization logic get real MSW-mocked coverage without needing
 a Next request to exist at all.
+
+---
+
+## Staying on Office 365 SMTP after diagnosing spam-folder delivery as an SCL reputation issue, not misconfiguration
+
+**Decision:** Atlas stays on Office 365 SMTP rather than switching to
+Resend, despite confirmation/notification emails landing in Junk/Spam
+even in Microsoft-hosted mailboxes.
+
+**Why. Incident: confirmed against real message headers.** SPF, DKIM,
+and DMARC all pass, verified against the real sending Office 365
+tenant. Authentication isn't the problem. The actual cause is
+`X-MS-Exchange-Organization-SCL: 5`, Microsoft's content/reputation
+heuristic, separate from authentication, and Microsoft's default
+threshold junks anything SCL 5 or higher. A newly sending domain with
+no delivery history is the most common driver of this score, a
+reputation problem, not a config defect.
+
+**Why not switch providers.** The cause is domain history, not the
+SMTP provider. A freshly verified Resend domain starts at the same
+zero reputation.
+
+**Takeaway.** Known, accepted limitation of a low-volume, new sending
+domain. Revisit if this persists after real send volume accumulates.
