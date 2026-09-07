@@ -15,9 +15,34 @@ export const viewport = {
   viewportFit: "cover",
 };
 
+const isDev = process.env.NODE_ENV === "development";
+
+// Dev-only derivation, not always-from-env: see docs/decisions.md
+// ("Deriving SUPABASE_ORIGIN from env in dev only"), same pattern.
+const BASE_URL =
+  isDev && process.env.NEXT_PUBLIC_BASE_URL
+    ? process.env.NEXT_PUBLIC_BASE_URL
+    : "https://atlas-murex-nine.vercel.app";
+
+const title = "Atlas";
+const description = "Project Management Dashboard";
+
 export const metadata: Metadata = {
-  title: "Atlas",
-  description: "Project Management Dashboard",
+  metadataBase: new URL(BASE_URL),
+  title,
+  description,
+  openGraph: {
+    title,
+    description,
+    url: "/",
+    images: ["/og/dashboard.png"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+    images: ["/og/dashboard.png"],
+  },
 };
 
 export default function RootLayout({
