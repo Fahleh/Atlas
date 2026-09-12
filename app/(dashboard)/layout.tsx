@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { Header } from "@/components/Header";
 import { AuthListenerProvider } from "@/providers/AuthListenerProvider";
+import { DeletedAccountGuard } from "@/providers/DeletedAccountGuard";
 import { QueryProvider } from "@/providers/QueryProvider";
 import styles from "./layout.module.css";
 
@@ -23,6 +24,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <QueryProvider>
       <AuthListenerProvider>
+        <DeletedAccountGuard />
         <div className={styles.shell}>
           <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 

@@ -232,6 +232,31 @@ Wire logout as a form action around the logout button, not as a client `onClick`
 
 ---
 
+## Deleted-Account Detection
+
+`proxy.ts` only verifies the access token's signature via `getClaims()`, it
+never queries `profiles`. A token issued before a user deletes their own
+account (`profiles.deleted_at`, see `docs/database.md`) stays cryptographically
+valid at the proxy layer until natural expiry, RLS is what actually denies
+that session's reads and writes everywhere else, but the app still needs to
+notice and force a real sign-out rather than leaving the user staring at a
+dashboard full of empty lists.
+
+`DeletedAccountGuard`, mounted inside `app/(dashboard)/layout.tsx` alongside
+`AuthListenerProvider`, is this checkpoint. It reads `useCurrentUserProfile()`,
+which keeps succeeding for a deleted user (`profiles: authenticated users can
+read` stays unconditional) and returns `deletedAt` rather than getting
+filtered out. When set, it calls `supabase.auth.signOut({ scope: "local" })`,
+clears the query cache, and redirects to `/login?error=account_deleted`.
+
+This is deliberately not folded into `AuthListenerProvider`, which is
+narrowed to `SIGNED_OUT` only after a documented incident (`docs/decisions.md`,
+"Moving `AuthListenerProvider`..."). That listener reacts to Supabase auth
+events, which fire on things like an ordinary page refresh, not to profile
+data, and a per-render data check like this one needs the latter.
+
+---
+
 ## Cache Isolation
 
 `QueryProvider` is scoped to `app/(dashboard)/layout.tsx` only, not root
