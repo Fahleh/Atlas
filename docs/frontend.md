@@ -290,6 +290,31 @@ Reuse `EntityModal` with:
 - `CancelButton`;
 - danger `SubmitButton`.
 
+### Account-level irreversible action
+
+Example: deleting your own account.
+
+The two-step inline pattern above (Low-blast-radius non-form removal) is not
+enough here. Removing a project member is reversible by the owner and affects
+someone else's access. Deleting your own account is the user giving up their
+own access, and from where they're sitting it's permanent, even though the
+database only soft-deletes the row.
+
+Use type-to-confirm instead: require the account email typed into a text
+field before the delete button enables. Not password re-entry, that protects
+against a different threat (an unattended session being hijacked), and no
+other action in Atlas is re-auth-gated, so introducing that pattern here would
+be new, inconsistent scope. Type-to-confirm protects against the actual risk
+at this severity: an accidental or hasty click. The confirmation email comes
+from the local JWT claims (`getClaims()`, no network call), not a new profile
+field, `profiles.email` deliberately doesn't exist (`docs/database.md`).
+
+When a blocking condition exists (see `features/profile/DeleteAccountSection.tsx`,
+solely owning a project with other members), hide the type-to-confirm field
+entirely rather than letting the user reach it and fail on submit. Show what's
+blocking and link to it. The real enforcement is server-side RLS either way,
+this is the UX layer on top of it, never a substitute for it.
+
 ### Modal reset keys
 
 Every repeatable `EntityModal`/`useActionState` modal needs a changing `key`

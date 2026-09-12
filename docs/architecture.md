@@ -135,7 +135,8 @@ atlas/
 │   ├── ThemeContext.tsx
 │   ├── useDisplayedTheme.ts
 │   ├── QueryProvider.tsx
-│   └── AuthListenerProvider.tsx
+│   ├── AuthListenerProvider.tsx
+│   └── DeletedAccountGuard.tsx
 ├── styles/
 │   ├── tokens.css
 │   ├── global.css

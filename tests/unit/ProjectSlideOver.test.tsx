@@ -48,12 +48,14 @@ const ownerMember: Member = {
   name: "Owner Person",
   avatarUrl: null,
   role: "owner",
+  deletedAt: null,
 };
 const collaboratorMember: Member = {
   id: "collab-1",
   name: "Collab Person",
   avatarUrl: null,
   role: "collaborator",
+  deletedAt: null,
 };
 
 const task: Task = {
@@ -250,6 +252,52 @@ describe("ProjectSlideOver remove-member two-step confirm", () => {
     expect(
       screen.getByText("You don't have permission to perform that action."),
     ).toBeInTheDocument();
+  });
+});
+
+describe("ProjectSlideOver deleted member display", () => {
+  it("should show a Deleted label for a member with deletedAt set", () => {
+    setUp({ currentUserId: OWNER_ID });
+    const deletedMember: Member = {
+      ...collaboratorMember,
+      deletedAt: new Date("2026-01-01T00:00:00.000Z"),
+    };
+    renderWithClient(
+      <ProjectSlideOver
+        project={project}
+        onClose={jest.fn()}
+        members={[ownerMember, deletedMember]}
+      />,
+    );
+
+    expect(screen.getByText("Deleted", { exact: false })).toBeInTheDocument();
+  });
+
+  it("should still allow the owner to remove a deleted member, same as any other member", async () => {
+    setUp({ currentUserId: OWNER_ID });
+    mockRemoveMember.mockResolvedValue({ error: null, errorKind: null });
+    const deletedMember: Member = {
+      ...collaboratorMember,
+      deletedAt: new Date("2026-01-01T00:00:00.000Z"),
+    };
+    renderWithClient(
+      <ProjectSlideOver
+        project={project}
+        onClose={jest.fn()}
+        members={[ownerMember, deletedMember]}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("Remove Collab Person"));
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText("Confirm remove Collab Person"));
+    });
+
+    expect(mockRemoveMember).toHaveBeenCalledWith(
+      "project-1",
+      "collab-1",
+      expect.anything(),
+    );
   });
 });
 

@@ -10,7 +10,13 @@
  */
 import WebSocket from "ws";
 import { createClient } from "@supabase/supabase-js";
-import { PRIMARY_ACCOUNT, SECONDARY_ACCOUNT, RESET_ACCOUNT } from "./accounts";
+import {
+  PRIMARY_ACCOUNT,
+  SECONDARY_ACCOUNT,
+  RESET_ACCOUNT,
+  DELETED_ACCOUNT,
+  DELETED_ACCOUNT_REFRESH,
+} from "./accounts";
 
 // Node 20 has no native WebSocket; supabase-js's RealtimeClient constructor
 // requires one even though this script never opens a realtime connection.
@@ -46,4 +52,6 @@ export async function seedE2eAccounts(): Promise<void> {
   await seedAccount(PRIMARY_ACCOUNT);
   await seedAccount(SECONDARY_ACCOUNT);
   await seedAccount(RESET_ACCOUNT);
+  await seedAccount(DELETED_ACCOUNT);
+  await seedAccount(DELETED_ACCOUNT_REFRESH);
 }

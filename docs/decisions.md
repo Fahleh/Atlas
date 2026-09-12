@@ -66,6 +66,10 @@ reason to document something here.
 - [Hardcoded hex colors in the Supabase email templates, not CSS custom properties](#hardcoded-hex-colors-in-the-supabase-email-templates-not-css-custom-properties)
 - [A Route Handler side channel for addMember's notification email, not a Server Action conversion](#a-route-handler-side-channel-for-addmembers-notification-email-not-a-server-action-conversion)
 - [Staying on Office 365 SMTP after diagnosing spam-folder delivery as an SCL reputation issue, not misconfiguration](#staying-on-office-365-smtp-after-diagnosing-spam-folder-delivery-as-an-scl-reputation-issue-not-misconfiguration)
+- [No pgTAP for reject_deleted_user_token's internal defensive branches](#no-pgtap-for-reject_deleted_user_tokens-internal-defensive-branches)
+- [DeletedAccountGuard's retry is a self-contained backoff loop, not disabled structural sharing](#deletedaccountguards-retry-is-a-self-contained-backoff-loop-not-disabled-structural-sharing)
+- [The database enforces account-deletion blocking, the UI is a convenience, not a gate](#the-database-enforces-account-deletion-blocking-the-ui-is-a-convenience-not-a-gate)
+- [useCurrentUserEmail as its own hook, not folded into useCurrentUser](#usecurrentuseremail-as-its-own-hook-not-folded-into-usecurrentuser)
 
 ---
 
@@ -1658,3 +1662,125 @@ zero reputation.
 
 **Takeaway.** Known, accepted limitation of a low-volume, new sending
 domain. Revisit if this persists after real send volume accumulates.
+
+---
+
+## No pgTAP for reject_deleted_user_token's internal defensive branches
+
+**Decision:** `reject_deleted_user_token` (migration 019) has two defensive
+branches, an exception handler around the uuid cast and a null check, that
+are not covered by any automated test. No pgTAP or equivalent was
+introduced to close this.
+
+**Why.** Nothing in the real auth flow can construct the malformed `event`
+payload those branches guard against, GoTrue builds that payload
+internally from its own session/user state, not from anything a client or
+attacker controls. This project also has no existing convention for
+testing a Postgres function in isolation, checked directly, no pgTAP,
+no `pg_prove`, no `supabase/tests/` directory anywhere in the repo.
+Introducing that tooling for one function's defensive code would be new
+test infrastructure out of proportion to the risk.
+
+**What is actually covered.** Both real call paths the function is
+exercised through in production, a password-grant sign-in and a
+refresh-token grant against an already-soft-deleted account, are covered
+end to end against a real database by
+`tests/e2e/account-deletion-login-block.spec.ts`.
+
+**What manual verification actually found.** A null `user_id` never
+fails the uuid cast, Postgres just propagates `NULL` through it, so the
+null check alone was never what stood between a malformed event and a
+crash. What actually crashes the cast is a non-null, syntactically
+invalid uuid string, `invalid_text_representation`, which is what the
+exception handler catches. The null check stays for clarity, a `NULL`
+result still needs to short-circuit before the `select ... where id =
+_user_id` lookup, but the exception handler is the one doing the real
+work.
+
+**What is not.** The exception handler and the null check specifically.
+These were verified once, manually, against the real local stack during
+development (raw SQL calls with a missing and a malformed `user_id`), not
+by anything that runs again in CI. Accepted as a bounded, named gap, not
+an oversight. Revisit if this project ever adopts pgTAP for other reasons.
+
+---
+
+## DeletedAccountGuard's retry is a self-contained backoff loop, not disabled structural sharing
+
+**Decision:** When `signOut()` fails inside `DeletedAccountGuard`, the
+retry is a self-contained `setTimeout` loop with a fixed backoff (2s, 5s,
+15s, four attempts total including the first), living entirely inside the
+effect's own closure. `structuralSharing` on `useCurrentUserProfile` was
+not touched.
+
+**Why.** The original fix reset `hasHandledRef.current` on failure,
+assuming a later background refetch of `useCurrentUserProfile` would
+naturally re-run the effect and retry. Tested this directly rather than
+assuming it from React Query's docs: mounted a real `useQuery` hook,
+forced a genuine refetch with identical data, and checked the `data`
+reference before and after, with a `staleTime` of `0` and with a finite
+`staleTime`. Same reference both times. Structural sharing (on by default)
+keeps `profile` referentially stable across a refetch as long as the
+underlying data hasn't changed, which is exactly the case for an already
+soft-deleted account whose `deletedAt` never changes again. That means
+resetting `hasHandledRef` alone did nothing, nothing was going to make the
+effect fire a second time.
+
+**Why not fix it by disabling structural sharing instead.** Checked every
+consumer of `useCurrentUserProfile` before ruling this out, not assumed:
+`Header.tsx` and `ProfileForm.tsx` both read primitive fields off `profile`
+directly and never depend on its object identity, so `structuralSharing:
+false` scoped to this hook would have been safe for them. The real problem
+is that it would have been the wrong tool anyway. A background refetch of
+this hook happens whenever `QueryProvider`'s 60 second `staleTime` elapses
+and something triggers a refetch, a remount or a window refocus, not on
+any schedule designed for retrying a failed sign-out. On a backgrounded
+tab with no refocus, that could be a long, unbounded wait. It would also
+be repurposing a shared hook's caching behavior, safe for its other two
+consumers today, confirmed, but a future addition to either that starts
+depending on referential stability would silently break, for a benefit
+that belongs to one narrow failure case in one consumer.
+
+**Takeaway.** A retry that must happen within a known bound belongs next
+to the thing being retried, not delegated to a shared cache's refetch
+timing.
+
+---
+
+## The database enforces account-deletion blocking, the UI is a convenience, not a gate
+
+**Decision:** `DeleteAccountSection.tsx`, `profileActions.ts`'s `deleteAccount`,
+and `useOwnedMultiMemberProjects.ts` all sit in front of the same real
+enforcement, the `WITH CHECK` on `profiles: users can update own profile`
+(see `docs/database.md`, "Soft account deletion"), which blocks the write
+at the database level when the caller solely owns a project with other
+members. None of these three pieces of client code enforce anything
+themselves.
+
+**Why.** All three exist for one reason: give the user a clear, early
+signal about a rule the database already enforces, instead of letting
+them find out by submitting and failing. `useOwnedMultiMemberProjects`
+fetches the blocking list, `DeleteAccountSection` uses it to hide the
+confirm form and show the offending projects, `deleteAccount` is the
+write itself, which the database would refuse cleanly through the
+`WITH CHECK` even if every line of this client code were bypassed. This
+entry is what their comments should point at, not a restatement each of
+them was carrying on its own.
+
+---
+
+## useCurrentUserEmail as its own hook, not folded into useCurrentUser
+
+**Decision:** `DeleteAccountSection.tsx` defines its own local
+`useCurrentUserEmail()` hook rather than adding an `email` field to
+`useCurrentUser()`.
+
+**Why.** `useCurrentUser()` is deliberately kept minimal, `{ id }` only,
+for cheap ownership checks used all over the app, and every other call
+site of it only ever needs the id. Widening its return shape for one
+call site would mean every consumer's type carries a field only one of
+them uses. The type-to-confirm delete flow is the only place in the app
+that needs the account's email, and it comes from the same local JWT
+claims `useCurrentUser()` already reads, `getClaims()`, no network call,
+so a second small hook local to `DeleteAccountSection.tsx` was the
+smaller change.

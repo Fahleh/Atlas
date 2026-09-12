@@ -24,6 +24,7 @@ dates are not recorded.
 | `004_handle_new_project_trigger.sql` | Auto-creates an `owner` row in `project_members` on project creation, plus a backfill for projects created before this trigger existed |
 | `005_add_due_date_to_projects.sql` | Adds `projects.due_date`, mirroring `tasks.due_date` |
 | `006_lookup_user_id_by_email.sql` | `SECURITY DEFINER` function enabling add-member-by-email without exposing `profiles.email` (which deliberately does not exist) |
+| `018_account_deletion.sql` | Adds `profiles.deleted_at`, `is_active_user()` and `owner_has_multi_member_project()`, and updates every table's RLS policies to deny a deleted user's own reads/writes while leaving their profile row readable by others |
 
 ## Going forward
 

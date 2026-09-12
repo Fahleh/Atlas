@@ -3,7 +3,7 @@ import {
   interpretSupabaseReadError,
   SupabaseReadError,
 } from "@/lib/supabase/errors";
-import { toCamelCase } from "@/lib/utils";
+import { parseDates, toCamelCase } from "@/lib/utils";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useQuery } from "@tanstack/react-query";
 
@@ -11,6 +11,7 @@ export type CurrentUserProfile = {
   id: string;
   name: string;
   avatarUrl: string | null;
+  deletedAt: Date | null;
 };
 
 /**
@@ -35,13 +36,13 @@ export function useCurrentUserProfile() {
       const supabase = createClient();
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, name, avatar_url")
+        .select("id, name, avatar_url, deleted_at")
         .eq("id", currentUser!.id)
         .single();
 
       if (error) throw new SupabaseReadError(interpretSupabaseReadError(error));
 
-      return toCamelCase<CurrentUserProfile>(data);
+      return parseDates(toCamelCase<CurrentUserProfile>(data), ["deletedAt"]);
     },
   });
 }
