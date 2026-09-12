@@ -49,6 +49,51 @@ export function validateAvatarFile(file: File): string | null {
   return null;
 }
 
+// ---- Delete -------------------------------------------------------------------
+
+export type DeleteAccountResult = {
+  error: string | null;
+  errorKind: SupabaseWriteErrorKind | null;
+};
+
+/**
+ * Soft-deletes the current user's account by setting `profiles.deleted_at`.
+ * Never removes the profiles row or the auth.users entry.
+ *
+ * The database, not this function, is what actually blocks the deletion
+ * when the caller solely owns a project with other members, see
+ * `owner_has_multi_member_project()` in migration 018. A failed write here
+ * routes through the same generic forbidden message as any other RLS
+ * denial, since a real user should never reach this call in that state,
+ * the calling UI checks the same condition first and hides the delete
+ * action entirely, so this path only gets hit by a direct API bypass.
+ *
+ * On success, signs out locally and invalidates every cached query keyed
+ * to the current user, then leaves navigation to the caller.
+ *
+ * @param userId - ID of the profile being marked deleted
+ * @param queryClient - TanStack QueryClient for cache invalidation
+ * @returns `{ error, errorKind }`, both null on success
+ */
+export async function deleteAccount(
+  userId: string,
+  queryClient: QueryClient,
+): Promise<DeleteAccountResult> {
+  const supabase = createClient();
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", userId);
+
+  if (error) return interpretSupabaseWriteError(error, supabase);
+
+  await supabase.auth.signOut({ scope: "local" });
+  queryClient.clear();
+
+  return { error: null, errorKind: null };
+}
+
 // ---- Update -------------------------------------------------------------------
 
 /**

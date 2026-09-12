@@ -2,16 +2,22 @@ import "@/jest.setup";
 
 import { QueryClient } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
-import { updateProfile } from "@/features/profile/profileActions";
+import { GoTrueClient } from "@supabase/auth-js";
+import { deleteAccount, updateProfile } from "@/features/profile/profileActions";
 import { server } from "@/tests/mocks/server";
 import { postgrestError } from "@/tests/mocks/postgrestError";
 import { SUPABASE_URL } from "@/tests/mocks/handlers/baseUrl";
+import { mockLiveSession } from "@/tests/mocks/getClaims";
 
 function buildAvatarFile(
   { type = "image/png", sizeBytes = 1024 }: { type?: string; sizeBytes?: number } = {},
 ): File {
   return new File([new Uint8Array(sizeBytes)], "avatar.png", { type });
 }
+
+afterEach(() => {
+  jest.restoreAllMocks();
+});
 
 describe("updateProfile", () => {
   it("should update only the name and never call Storage when no avatar file is given", async () => {
@@ -204,6 +210,74 @@ describe("updateProfile", () => {
     });
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ["projectMembers"],
+    });
+  });
+});
+
+describe("deleteAccount", () => {
+  it("should set deleted_at, sign out, and clear the cache on success", async () => {
+    let patchBody: { deleted_at?: string } | undefined;
+    server.use(
+      http.patch(`${SUPABASE_URL}/rest/v1/profiles`, async ({ request }) => {
+        patchBody = (await request.json()) as typeof patchBody;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    // auth-js's signOut() only hits the network when a real session is in
+    // storage (confirmed by reading GoTrueClient.js's _signOut), which this
+    // test harness never populates. Spying on signOut itself, rather than
+    // asserting a network call, is what actually proves deleteAccount calls it.
+    const signOutSpy = jest
+      .spyOn(GoTrueClient.prototype, "signOut")
+      .mockResolvedValue({ error: null });
+    const queryClient = new QueryClient();
+    const clearSpy = jest.spyOn(queryClient, "clear");
+    const userId = crypto.randomUUID();
+
+    const result = await deleteAccount(userId, queryClient);
+
+    expect(result).toEqual({ error: null, errorKind: null });
+    expect(patchBody?.deleted_at).toEqual(expect.any(String));
+    expect(signOutSpy).toHaveBeenCalledWith({ scope: "local" });
+    expect(clearSpy).toHaveBeenCalled();
+  });
+
+  it("should surface the blocked-deletion write as a generic forbidden error, never sign out", async () => {
+    mockLiveSession();
+    const signOutSpy = jest
+      .spyOn(GoTrueClient.prototype, "signOut")
+      .mockResolvedValue({ error: null });
+    server.use(
+      http.patch(`${SUPABASE_URL}/rest/v1/profiles`, () =>
+        postgrestError({ code: "42501", message: "new row violates row-level security policy" }),
+      ),
+    );
+    const queryClient = new QueryClient();
+    const userId = crypto.randomUUID();
+
+    const result = await deleteAccount(userId, queryClient);
+
+    expect(result).toEqual({
+      error: "You don't have permission to perform that action.",
+      errorKind: "forbidden",
+    });
+    expect(signOutSpy).not.toHaveBeenCalled();
+  });
+
+  it("should return sessionExpired for PGRST301 on the deleting update", async () => {
+    server.use(
+      http.patch(`${SUPABASE_URL}/rest/v1/profiles`, () =>
+        postgrestError({ code: "PGRST301", message: "JWT expired" }, 401),
+      ),
+    );
+    const queryClient = new QueryClient();
+    const userId = crypto.randomUUID();
+
+    const result = await deleteAccount(userId, queryClient);
+
+    expect(result).toEqual({
+      error: "Your session has expired. Log in again to continue.",
+      errorKind: "sessionExpired",
     });
   });
 });
