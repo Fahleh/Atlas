@@ -7,17 +7,9 @@
 alter table public.profiles add column deleted_at timestamptz;
 
 -- Caller's own active status, read once and reused across every table's
--- policies below. SECURITY DEFINER is kept here for privilege-pattern
--- consistency with is_project_member (003) and lookup_user_id_by_email
--- (006), not because it is structurally required to avoid recursion.
--- docs/database.md's "Never self-reference an RLS policy" section
--- documents is_project_member's actual case: project_members' own
--- original SELECT policy queried project_members again, a genuine
--- cycle. Querying profiles from inside profiles' own UPDATE policy is
--- a materially different shape, profiles' SELECT policy is
--- "using (true)", a constant with nothing further to look up, so the
--- inner read this function performs resolves in one step and does not
--- recurse back into the UPDATE policy that called it.
+-- policies below. SECURITY DEFINER kept for consistency, not because it's
+-- structurally required, see docs/database.md's "Not every same-table
+-- subquery actually recurses" section for why.
 create or replace function public.is_active_user()
 returns boolean
 language plpgsql
@@ -34,9 +26,8 @@ begin
 end;
 $$;
 
--- True when the caller owns a project that has at least one member
--- other than themselves. Used only to block the profiles update that
--- sets deleted_at, see the WITH CHECK below.
+-- True when the caller owns a project with at least one other member.
+-- Used only to block the profiles update that sets deleted_at.
 create or replace function public.owner_has_multi_member_project()
 returns boolean
 language plpgsql
@@ -60,9 +51,8 @@ end;
 $$;
 
 -- PROFILES
--- select policy is untouched on purpose: other users must keep reading
--- a deleted user's name and avatar in the activity log, member lists,
--- and avatar stack.
+-- select policy untouched on purpose, see docs/database.md's
+-- "Soft account deletion" section for why.
 
 drop policy "profiles: users can update own profile" on public.profiles;
 

@@ -2,12 +2,8 @@
 -- soft-deleted account. Verified locally against the real dev Supabase
 -- stack before writing this, not assumed from docs. See docs/auth.md.
 --
--- Confirmed the exception handler around the uuid cast is what actually
--- matters here, not a null check. A null user_id never fails the cast,
--- Postgres just propagates NULL. What actually crashes it is a non-null,
--- syntactically invalid uuid string, which the exception handler catches
--- by failing open (returning the event unmodified) rather than taking
--- down sign-in app-wide.
+-- The exception handler, not the null check, is what matters here.
+-- See docs/decisions.md's pgTAP entry for reject_deleted_user_token.
 
 create or replace function public.reject_deleted_user_token(event jsonb)
 returns jsonb

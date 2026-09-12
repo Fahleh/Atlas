@@ -68,6 +68,8 @@ reason to document something here.
 - [Staying on Office 365 SMTP after diagnosing spam-folder delivery as an SCL reputation issue, not misconfiguration](#staying-on-office-365-smtp-after-diagnosing-spam-folder-delivery-as-an-scl-reputation-issue-not-misconfiguration)
 - [No pgTAP for reject_deleted_user_token's internal defensive branches](#no-pgtap-for-reject_deleted_user_tokens-internal-defensive-branches)
 - [DeletedAccountGuard's retry is a self-contained backoff loop, not disabled structural sharing](#deletedaccountguards-retry-is-a-self-contained-backoff-loop-not-disabled-structural-sharing)
+- [The database enforces account-deletion blocking, the UI is a convenience, not a gate](#the-database-enforces-account-deletion-blocking-the-ui-is-a-convenience-not-a-gate)
+- [useCurrentUserEmail as its own hook, not folded into useCurrentUser](#usecurrentuseremail-as-its-own-hook-not-folded-into-usecurrentuser)
 
 ---
 
@@ -1685,6 +1687,16 @@ refresh-token grant against an already-soft-deleted account, are covered
 end to end against a real database by
 `tests/e2e/account-deletion-login-block.spec.ts`.
 
+**What manual verification actually found.** A null `user_id` never
+fails the uuid cast, Postgres just propagates `NULL` through it, so the
+null check alone was never what stood between a malformed event and a
+crash. What actually crashes the cast is a non-null, syntactically
+invalid uuid string, `invalid_text_representation`, which is what the
+exception handler catches. The null check stays for clarity, a `NULL`
+result still needs to short-circuit before the `select ... where id =
+_user_id` lookup, but the exception handler is the one doing the real
+work.
+
 **What is not.** The exception handler and the null check specifically.
 These were verified once, manually, against the real local stack during
 development (raw SQL calls with a missing and a malformed `user_id`), not
@@ -1732,3 +1744,43 @@ that belongs to one narrow failure case in one consumer.
 **Takeaway.** A retry that must happen within a known bound belongs next
 to the thing being retried, not delegated to a shared cache's refetch
 timing.
+
+---
+
+## The database enforces account-deletion blocking, the UI is a convenience, not a gate
+
+**Decision:** `DeleteAccountSection.tsx`, `profileActions.ts`'s `deleteAccount`,
+and `useOwnedMultiMemberProjects.ts` all sit in front of the same real
+enforcement, the `WITH CHECK` on `profiles: users can update own profile`
+(see `docs/database.md`, "Soft account deletion"), which blocks the write
+at the database level when the caller solely owns a project with other
+members. None of these three pieces of client code enforce anything
+themselves.
+
+**Why.** All three exist for one reason: give the user a clear, early
+signal about a rule the database already enforces, instead of letting
+them find out by submitting and failing. `useOwnedMultiMemberProjects`
+fetches the blocking list, `DeleteAccountSection` uses it to hide the
+confirm form and show the offending projects, `deleteAccount` is the
+write itself, which the database would refuse cleanly through the
+`WITH CHECK` even if every line of this client code were bypassed. This
+entry is what their comments should point at, not a restatement each of
+them was carrying on its own.
+
+---
+
+## useCurrentUserEmail as its own hook, not folded into useCurrentUser
+
+**Decision:** `DeleteAccountSection.tsx` defines its own local
+`useCurrentUserEmail()` hook rather than adding an `email` field to
+`useCurrentUser()`.
+
+**Why.** `useCurrentUser()` is deliberately kept minimal, `{ id }` only,
+for cheap ownership checks used all over the app, and every other call
+site of it only ever needs the id. Widening its return shape for one
+call site would mean every consumer's type carries a field only one of
+them uses. The type-to-confirm delete flow is the only place in the app
+that needs the account's email, and it comes from the same local JWT
+claims `useCurrentUser()` already reads, `getClaims()`, no network call,
+so a second small hook local to `DeleteAccountSection.tsx` was the
+smaller change.

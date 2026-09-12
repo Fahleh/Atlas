@@ -91,10 +91,8 @@ describe("DeletedAccountGuard", () => {
     const { rerender } = renderWithClient(<DeletedAccountGuard />);
     await waitFor(() => expect(signOutSpy).toHaveBeenCalledTimes(1));
 
-    // A new profile object with the same deletedAt value, not the same
-    // reference, forces the effect's dependency array to actually change
-    // and re-run, so this isolates hasHandledRef as the reason a second
-    // chain never starts, not React bailing out on an unchanged dependency.
+    // New object, same deletedAt value, forces the effect to actually
+    // re-run, isolating hasHandledRef as what blocks a second chain.
     mockProfile({ deletedAt: new Date(deletedAt) });
     rerender(<DeletedAccountGuard />);
 

@@ -20,9 +20,8 @@ type DeleteAccountFormState = {
 
 /**
  * The account email, read from the local JWT claims (no network call).
- * Kept local to this component rather than folded into useCurrentUser,
- * which is deliberately minimal ({ id } only) for cheap ownership checks
- * elsewhere, this is the only call site that needs the email.
+ * See docs/decisions.md ("useCurrentUserEmail as its own hook...") for
+ * why this isn't folded into useCurrentUser.
  */
 function useCurrentUserEmail() {
   return useQuery({
@@ -41,12 +40,8 @@ type DeleteSubmitButtonProps = {
   disabled: boolean;
 };
 
-/**
- * Delete button deriving its pending state from useFormStatus. Must be a
- * descendant of the form element, same constraint as ProfileForm's SaveButton.
- *
- * @param disabled - Disables the button until the typed confirmation matches
- */
+// Must be a descendant of the form element, see docs/frontend.md's
+// useFormStatus rule; same constraint as ProfileForm's SaveButton.
 function DeleteSubmitButton({ disabled }: DeleteSubmitButtonProps) {
   const { pending } = useFormStatus();
   return (
@@ -61,12 +56,12 @@ function DeleteSubmitButton({ disabled }: DeleteSubmitButtonProps) {
 }
 
 /**
- * Account deletion section on the profile page. Blocks on the same
- * condition the database enforces, solely owning a project with other
- * members, and hides the type-to-confirm field entirely in that case
- * rather than letting the user reach it and fail on submit. The database
- * (migration 018) is the real enforcement, this is the client-side
- * nicety layered on top of it.
+ * Account deletion section on the profile page. Shows the type-to-confirm
+ * delete form, or, when the account solely owns a project with other
+ * members, hides that form and lists the blocking projects instead.
+ *
+ * See docs/decisions.md ("The database enforces account-deletion
+ * blocking...") for why this is a convenience layer, not the real gate.
  */
 export function DeleteAccountSection() {
   const router = useRouter();

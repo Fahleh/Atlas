@@ -255,6 +255,19 @@ narrowed to `SIGNED_OUT` only after a documented incident (`docs/decisions.md`,
 events, which fire on things like an ordinary page refresh, not to profile
 data, and a per-render data check like this one needs the latter.
 
+`reject_deleted_user_token` (migration 019), a Supabase Custom Access
+Token Hook, is the other half of this, it blocks a brand new sign-in or a
+token refresh outright for a deleted account, rather than catching an
+already-open session. GoTrue never maps a custom hook's returned error to
+one of its own documented error codes, the code stays `"unknown"`
+regardless of what the hook actually rejected for. `login/actions.ts`
+matches on `error.status === 403 && error.message === "account_deleted"`
+instead, and redirects to the same `/login?error=account_deleted` this
+section already covers, rather than showing a second message for the
+same thing. This doesn't replace `DeletedAccountGuard`, a token issued
+before the account was deleted is still valid until it expires, the hook
+only stops a new sign-in or refresh from succeeding.
+
 ---
 
 ## Cache Isolation

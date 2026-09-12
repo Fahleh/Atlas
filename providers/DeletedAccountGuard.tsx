@@ -7,27 +7,18 @@ import { useCurrentUserProfile } from "@/hooks/useCurrentUserProfile";
 import { createClient } from "@/lib/supabase/client";
 
 /**
- * Forces a sign-out when the current account has been soft-deleted.
- *
- * proxy.ts only verifies the access token's signature via getClaims(), it
- * never looks at profiles.deleted_at, so a token issued before deletion
- * stays valid there until natural expiry. This is the actual checkpoint:
- * useCurrentUserProfile keeps succeeding for a deleted account, since
- * "profiles: authenticated users can read" is unconditional (migration 018),
- * and returns deletedAt rather than getting filtered out by RLS.
- *
- * Not folded into AuthListenerProvider, which was deliberately narrowed to
- * SIGNED_OUT only after a documented incident, see docs/decisions.md
- * ("Moving AuthListenerProvider..."). That listener reacts to auth events,
- * not profile data, and this check needs the latter.
+ * Forces a sign-out, with a short backoff-retried signOut call, when the
+ * current account has been soft-deleted. See docs/auth.md
+ * ("Deleted-Account Detection") for why this exists and why it isn't
+ * folded into AuthListenerProvider.
  */
 export function DeletedAccountGuard() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data: profile } = useCurrentUserProfile();
 
-  // Guards against firing signOut twice (e.g. a second render before the
-  // redirect lands). Not render state, so a ref, not useState.
+  // Guards against starting a second parallel retry chain. Not render
+  // state, so a ref, not useState.
   const hasHandledRef = useRef(false);
 
   useEffect(() => {

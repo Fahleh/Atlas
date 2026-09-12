@@ -48,9 +48,7 @@
   color: var(--color-text-primary);
 }
 
-/* Same cap as TaskList.module.css's .list: keeps a long list scrolling in
-   place instead of growing the page, overscroll-behavior stops that scroll
-   chaining outward. */
+/* Same cap as TaskList.module.css's .list, see that file's comment. */
 .blockedProjectList {
   display: flex;
   flex-direction: column;

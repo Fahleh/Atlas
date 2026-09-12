@@ -25,12 +25,8 @@ const mockDeleteAccount = deleteAccount as jest.MockedFunction<typeof deleteAcco
 
 const ACCOUNT_EMAIL = "user@example.com";
 
-/**
- * mockLiveSession's claims carry only `sub`, no email, since most tests
- * never need it. DeleteAccountSection's type-to-confirm field checks the
- * claims email specifically, so tests that exercise it need a claims
- * object with email present.
- */
+// mockLiveSession's claims carry only sub, no email; this variant adds
+// email for tests that exercise the type-to-confirm field.
 function mockLiveSessionWithEmail(sub: string, email: string) {
   return jest.spyOn(GoTrueClient.prototype, "getClaims").mockResolvedValue({
     data: { claims: { sub, email }, header: {}, signature: new Uint8Array() },

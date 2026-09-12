@@ -12,11 +12,8 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   );
 }
 
-/**
- * Signs in as the given account and PATCHes profiles.deleted_at through
- * the same RLS-gated update deleteAccount() performs for real, not a
- * shortcut around it.
- */
+// Signs in and PATCHes profiles.deleted_at, the same RLS-gated update
+// deleteAccount() performs for real, not a shortcut around it.
 async function softDeleteAccount(
   request: APIRequestContext,
   account: { email: string; password: string },

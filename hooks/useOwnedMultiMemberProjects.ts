@@ -26,9 +26,8 @@ type ProjectRow = {
  * ownership transfer isn't built, so the only way out is deleting the
  * project or removing every other member first.
  *
- * This is the client-side nicety that surfaces the block before the
- * delete-account flow is even reachable, the real enforcement lives in
- * the database, not here.
+ * See docs/decisions.md ("The database enforces account-deletion
+ * blocking...") for why this hook is a convenience, not the actual gate.
  *
  * @returns React Query result with `data: OwnedMultiMemberProject[]`
  */

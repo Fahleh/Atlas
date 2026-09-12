@@ -58,18 +58,15 @@ export type DeleteAccountResult = {
 
 /**
  * Soft-deletes the current user's account by setting `profiles.deleted_at`.
- * Never removes the profiles row or the auth.users entry.
+ * Never removes the profiles row or the auth.users entry. Signs out
+ * locally and invalidates every cached query keyed to the current user
+ * on success, then leaves navigation to the caller.
  *
- * The database, not this function, is what actually blocks the deletion
- * when the caller solely owns a project with other members, see
- * `owner_has_multi_member_project()` in migration 018. A failed write here
- * routes through the same generic forbidden message as any other RLS
- * denial, since a real user should never reach this call in that state,
- * the calling UI checks the same condition first and hides the delete
- * action entirely, so this path only gets hit by a direct API bypass.
- *
- * On success, signs out locally and invalidates every cached query keyed
- * to the current user, then leaves navigation to the caller.
+ * The database blocks this write outright when the caller solely owns a
+ * project with other members, see docs/database.md ("Soft account
+ * deletion"). See docs/decisions.md ("The database enforces
+ * account-deletion blocking...") for why this function doesn't duplicate
+ * that check itself.
  *
  * @param userId - ID of the profile being marked deleted
  * @param queryClient - TanStack QueryClient for cache invalidation
