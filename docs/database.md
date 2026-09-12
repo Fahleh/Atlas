@@ -110,6 +110,15 @@ Email's source of truth is `auth.users`. Duplicating it would require permanent
 synchronization and would place sensitive data into a broadly readable row.
 Member lookup by email uses a controlled function that returns only user ID.
 
+`deleted_at timestamptz`, nullable, null means active. Account deletion is a
+soft delete, the row and the `auth.users` entry are never removed, matching
+the "no service role key" constraint and keeping every existing foreign key
+to `profiles.id` intact. `updated_at` (migration 012, a timestamp with a
+`set_updated_at` trigger) was the precedent for choosing a timestamp over a
+boolean flag here, this schema has no boolean status columns to match
+instead. See "Soft account deletion" under Row Level Security for how this
+column is actually enforced.
+
 ---
 
 ## Foreign-Key Delete Behavior
@@ -185,6 +194,97 @@ functions, defeating the security-definer boundary and reintroducing recursion.
 After fixing one recursive policy, retest every table whose policies depend on
 that table. A failure in `project_members` can block `projects` and `tasks`
 indirectly.
+
+**Not every same-table subquery actually recurses.** The rule above is stated
+as unconditional, and is worth following as a blanket rule regardless, but the
+`is_active_user()` function below (migration 018) queries `profiles` from
+inside `profiles`' own UPDATE policy, the exact shape this section warns
+about, without hitting 42P17. The reason: `profiles: authenticated users can
+read` is `using (true)`, a constant with nothing further to look up, so the
+inner read `is_active_user()` performs resolves in one step and never calls
+back into the UPDATE policy. `is_project_member`'s actual bug (003) was
+different, `project_members`' own original SELECT policy queried
+`project_members` again, a genuine cycle. `is_active_user()` keeps
+`SECURITY DEFINER` anyway, for privilege-pattern consistency with
+`is_project_member` and `lookup_user_id_by_email`, not because it's
+structurally required here.
+
+### Soft account deletion
+
+`profiles.deleted_at` (see "Established Schema" above) needs the deleted
+user's own session to lose access, without breaking other users' ability to
+read that same profile row for display (name, avatar, in the activity log,
+member lists, and the project avatar stack). These are two different
+questions, and the fix only touches one of them:
+
+```sql
+create or replace function public.is_active_user()
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+begin
+  return exists (
+    select 1 from public.profiles
+    where id = auth.uid()
+    and deleted_at is null
+  );
+end;
+$$;
+```
+
+`is_active_user()` is added as an extra `and` condition to every policy that
+governs what the *querying* user can do, on `profiles` (update), `projects`,
+`project_members`, `tasks`, and `activity_log`. `profiles: authenticated
+users can read` is deliberately left untouched, gating that policy on either
+side's `deleted_at` would break every one of the display cases above, which
+depend on a deleted user's row staying readable by everyone else regardless
+of their own account status.
+
+A second function blocks deleting an account that solely owns a project with
+other members, since ownership transfer isn't built (`docs/roadmap.md`):
+
+```sql
+create or replace function public.owner_has_multi_member_project()
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+begin
+  return exists (
+    select 1
+    from public.projects p
+    where p.owner_id = auth.uid()
+    and exists (
+      select 1
+      from public.project_members pm
+      where pm.project_id = p.id
+      and pm.user_id <> auth.uid()
+    )
+  );
+end;
+$$;
+```
+
+This is enforced with a `WITH CHECK` on `profiles: users can update own
+profile`, not a trigger, because the invariant only needs to look at the
+resulting row, not compare old vs. new: `deleted_at is null or not
+owner_has_multi_member_project()`. Once `deleted_at` is set,
+`is_active_user()` blocks every further update to that row anyway (including
+a second attempt at this same update), so this check never fires for an
+ordinary name/avatar edit, only for the one update that actually sets
+`deleted_at`. A `WITH CHECK` failure surfaces as the same `42501` that
+`interpretSupabaseWriteError` already collapses into a generic forbidden
+message, which is the right amount of detail for what should only ever be
+reached by a direct API bypass, the real UI check lives client-side in
+`features/profile/DeleteAccountSection.tsx` and hides the delete flow
+entirely when this condition is true.
+
+Full migration: `018_account_deletion.sql`.
 
 ### `handle_new_project`
 

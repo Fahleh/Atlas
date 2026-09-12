@@ -7,6 +7,7 @@ export type Member = {
   name: string;
   avatarUrl: string | null;
   role: MemberRole;
+  deletedAt: Date | null;
 };
 
 export type Project = {

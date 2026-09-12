@@ -100,7 +100,7 @@ export function ProjectCard({
           {visibleMembers.map((member) => (
             <span
               key={member.id}
-              className={sharedStyles.memberAvatar}
+              className={`${sharedStyles.memberAvatar} ${member.deletedAt ? sharedStyles.memberAvatarDeleted : ""}`}
               aria-hidden="true"
             >
               <Avatar name={member.name} avatarUrl={member.avatarUrl} />

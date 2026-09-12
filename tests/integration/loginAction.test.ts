@@ -48,6 +48,42 @@ describe("login", () => {
     expect(redirect).not.toHaveBeenCalled();
   });
 
+  it("should redirect to /login?error=account_deleted for a 403 account_deleted hook error", async () => {
+    server.use(
+      http.post(`${SUPABASE_URL}/auth/v1/token`, () =>
+        authError({ code: "unknown", message: "account_deleted" }, 403),
+      ),
+    );
+
+    await expect(
+      login(
+        { error: null, email: "" },
+        buildFormData({ email: "user@example.com", password: "password123" }),
+      ),
+    ).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(redirect).toHaveBeenCalledWith("/login?error=account_deleted");
+  });
+
+  it("should fall through to the generic message for a 403 that isn't account_deleted", async () => {
+    server.use(
+      http.post(`${SUPABASE_URL}/auth/v1/token`, () =>
+        authError({ code: "unknown", message: "some_other_403" }, 403),
+      ),
+    );
+
+    const result = await login(
+      { error: null, email: "" },
+      buildFormData({ email: "user@example.com", password: "password123" }),
+    );
+
+    expect(result).toEqual({
+      error: "Invalid email or password.",
+      email: "user@example.com",
+    });
+    expect(redirect).not.toHaveBeenCalled();
+  });
+
   it("should return a specific message for an unconfirmed email, without redirecting", async () => {
     server.use(
       http.post(`${SUPABASE_URL}/auth/v1/token`, () =>

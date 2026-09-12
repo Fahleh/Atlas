@@ -35,6 +35,11 @@ export async function login(
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
+    // Raised by reject_deleted_user_token (migration 019). See docs/auth.md
+    // ("Deleted-Account Detection") for why status/message, not error.code.
+    if (error.status === 403 && error.message === "account_deleted") {
+      redirect("/login?error=account_deleted");
+    }
     if (error.code === "email_not_confirmed") {
       return {
         error: "Please confirm your email before signing in.",

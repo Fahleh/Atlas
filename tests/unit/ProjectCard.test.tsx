@@ -31,6 +31,7 @@ function buildMembers(count: number): Member[] {
     name: `Member ${i}`,
     avatarUrl: null,
     role: i === 0 ? "owner" : "collaborator",
+    deletedAt: null,
   }));
 }
 
@@ -176,5 +177,35 @@ describe("ProjectCard due date and link", () => {
       "href",
       `/projects?project=${project.id}`,
     );
+  });
+});
+
+describe("ProjectCard member avatar stack", () => {
+  it("should gray out a deleted member's avatar but keep it visible", () => {
+    const members = buildMembers(2);
+    members[1] = { ...members[1], deletedAt: new Date("2026-01-01T00:00:00.000Z") };
+    const { container } = render(
+      <ProjectCard
+        project={project}
+        members={members}
+        taskCounts={{ done: 0, total: 0 }}
+      />,
+    );
+
+    const deletedAvatars = container.querySelectorAll(".memberAvatarDeleted");
+    expect(deletedAvatars).toHaveLength(1);
+  });
+
+  it("should not gray out an active member's avatar", () => {
+    const members = buildMembers(2);
+    const { container } = render(
+      <ProjectCard
+        project={project}
+        members={members}
+        taskCounts={{ done: 0, total: 0 }}
+      />,
+    );
+
+    expect(container.querySelectorAll(".memberAvatarDeleted")).toHaveLength(0);
   });
 });

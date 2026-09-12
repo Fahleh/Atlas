@@ -71,11 +71,59 @@ describe("useMembersByProject", () => {
 
     expect(result.current.data).toEqual({
       "project-1": [
-        { id: "user-1", name: "First", avatarUrl: null, role: "collaborator" },
-        { id: "user-2", name: "Second", avatarUrl: null, role: "owner" },
+        {
+          id: "user-1",
+          name: "First",
+          avatarUrl: null,
+          role: "collaborator",
+          deletedAt: null,
+        },
+        {
+          id: "user-2",
+          name: "Second",
+          avatarUrl: null,
+          role: "owner",
+          deletedAt: null,
+        },
       ],
-      "project-2": [{ id: "user-3", name: "Third", avatarUrl: null, role: "collaborator" }],
+      "project-2": [
+        {
+          id: "user-3",
+          name: "Third",
+          avatarUrl: null,
+          role: "collaborator",
+          deletedAt: null,
+        },
+      ],
     });
+  });
+
+  it("should parse a member's deleted_at into a Date when the profile is soft-deleted", async () => {
+    server.use(
+      http.get(`${SUPABASE_URL}/rest/v1/project_members`, () =>
+        HttpResponse.json([
+          {
+            project_id: "project-1",
+            role: "collaborator",
+            joined_at: "2026-01-01T00:00:00.000Z",
+            profiles: {
+              id: "user-1",
+              name: "Departed User",
+              avatar_url: null,
+              deleted_at: "2026-02-01T00:00:00.000Z",
+            },
+          },
+        ]),
+      ),
+    );
+
+    const { result } = renderHookWithClient(() => useMembersByProject(["project-1"]));
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(result.current.data?.["project-1"][0].deletedAt).toEqual(
+      new Date("2026-02-01T00:00:00.000Z"),
+    );
   });
 
   it("should surface a SupabaseReadError on a failed fetch", async () => {
