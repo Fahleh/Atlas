@@ -49,6 +49,48 @@ export function validateAvatarFile(file: File): string | null {
   return null;
 }
 
+// ---- Delete -------------------------------------------------------------------
+
+export type DeleteAccountResult = {
+  error: string | null;
+  errorKind: SupabaseWriteErrorKind | null;
+};
+
+/**
+ * Soft-deletes the current user's account by setting `profiles.deleted_at`.
+ * Never removes the profiles row or the auth.users entry. Signs out
+ * locally and invalidates every cached query keyed to the current user
+ * on success, then leaves navigation to the caller.
+ *
+ * The database blocks this write outright when the caller solely owns a
+ * project with other members, see docs/database.md ("Soft account
+ * deletion"). See docs/decisions.md ("The database enforces
+ * account-deletion blocking...") for why this function doesn't duplicate
+ * that check itself.
+ *
+ * @param userId - ID of the profile being marked deleted
+ * @param queryClient - TanStack QueryClient for cache invalidation
+ * @returns `{ error, errorKind }`, both null on success
+ */
+export async function deleteAccount(
+  userId: string,
+  queryClient: QueryClient,
+): Promise<DeleteAccountResult> {
+  const supabase = createClient();
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", userId);
+
+  if (error) return interpretSupabaseWriteError(error, supabase);
+
+  await supabase.auth.signOut({ scope: "local" });
+  queryClient.clear();
+
+  return { error: null, errorKind: null };
+}
+
 // ---- Update -------------------------------------------------------------------
 
 /**

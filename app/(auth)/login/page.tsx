@@ -36,6 +36,7 @@ function RedirectField() {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirectTo");
   const confirmationError = searchParams.get("error") === "confirmation_failed";
+  const accountDeleted = searchParams.get("error") === "account_deleted";
 
   return (
     <>
@@ -44,6 +45,11 @@ function RedirectField() {
         <div role="alert" className={sharedStyles.errorBanner}>
           Email confirmation failed. Please try signing up again or request a
           new confirmation email.
+        </div>
+      )}
+      {accountDeleted && (
+        <div role="alert" className={sharedStyles.errorBanner}>
+          This account has been deleted. You have been signed out.
         </div>
       )}
     </>
