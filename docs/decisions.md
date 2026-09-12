@@ -66,6 +66,8 @@ reason to document something here.
 - [Hardcoded hex colors in the Supabase email templates, not CSS custom properties](#hardcoded-hex-colors-in-the-supabase-email-templates-not-css-custom-properties)
 - [A Route Handler side channel for addMember's notification email, not a Server Action conversion](#a-route-handler-side-channel-for-addmembers-notification-email-not-a-server-action-conversion)
 - [Staying on Office 365 SMTP after diagnosing spam-folder delivery as an SCL reputation issue, not misconfiguration](#staying-on-office-365-smtp-after-diagnosing-spam-folder-delivery-as-an-scl-reputation-issue-not-misconfiguration)
+- [No pgTAP for reject_deleted_user_token's internal defensive branches](#no-pgtap-for-reject_deleted_user_tokens-internal-defensive-branches)
+- [DeletedAccountGuard's retry is a self-contained backoff loop, not disabled structural sharing](#deletedaccountguards-retry-is-a-self-contained-backoff-loop-not-disabled-structural-sharing)
 
 ---
 
@@ -1658,3 +1660,75 @@ zero reputation.
 
 **Takeaway.** Known, accepted limitation of a low-volume, new sending
 domain. Revisit if this persists after real send volume accumulates.
+
+---
+
+## No pgTAP for reject_deleted_user_token's internal defensive branches
+
+**Decision:** `reject_deleted_user_token` (migration 019) has two defensive
+branches, an exception handler around the uuid cast and a null check, that
+are not covered by any automated test. No pgTAP or equivalent was
+introduced to close this.
+
+**Why.** Nothing in the real auth flow can construct the malformed `event`
+payload those branches guard against, GoTrue builds that payload
+internally from its own session/user state, not from anything a client or
+attacker controls. This project also has no existing convention for
+testing a Postgres function in isolation, checked directly, no pgTAP,
+no `pg_prove`, no `supabase/tests/` directory anywhere in the repo.
+Introducing that tooling for one function's defensive code would be new
+test infrastructure out of proportion to the risk.
+
+**What is actually covered.** Both real call paths the function is
+exercised through in production, a password-grant sign-in and a
+refresh-token grant against an already-soft-deleted account, are covered
+end to end against a real database by
+`tests/e2e/account-deletion-login-block.spec.ts`.
+
+**What is not.** The exception handler and the null check specifically.
+These were verified once, manually, against the real local stack during
+development (raw SQL calls with a missing and a malformed `user_id`), not
+by anything that runs again in CI. Accepted as a bounded, named gap, not
+an oversight. Revisit if this project ever adopts pgTAP for other reasons.
+
+---
+
+## DeletedAccountGuard's retry is a self-contained backoff loop, not disabled structural sharing
+
+**Decision:** When `signOut()` fails inside `DeletedAccountGuard`, the
+retry is a self-contained `setTimeout` loop with a fixed backoff (2s, 5s,
+15s, four attempts total including the first), living entirely inside the
+effect's own closure. `structuralSharing` on `useCurrentUserProfile` was
+not touched.
+
+**Why.** The original fix reset `hasHandledRef.current` on failure,
+assuming a later background refetch of `useCurrentUserProfile` would
+naturally re-run the effect and retry. Tested this directly rather than
+assuming it from React Query's docs: mounted a real `useQuery` hook,
+forced a genuine refetch with identical data, and checked the `data`
+reference before and after, with a `staleTime` of `0` and with a finite
+`staleTime`. Same reference both times. Structural sharing (on by default)
+keeps `profile` referentially stable across a refetch as long as the
+underlying data hasn't changed, which is exactly the case for an already
+soft-deleted account whose `deletedAt` never changes again. That means
+resetting `hasHandledRef` alone did nothing, nothing was going to make the
+effect fire a second time.
+
+**Why not fix it by disabling structural sharing instead.** Checked every
+consumer of `useCurrentUserProfile` before ruling this out, not assumed:
+`Header.tsx` and `ProfileForm.tsx` both read primitive fields off `profile`
+directly and never depend on its object identity, so `structuralSharing:
+false` scoped to this hook would have been safe for them. The real problem
+is that it would have been the wrong tool anyway. A background refetch of
+this hook happens whenever `QueryProvider`'s 60 second `staleTime` elapses
+and something triggers a refetch, a remount or a window refocus, not on
+any schedule designed for retrying a failed sign-out. On a backgrounded
+tab with no refocus, that could be a long, unbounded wait. It would also
+be repurposing a shared hook's caching behavior, safe for its other two
+consumers today, confirmed, but a future addition to either that starts
+depending on referential stability would silently break, for a benefit
+that belongs to one narrow failure case in one consumer.
+
+**Takeaway.** A retry that must happen within a known bound belongs next
+to the thing being retried, not delegated to a shared cache's refetch
+timing.
