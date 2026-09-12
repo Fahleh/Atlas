@@ -18,3 +18,17 @@ export const RESET_ACCOUNT = {
   email: "e2e-reset@atlas.test",
   password: "e2e-reset-password-1",
 };
+
+// Both get soft-deleted by account-deletion-login-block.spec.ts. Kept
+// separate from each other so the password-grant and refresh-grant cases
+// each get a never-shared account, and separate from PRIMARY/SECONDARY/
+// RESET so no other spec's account gets mutated.
+export const DELETED_ACCOUNT = {
+  email: "e2e-deleted-login@atlas.test",
+  password: "e2e-deleted-login-password-1",
+};
+
+export const DELETED_ACCOUNT_REFRESH = {
+  email: "e2e-deleted-refresh@atlas.test",
+  password: "e2e-deleted-refresh-password-1",
+};

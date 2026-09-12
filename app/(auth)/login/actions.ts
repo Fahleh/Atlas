@@ -35,6 +35,14 @@ export async function login(
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
+    // Raised by reject_deleted_user_token (migration 019). Match on status
+    // and message, not error.code, GoTrue doesn't map a custom hook's
+    // returned error to a real code, it stays "unknown". Reuses the same
+    // ?error=account_deleted messaging path DeletedAccountGuard's redirect
+    // already renders on /login, not a second message for the same thing.
+    if (error.status === 403 && error.message === "account_deleted") {
+      redirect("/login?error=account_deleted");
+    }
     if (error.code === "email_not_confirmed") {
       return {
         error: "Please confirm your email before signing in.",
