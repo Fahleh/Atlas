@@ -13,7 +13,12 @@ type ProjectMemberRow = {
   projectId: string;
   role: string | null;
   joinedAt: Date;
-  profiles: { id: string; name: string; avatar_url: string | null } | null;
+  profiles: {
+    id: string;
+    name: string;
+    avatar_url: string | null;
+    deleted_at: string | null;
+  } | null;
 };
 
 const VALID_ROLES: readonly MemberRole[] = ["owner", "collaborator"];
@@ -43,6 +48,7 @@ function groupMembersByProject(
       name: profile.name,
       avatarUrl: profile.avatar_url,
       role: isMemberRole(row.role) ? row.role : "collaborator",
+      deletedAt: profile.deleted_at ? new Date(profile.deleted_at) : null,
     };
     acc[row.projectId] = [...(acc[row.projectId] ?? []), member];
     return acc;
@@ -69,7 +75,9 @@ export function useMembersByProject(projectIds: string[]) {
       const supabase = createClient();
       const { data, error } = await supabase
         .from("project_members")
-        .select("project_id, role, joined_at, profiles(id, name, avatar_url)")
+        .select(
+          "project_id, role, joined_at, profiles(id, name, avatar_url, deleted_at)",
+        )
         .in("project_id", sortedIds);
 
       if (error) throw new SupabaseReadError(interpretSupabaseReadError(error));

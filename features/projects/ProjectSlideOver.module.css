@@ -247,6 +247,10 @@
   color: var(--color-text-muted);
 }
 
+.deletedLabel {
+  color: var(--color-text-muted);
+}
+
 .removeMemberWrapper {
   display: flex;
   flex-direction: column;

@@ -71,7 +71,28 @@ describe("useCurrentUserProfile", () => {
       id: FAKE_PROFILE_ROW.id,
       name: FAKE_PROFILE_ROW.name,
       avatarUrl: FAKE_PROFILE_ROW.avatar_url,
+      deletedAt: null,
     });
+  });
+
+  it("should parse deleted_at into a Date for a soft-deleted account", async () => {
+    mockLiveSession("user-123");
+    server.use(
+      http.get(`${SUPABASE_URL}/rest/v1/profiles`, () =>
+        HttpResponse.json({
+          ...FAKE_PROFILE_ROW,
+          deleted_at: "2026-02-01T00:00:00.000Z",
+        }),
+      ),
+    );
+
+    const { result } = renderHookWithClient(() => useCurrentUserProfile());
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(result.current.data?.deletedAt).toEqual(
+      new Date("2026-02-01T00:00:00.000Z"),
+    );
   });
 
   it("should surface a SupabaseReadError on a failed profile fetch", async () => {

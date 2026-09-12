@@ -15,6 +15,7 @@ export const FAKE_PROJECT_MEMBER_ROW = {
     id: "00000000-0000-4000-8000-000000000000",
     name: "Fake User",
     avatar_url: null,
+    deleted_at: null,
   },
 };
 

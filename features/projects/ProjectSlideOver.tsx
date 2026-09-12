@@ -509,6 +509,9 @@ export function ProjectSlideOver({
                         <span className={styles.memberName}>{member.name}</span>
                         <span className={styles.memberRole}>
                           {MEMBER_ROLE_LABELS[member.role]}
+                          {member.deletedAt && (
+                            <span className={styles.deletedLabel}> · Deleted user</span>
+                          )}
                         </span>
                       </div>
 
