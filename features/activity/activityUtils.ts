@@ -139,6 +139,9 @@ export function buildActivityMessage(entry: ActivityLogEntry): string {
 
     case "member_removed":
       return `${actorName} removed ${entityName} from the project`;
+
+    case "ownership_transferred":
+      return `${actorName} transferred ownership to ${entityName}`;
   }
 }
 

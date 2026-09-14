@@ -29,13 +29,6 @@ own plan.
 
 ## Deferred to v2 (out of scope for the current version)
 
-- **Ownership transfer.** Reassigning `projects.owner_id` and the
-  corresponding `project_members` role from one user to another. Deferred
-  because it needs its own design pass: who can initiate it, what
-  confirmation flow is required, and what happens to the outgoing owner's
-  access afterward. Not a small addition to the existing member-management
-  flow.
-
 - **Drag-and-drop.** Task reordering, or a Kanban-style status-column
   board. No design work done yet; would likely need its own state
   management approach distinct from the current form-action-based

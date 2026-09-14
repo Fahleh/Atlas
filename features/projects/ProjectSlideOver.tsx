@@ -14,7 +14,15 @@ import { isValidEmail } from "@/lib/utils";
 import type { SupabaseWriteErrorKind } from "@/lib/supabase/errors";
 import type { Member, Project, ProjectStatus, Task } from "@/types/atlas.types";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
+import {
+  ArrowRightLeft,
+  Check,
+  Loader2,
+  Pencil,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import styles from "./ProjectSlideOver.module.css";
@@ -22,6 +30,7 @@ import {
   addMember,
   deleteProject,
   removeMember,
+  transferOwnership,
   type ProjectFormState,
 } from "./projectActions";
 import sharedStyles from "./projectShared.module.css";
@@ -172,15 +181,15 @@ export function ProjectSlideOver({
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   const { data: currentUser } = useCurrentUser();
+  // Gates Edit/Delete/add-member/remove-member/transfer-ownership controls below
+  // owner-only by design; RLS is the actual enforcement boundary, this is UI-only.
   const isOwner = currentUser?.id === project?.ownerId;
-  // Gates Edit/Delete/add-member/remove-member controls below — owner-only
-  // by design; RLS is the actual enforcement boundary, this is UI-only.
 
   // ---- Delete confirmation modal state ------------------------------------
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   // Incremented on every open so the EntityModal remounts and clears any
-  // previous error state — mirrors the modalResetKey pattern on TaskModal.
+  // previous error state: mirrors the modalResetKey pattern on TaskModal.
   const [deleteModalResetKey, setDeleteModalResetKey] = useState(0);
 
   // ---- Task modal state ----------------------------------------------------
@@ -254,6 +263,29 @@ export function ProjectSlideOver({
     cancelButtonRef.current?.focus();
   }, [confirmingMemberId]);
 
+  // ---- Transfer-ownership confirm state --------------------------------
+
+  const [confirmingTransferMemberId, setConfirmingTransferMemberId] = useState<
+    string | null
+  >(null);
+  const [transferringMemberId, setTransferringMemberId] = useState<
+    string | null
+  >(null);
+  const [transferState, setTransferState] = useState<{
+    error: string | null;
+    errorKind: SupabaseWriteErrorKind | null;
+  }>({ error: null, errorKind: null });
+
+  const cancelTransferButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Same rationale as the remove-member focus effect above, kept as its
+  // own state and its own ref, not reused, since transfer and remove are
+  // different actions that can each be mid-confirm on different rows.
+  useEffect(() => {
+    if (!confirmingTransferMemberId) return;
+    cancelTransferButtonRef.current?.focus();
+  }, [confirmingTransferMemberId]);
+
   // Resets remove-member confirm state on project switch/close. Adjusted
   // during render, not in an effect — see CLAUDE.md's React Components section.
   const currentProjectId = project?.id ?? null;
@@ -263,6 +295,9 @@ export function ProjectSlideOver({
     setConfirmingMemberId(null);
     setRemovingMemberId(null);
     setRemoveMemberState({ error: null, errorKind: null });
+    setConfirmingTransferMemberId(null);
+    setTransferringMemberId(null);
+    setTransferState({ error: null, errorKind: null });
   }
 
   async function handleRemoveMember(memberId: string) {
@@ -278,6 +313,21 @@ export function ProjectSlideOver({
       return;
     }
     setConfirmingMemberId(null);
+  }
+
+  async function handleTransferOwnership(memberId: string) {
+    if (!project) return;
+    setTransferringMemberId(memberId);
+    setTransferState({ error: null, errorKind: null });
+
+    const result = await transferOwnership(project.id, memberId, queryClient);
+    setTransferringMemberId(null);
+
+    if (result.error) {
+      setTransferState(result);
+      return;
+    }
+    setConfirmingTransferMemberId(null);
   }
 
   function openForCreate() {
@@ -510,67 +560,144 @@ export function ProjectSlideOver({
                         <span className={styles.memberRole}>
                           {MEMBER_ROLE_LABELS[member.role]}
                           {member.deletedAt && (
-                            <span className={styles.deletedLabel}> · Deleted user</span>
+                            <span className={styles.deletedLabel}>
+                              {" "}
+                              · Deleted user
+                            </span>
                           )}
                         </span>
                       </div>
 
                       {isOwner && member.role !== "owner" && (
-                        <div className={styles.removeMemberWrapper}>
-                          {confirmingMemberId === member.id ? (
-                            <div className={styles.removeConfirmGroup}>
-                              <button
-                                ref={cancelButtonRef}
-                                type="button"
-                                onClick={() => setConfirmingMemberId(null)}
-                                disabled={removingMemberId === member.id}
-                                aria-label="Cancel remove"
-                                className={styles.removeMemberButton}
-                              >
-                                <X size={14} aria-hidden="true" />
-                              </button>
-                              <button
-                                type="button"
-                                disabled={removingMemberId === member.id}
-                                onClick={() => handleRemoveMember(member.id)}
-                                aria-label={`Confirm remove ${member.name}`}
-                                className={styles.removeMemberButtonDanger}
-                              >
-                                {removingMemberId === member.id ? (
-                                  <Loader2
+                        <div className={styles.memberActions}>
+                          <div className={styles.transferWrapper}>
+                            {confirmingTransferMemberId === member.id ? (
+                              <div className={styles.removeConfirmGroup}>
+                                <button
+                                  ref={cancelTransferButtonRef}
+                                  type="button"
+                                  onClick={() =>
+                                    setConfirmingTransferMemberId(null)
+                                  }
+                                  disabled={transferringMemberId === member.id}
+                                  aria-label="Cancel transfer"
+                                  className={styles.removeMemberButton}
+                                >
+                                  <X size={14} aria-hidden="true" />
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={transferringMemberId === member.id}
+                                  onClick={() =>
+                                    handleTransferOwnership(member.id)
+                                  }
+                                  aria-label={`Confirm transfer ownership to ${member.name}`}
+                                  className={styles.transferButtonConfirm}
+                                >
+                                  {transferringMemberId === member.id ? (
+                                    <Loader2
+                                      size={14}
+                                      className={styles.spinning}
+                                      aria-hidden="true"
+                                    />
+                                  ) : (
+                                    <Check size={14} aria-hidden="true" />
+                                  )}
+                                </button>
+                              </div>
+                            ) : (
+                              <span className={styles.tooltipTrigger}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setTransferState({
+                                      error: null,
+                                      errorKind: null,
+                                    });
+                                    setConfirmingTransferMemberId(member.id);
+                                  }}
+                                  aria-label={`Transfer ownership to ${member.name}`}
+                                  className={styles.removeMemberButton}
+                                >
+                                  <ArrowRightLeft
                                     size={14}
-                                    className={styles.spinning}
                                     aria-hidden="true"
                                   />
-                                ) : (
-                                  <Check size={14} aria-hidden="true" />
-                                )}
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setRemoveMemberState({
-                                  error: null,
-                                  errorKind: null,
-                                });
-                                setConfirmingMemberId(member.id);
-                              }}
-                              aria-label={`Remove ${member.name}`}
-                              className={styles.removeMemberButton}
-                            >
-                              <Trash2 size={14} aria-hidden="true" />
-                            </button>
-                          )}
-                          {removeMemberState.error &&
-                            confirmingMemberId === member.id && (
-                              <ActionErrorMessage
-                                error={removeMemberState.error}
-                                errorKind={removeMemberState.errorKind}
-                                className={styles.removeMemberError}
-                              />
+                                </button>
+                                <span
+                                  className={styles.tooltip}
+                                  aria-hidden="true"
+                                >
+                                  Transfer ownership
+                                </span>
+                              </span>
                             )}
+                            {transferState.error &&
+                              confirmingTransferMemberId === member.id && (
+                                <ActionErrorMessage
+                                  error={transferState.error}
+                                  errorKind={transferState.errorKind}
+                                  className={styles.removeMemberError}
+                                />
+                              )}
+                          </div>
+
+                          <div className={styles.removeMemberWrapper}>
+                            {confirmingMemberId === member.id ? (
+                              <div className={styles.removeConfirmGroup}>
+                                <button
+                                  ref={cancelButtonRef}
+                                  type="button"
+                                  onClick={() => setConfirmingMemberId(null)}
+                                  disabled={removingMemberId === member.id}
+                                  aria-label="Cancel remove"
+                                  className={styles.removeMemberButton}
+                                >
+                                  <X size={14} aria-hidden="true" />
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={removingMemberId === member.id}
+                                  onClick={() => handleRemoveMember(member.id)}
+                                  aria-label={`Confirm remove ${member.name}`}
+                                  className={styles.removeMemberButtonDanger}
+                                >
+                                  {removingMemberId === member.id ? (
+                                    <Loader2
+                                      size={14}
+                                      className={styles.spinning}
+                                      aria-hidden="true"
+                                    />
+                                  ) : (
+                                    <Check size={14} aria-hidden="true" />
+                                  )}
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setRemoveMemberState({
+                                    error: null,
+                                    errorKind: null,
+                                  });
+                                  setConfirmingMemberId(member.id);
+                                }}
+                                aria-label={`Remove ${member.name}`}
+                                className={styles.removeMemberButton}
+                              >
+                                <Trash2 size={14} aria-hidden="true" />
+                              </button>
+                            )}
+                            {removeMemberState.error &&
+                              confirmingMemberId === member.id && (
+                                <ActionErrorMessage
+                                  error={removeMemberState.error}
+                                  errorKind={removeMemberState.errorKind}
+                                  className={styles.removeMemberError}
+                                />
+                              )}
+                          </div>
                         </div>
                       )}
                     </li>
@@ -696,9 +823,7 @@ export function ProjectSlideOver({
             )}
             <TaskModal.FooterActions>
               <TaskModal.CancelButton>Cancel</TaskModal.CancelButton>
-              <TaskModal.SubmitButton
-                disabled={!!editingTask && !isTaskDirty}
-              >
+              <TaskModal.SubmitButton disabled={!!editingTask && !isTaskDirty}>
                 {editingTask ? "Save changes" : "Create task"}
               </TaskModal.SubmitButton>
             </TaskModal.FooterActions>

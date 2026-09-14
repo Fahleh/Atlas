@@ -277,6 +277,10 @@ export type Database = {
       lookup_user_id_by_email: { Args: { _email: string }; Returns: string }
       owner_has_multi_member_project: { Args: never; Returns: boolean }
       reject_deleted_user_token: { Args: { event: Json }; Returns: Json }
+      transfer_project_ownership: {
+        Args: { _new_owner_id: string; _project_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

@@ -1,6 +1,6 @@
 # Architectural Decisions
 
-> Last updated: August 2026
+> Last updated: September 2026
 
 This document explains _why_ certain choices were made where the reasoning
 is not obvious from the code alone. It is not a changelog, and not a
@@ -70,6 +70,7 @@ reason to document something here.
 - [DeletedAccountGuard's retry is a self-contained backoff loop, not disabled structural sharing](#deletedaccountguards-retry-is-a-self-contained-backoff-loop-not-disabled-structural-sharing)
 - [The database enforces account-deletion blocking, the UI is a convenience, not a gate](#the-database-enforces-account-deletion-blocking-the-ui-is-a-convenience-not-a-gate)
 - [useCurrentUserEmail as its own hook, not folded into useCurrentUser](#usecurrentuseremail-as-its-own-hook-not-folded-into-usecurrentuser)
+- [Ownership transfer as a SECURITY DEFINER RPC, logging inside the function itself](#ownership-transfer-as-a-security-definer-rpc-logging-inside-the-function-itself)
 
 ---
 
@@ -1002,7 +1003,7 @@ the affected subtree client-side, and that recovery path writes
 through a raw `innerHTML` call. `app/layout.tsx`'s Trusted Types
 `default` policy only defines `createScriptURL`, not `createHTML`
 (see the Trusted Types entry above), so that write throws once
-enforcement is active in production. The policy did what it's for;
+enforcement is active in production. The policy did what it's for;CSP
 this wasn't a gap to widen.
 
 **Why `useSyncExternalStore`, not a `mounted`-flag guard.** A
@@ -1784,3 +1785,68 @@ that needs the account's email, and it comes from the same local JWT
 claims `useCurrentUser()` already reads, `getClaims()`, no network call,
 so a second small hook local to `DeleteAccountSection.tsx` was the
 smaller change.
+
+---
+
+## Ownership transfer as a SECURITY DEFINER RPC, logging inside the function itself
+
+**Decision:** `transfer_project_ownership()` is a `SECURITY DEFINER` plpgsql
+function called via `supabase.rpc(...)`, not three separate client writes.
+It also inserts its own `activity_log` row directly, rather than extending
+`handle_member_activity` to react to a role change on `project_members`.
+
+**Why an RPC, not client writes.** Checked before deciding, not assumed:
+`project_members` has no `UPDATE` policy anywhere in `002`, `003`, or
+`018_account_deletion.sql`, so a direct client update is rejected by RLS
+for every user, not just a non-owner. `projects: owner can update` has no
+explicit `WITH CHECK`, so its `USING` clause doubles as the check on the
+new row, `owner_id = auth.uid()`, which would reject writing a new owner's
+ID in the first place. Both writes this feature needs are structurally
+blocked by policies as they already exist, so this isn't a preference for
+atomicity over three calls, a client-side version cannot work at all
+without loosening RLS specifically to allow it, which is the thing
+`docs/database.md` says not to do to route around a missing mechanism.
+
+**Why the old owner is demoted before the new owner is promoted.**
+`create unique index` has no deferrable option, only a table `unique
+constraint` can defer its check to end of transaction, so each `UPDATE`
+here is checked against the partial index the moment it runs. Promoting
+the new owner first would leave both rows matching `role = 'owner'` for
+the same `project_id` for that one statement, which the index rejects
+immediately, the second statement never runs. Demoting first avoids that
+overlap entirely. This ordering is required by the index, not a
+stylistic preference.
+
+**Why the log insert lives inside the RPC instead of a trigger.**
+`handle_member_activity` only fires on `INSERT`/`DELETE` on
+`project_members` (`014_activity_log.sql`). A transfer does two `UPDATE`s,
+so that trigger never sees it, there's no existing behavior to extend.
+Adding a third, `AFTER UPDATE` trigger that infers "this was a transfer"
+from a `role` change was considered and rejected: inferring intent from a
+generic row change is indirect, and the function that performs the change
+already knows exactly what happened. Having it log itself is the more
+direct choice, the same way `handle_new_project` owns its own bootstrap
+insert without going through a shared trigger.
+
+**The bootstrap-insert skip in `handle_member_activity` needed no fix.**
+The `if new.role = 'collaborator' then ... end if` guard that skips
+logging an owner-role insert was never explained by a comment or by either
+doc, checked directly, not assumed. It didn't need one: it's still correct
+after this feature ships, project creation still shouldn't log a "member
+added" line for its own bootstrap owner row. `020_ownership_transfer.sql`
+recreates the function with a comment now, since this feature is exactly
+the context a future reader would want it in, pointing at
+`transfer_project_ownership()` as where a real ownership change gets
+logged instead.
+
+**Why inline two-step confirm in `ProjectSlideOver`, not a modal.** This
+sits closer to "Low-blast-radius non-form removal" than to an account-level
+irreversible action in `docs/frontend.md`'s severity ladder: the initiating
+owner keeps full project access afterward, just as a collaborator, nothing
+is deleted or lost, unlike account deletion where the user gives up their
+own access entirely. The same pattern already used for removing a member,
+trash icon swapping to explicit Cancel/Confirm with focus moved to Cancel,
+applies directly. It uses its own state
+(`confirmingTransferMemberId`, not `confirmingMemberId`) and its own focus
+ref, since a row can have a remove action and a transfer action confirming
+independently of each other.

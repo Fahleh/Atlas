@@ -244,7 +244,9 @@ depend on a deleted user's row staying readable by everyone else regardless
 of their own account status.
 
 A second function blocks deleting an account that solely owns a project with
-other members, since ownership transfer isn't built (`docs/roadmap.md`):
+other members. The way out is transferring ownership to another
+collaborator, not removing every other member, see "Ownership transfer"
+below. This function's own block is unchanged by that feature shipping:
 
 ```sql
 create or replace function public.owner_has_multi_member_project()
@@ -320,6 +322,29 @@ in this project's scope.
 
 Use this pattern for future reads from `auth.users`. Never expose `auth.users`
 to direct client queries.
+
+### Ownership transfer
+
+- `SECURITY DEFINER`;
+- `LANGUAGE plpgsql`;
+- callable by any authenticated user, authorization is checked inside the
+  function body, not delegated to a policy;
+- caller must be the project's current `owner_id`;
+- target must already hold a `collaborator` row on that same project;
+- a partial unique index, `project_members_project_id_idx` on
+  `project_members (project_id) where role = 'owner'`, enforces at most
+  one owner row per project at the schema level;
+- flips both `project_members` roles and `projects.owner_id` in one
+  transaction, then inserts one `ownership_transferred` activity_log row.
+
+`SECURITY DEFINER` is required, not just convenient: `project_members` has
+no `UPDATE` policy at all, so a direct client update is rejected outright.
+`projects: owner can update` also has no explicit `WITH CHECK`, so Postgres
+reuses its `USING` clause (`owner_id = auth.uid()`) as the check on the new
+row, which rejects setting `owner_id` to anyone but the caller. Both
+confirmed by reading the actual policy definitions, not assumed.
+
+Full migration: `020_ownership_transfer.sql`.
 
 ---
 

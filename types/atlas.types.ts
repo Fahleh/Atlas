@@ -66,7 +66,8 @@ export type ActivityVerb =
   | "task_updated"
   | "task_deleted"
   | "member_added"
-  | "member_removed";
+  | "member_removed"
+  | "ownership_transferred";
 
 export type ActivityEntityType = "project" | "task" | "project_member";
 
