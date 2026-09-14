@@ -152,6 +152,38 @@ export async function removeMember(
   return { error: null, errorKind: null };
 }
 
+/**
+ * Transfers project ownership to an existing collaborator via the
+ * transfer_project_ownership RPC. The RPC does the authorization checks,
+ * the three-table atomic write, and the activity_log insert; this
+ * function only calls it and refreshes the affected caches.
+ *
+ * @param projectId - ID of the project being transferred
+ * @param newOwnerId - ID of the collaborator becoming the new owner
+ * @param queryClient - TanStack QueryClient for cache invalidation
+ * @returns `{ error, errorKind }`, both null on success
+ */
+export async function transferOwnership(
+  projectId: string,
+  newOwnerId: string,
+  queryClient: QueryClient,
+): Promise<ProjectMutationResult> {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("transfer_project_ownership", {
+    _project_id: projectId,
+    _new_owner_id: newOwnerId,
+  });
+
+  if (error) return interpretSupabaseWriteError(error, supabase);
+
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["projects"] }),
+    queryClient.invalidateQueries({ queryKey: ["projectMembers"] }),
+    queryClient.invalidateQueries({ queryKey: ["activityLog"] }),
+  ]);
+  return { error: null, errorKind: null };
+}
+
 // ---- Save helpers -----------------------------------------------------------
 
 const VALID_PROJECT_STATUSES = Object.keys(
