@@ -5,19 +5,18 @@ import { AlertCircle, ClipboardList } from "lucide-react";
 import { useTasks } from "@/hooks/useTasks";
 import { Skeleton } from "@/components/Skeleton";
 import { TaskItem } from "./TaskItem";
-import type { Task } from "@/types/atlas.types";
+import type { Member, Task } from "@/types/atlas.types";
 import styles from "./TaskList.module.css";
 
 type TaskListProps = {
   projectId: string;
+  members: Member[];
   onTaskSelect: (task: Task) => void;
 };
 
 const SKELETON_ROW_COUNT = 4;
 
-/**
- * Loading skeleton for the initial task fetch.
- */
+// Loading skeleton for the initial task fetch.
 function renderLoadingSkeleton() {
   return (
     <ul
@@ -41,9 +40,10 @@ function renderLoadingSkeleton() {
  * Handles loading, error, empty, and success states internally.
  *
  * @param projectId - The ID of the project whose tasks to display
+ * @param members - Members of the project, for each row's assignee popover
  * @param onTaskSelect - Called when a task row is activated; opens the edit modal
  */
-export function TaskList({ projectId, onTaskSelect }: TaskListProps) {
+export function TaskList({ projectId, members, onTaskSelect }: TaskListProps) {
   const {
     data: tasks,
     isLoading,
@@ -97,7 +97,7 @@ export function TaskList({ projectId, onTaskSelect }: TaskListProps) {
     <ul className={styles.list} aria-label="Project tasks">
       {tasks.map((task) => (
         <li key={task.id}>
-          <TaskItem task={task} onSelect={onTaskSelect} />
+          <TaskItem task={task} members={members} onSelect={onTaskSelect} />
         </li>
       ))}
     </ul>

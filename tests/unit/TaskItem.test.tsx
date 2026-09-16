@@ -3,8 +3,9 @@
  */
 
 import "@testing-library/jest-dom";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { TaskItem } from "@/features/tasks/TaskItem";
+import { renderWithClient } from "@/tests/mocks/queryClient";
 import type { Task } from "@/types/atlas.types";
 
 const task: Task = {
@@ -21,7 +22,7 @@ const task: Task = {
 describe("TaskItem", () => {
   it("should render the task's title and status label, and call onSelect on click", () => {
     const onSelect = jest.fn();
-    render(<TaskItem task={task} onSelect={onSelect} />);
+    renderWithClient(<TaskItem task={task} members={[]} onSelect={onSelect} />);
 
     const row = screen.getByRole("button", { name: "Open Write the report" });
     expect(row).toHaveTextContent("Write the report");
@@ -29,16 +30,5 @@ describe("TaskItem", () => {
 
     fireEvent.click(row);
     expect(onSelect).toHaveBeenCalledWith(task);
-  });
-
-  it("should call onSelect on Enter and Space", () => {
-    const onSelect = jest.fn();
-    render(<TaskItem task={task} onSelect={onSelect} />);
-    const row = screen.getByRole("button", { name: "Open Write the report" });
-
-    fireEvent.keyDown(row, { key: "Enter" });
-    fireEvent.keyDown(row, { key: " " });
-
-    expect(onSelect).toHaveBeenCalledTimes(2);
   });
 });

@@ -71,6 +71,9 @@ reason to document something here.
 - [The database enforces account-deletion blocking, the UI is a convenience, not a gate](#the-database-enforces-account-deletion-blocking-the-ui-is-a-convenience-not-a-gate)
 - [useCurrentUserEmail as its own hook, not folded into useCurrentUser](#usecurrentuseremail-as-its-own-hook-not-folded-into-usecurrentuser)
 - [Ownership transfer as a SECURITY DEFINER RPC, logging inside the function itself](#ownership-transfer-as-a-security-definer-rpc-logging-inside-the-function-itself)
+- [task_assigned and task_unassigned use entity_type 'task', not project_member](#task_assigned-and-task_unassigned-use-entity_type-task-not-project_member)
+- [AssigneeListbox's options panel is portaled, the first portal in this codebase](#assigneelistboxs-options-panel-is-portaled-the-first-portal-in-this-codebase)
+- [Clearing assignee_id when a member is removed from a project](#clearing-assignee_id-when-a-member-is-removed-from-a-project)
 
 ---
 
@@ -1850,3 +1853,87 @@ applies directly. It uses its own state
 (`confirmingTransferMemberId`, not `confirmingMemberId`) and its own focus
 ref, since a row can have a remove action and a transfer action confirming
 independently of each other.
+
+---
+
+## task_assigned and task_unassigned use entity_type 'task', not project_member
+
+**Decision:** both verbs point `entity_type` at the task itself
+(`entity_id` and `entity_name` are the task's own id and title), matching
+every other `task_*` verb, rather than pointing at the member being
+assigned or unassigned.
+
+**Why.** `activity_log` already has two competing shapes for this kind of
+choice. `task_created`, `task_status_changed`, `task_updated`, and
+`task_deleted` all treat the task as the entity, with anything else that
+matters carried in metadata. `ownership_transferred` is the one exception,
+it points at the member, because a change of owner is fundamentally about
+who runs the project, not about any single task. An assignment change is
+the opposite case, it's something happening to a task, so it stays on the
+task-pointing side of that split. Who the assignee is, and who it used to
+be when replacing an existing one, lives entirely in metadata
+(`assigneeId`/`assigneeName`, `previousAssigneeId`/`previousAssigneeName`),
+not in the entity fields.
+
+---
+
+## AssigneeListbox's options panel is portaled, the first portal in this codebase
+
+**Decision:** the options panel renders through `createPortal` into
+`document.body`, positioned with `position: fixed` computed from the
+trigger's own bounding rect, instead of `position: absolute` nested
+inside the row. There was no existing portal anywhere in this codebase
+before this, so this sets the pattern rather than following one.
+
+**Why a portal was necessary.** An element with `position: absolute` is
+out of normal flow, but it's still counted as part of its nearest
+scrolling ancestor's content for the purpose of that ancestor's
+scrollable overflow. `TaskList`'s rows sit inside a container with
+`overflow-y: auto`, so a popover anchored there with `position: absolute`
+still added to that container's scroll height, opening it near the
+bottom of a scrolled list pushed the list's own scrollbar even though the
+popover visually read as detached from the row. Fixed positioning alone
+escapes an ancestor's overflow clipping, but only moving the element out
+of that ancestor's subtree actually removes it from the scroll
+calculation, so the portal and the position change belong together.
+
+**Why useOutsideClick needed a second ref.** Once the panel is portaled,
+it's no longer a DOM descendant of the trigger that opens it, it's a
+sibling appended elsewhere in the tree. `useOutsideClick`'s containment
+check only looked at one element before this, so a click on an option
+would register as outside the trigger and close the popover before the
+option's own click handler ran. It now takes an optional `extraRef`, a
+second element also treated as inside, so the portaled panel counts
+alongside the trigger. `StatusBox` doesn't pass one and isn't affected.
+
+**Why z-index 60.** The highest z-index anywhere else in this codebase is
+50, `EntityModal`'s own stacking level. The field variant opens from
+inside that modal but portals out to a sibling of it, so it has to
+outrank that specific value, not just move up from its own previous one.
+
+---
+
+## Clearing assignee_id when a member is removed from a project
+
+**Decision:** removing a member from a project also clears assignee_id
+on any task in that project still assigned to them, rather than leaving
+the assignment in place. Clearing the assignment on removal is the
+ordinary behavior for task assignment scoped to a container someone can
+lose access to.
+
+**Why not leave the old assignee_id in place.** Some systems keep a
+stale assignment around on purpose, to preserve who had something at
+some point in time. That reasoning doesn't carry over here, because
+activity_log already records every task_assigned and task_unassigned
+change as permanent history, independent of whatever assignee_id
+happens to hold right now. A task still pointing at someone with no
+membership left on that project isn't preserving information, it's
+just a value nothing can act on and a name the UI would show for
+someone who isn't there anymore.
+
+**Why not block the removal instead.** Requiring every one of a
+member's assigned tasks to be manually reassigned before they can be
+removed was considered and rejected. Removing a member is meant to
+stay a quick, everyday action. Gating it behind clearing out someone's
+whole task list first turns a one-click action into a multi-step chore
+that doesn't match how often or how casually removal actually happens.

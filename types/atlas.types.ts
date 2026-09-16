@@ -56,6 +56,7 @@ export type UpdateTaskInput = {
   title: string;
   description: string;
   dueDate: Date | null;
+  assigneeId?: string | null;
 };
 
 export type ActivityVerb =
@@ -67,7 +68,9 @@ export type ActivityVerb =
   | "task_deleted"
   | "member_added"
   | "member_removed"
-  | "ownership_transferred";
+  | "ownership_transferred"
+  | "task_assigned"
+  | "task_unassigned";
 
 export type ActivityEntityType = "project" | "task" | "project_member";
 

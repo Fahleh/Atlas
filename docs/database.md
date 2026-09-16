@@ -346,6 +346,59 @@ confirmed by reading the actual policy definitions, not assumed.
 
 Full migration: `020_ownership_transfer.sql`.
 
+### Assignee membership
+
+`check_assignee_is_project_member()` is a `before insert or update of
+assignee_id on tasks` trigger. Not `SECURITY DEFINER`: it only reads
+`project_members` for a project the querying user is already a member of
+(or owns), which `project_members: members can read`'s `is_project_member`
+helper already exposes to them under normal invoker RLS. Confirmed by
+reading that policy directly, not assumed.
+
+Raises when `assignee_id` is set to someone who isn't in that project's
+`project_members`. This is the only place assignee-to-project membership is
+enforced, the UI picker only ever offers members that already qualify, it
+is not a second, redundant check.
+
+`014_activity_log.sql`'s `handle_task_activity()` also logs `task_assigned`
+and `task_unassigned`, separate verbs rather than folding into
+`task_updated`'s generic changes array, the same reasoning that already
+gave `task_status_changed` its own verb. `task_assigned` metadata always
+carries `assigneeId`/`assigneeName`; `previousAssigneeId`/
+`previousAssigneeName` are added only when replacing an existing assignee.
+`task_unassigned` carries only the previous* pair. A single `UPDATE` that
+changes `assignee_id` and another tracked field in the same statement
+produces two separate rows, the assignee block and the generic `_changes`
+block are independent inserts, not one merged entry.
+
+Full migration: `021_task_assignment.sql`.
+
+### Clearing assignee on member removal
+
+`clear_assignee_on_member_removal()` is an `after delete on project_members`
+trigger that nulls `assignee_id` on that project's tasks for the removed
+user. Not `SECURITY DEFINER`, only the owner can delete a `project_members`
+row today (`project_members: owner can delete`), and the owner already
+satisfies `tasks: project members can update`.
+
+This reasoning depends on delete staying owner-only. If self-removal by a
+collaborator is ever added, recheck it: a departing collaborator's own
+`project_members` row is already gone by the time this trigger's `UPDATE`
+runs, so they may no longer satisfy `tasks: project members can update` if
+they hold no other membership.
+
+The trigger only runs its update inside
+`if exists (select 1 from public.projects where id = old.project_id)`.
+`deleteProject` cascades both `project_members` and `tasks` off the same
+`projects` row, and by the time this trigger fires during that cascade,
+the `projects` row itself can already be gone. Without the guard, the
+update would still find real task rows and run, which fires
+`handle_task_activity`'s own insert into `activity_log`, and that
+insert's `project_id` would point at a project that no longer exists,
+failing the whole delete.
+
+Full migration: `022_clear_assignee_on_member_removal.sql`.
+
 ---
 
 ## Grants and Policies Are Separate

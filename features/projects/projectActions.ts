@@ -148,6 +148,7 @@ export async function removeMember(
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: ["projectMembers"] }),
     queryClient.invalidateQueries({ queryKey: ["activityLog"] }),
+    queryClient.invalidateQueries({ queryKey: ["tasks", projectId] }),
   ]);
   return { error: null, errorKind: null };
 }
@@ -228,8 +229,7 @@ export function createProjectAction(
     const dueDate = dueDateRaw ? new Date(dueDateRaw) : null;
 
     const name = nameRaw?.trim();
-    if (!name)
-      return { error: "Project name is required.", errorKind: null };
+    if (!name) return { error: "Project name is required.", errorKind: null };
     if (name.length > 100)
       return {
         error: "Project name must be at most 100 characters long.",

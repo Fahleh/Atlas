@@ -6,6 +6,7 @@
      whole panel; overscroll-behavior stops that scroll chaining outward. */
   max-height: 45vh;
   overflow-y: auto;
+  overflow-x: hidden;
   overscroll-behavior: contain;
 }
 
