@@ -45,6 +45,27 @@ function isStatusChangeMetadata(
   );
 }
 
+function isAssignedMetadata(
+  metadata: unknown,
+): metadata is { assigneeName: string } {
+  return (
+    typeof metadata === "object" &&
+    metadata !== null &&
+    typeof (metadata as { assigneeName?: unknown }).assigneeName === "string"
+  );
+}
+
+function isUnassignedMetadata(
+  metadata: unknown,
+): metadata is { previousAssigneeName: string } {
+  return (
+    typeof metadata === "object" &&
+    metadata !== null &&
+    typeof (metadata as { previousAssigneeName?: unknown })
+      .previousAssigneeName === "string"
+  );
+}
+
 /**
  * Converts a snake_case field name into a capitalized display label.
  *
@@ -142,6 +163,18 @@ export function buildActivityMessage(entry: ActivityLogEntry): string {
 
     case "ownership_transferred":
       return `${actorName} transferred ownership to ${entityName}`;
+
+    case "task_assigned":
+      if (isAssignedMetadata(metadata)) {
+        return `${actorName} assigned ${entityName} to ${metadata.assigneeName}`;
+      }
+      return `${actorName} assigned ${entityName}`;
+
+    case "task_unassigned":
+      if (isUnassignedMetadata(metadata)) {
+        return `${actorName} unassigned ${entityName} from ${metadata.previousAssigneeName}`;
+      }
+      return `${actorName} unassigned ${entityName}`;
   }
 }
 

@@ -213,6 +213,7 @@ describe("createTaskAction, create branch", () => {
       description: "Build the nav menu",
       status: "in_progress",
       due_date: "2026-12-31",
+      assignee_id: null,
     });
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ["tasks", projectId],
@@ -296,6 +297,7 @@ describe("createTaskAction, edit branch", () => {
       description: "Build nav menus for all devices",
       status: "done",
       due_date: "2026-12-31",
+      assignee_id: null,
     });
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ["tasks", existingTask.projectId],
@@ -304,6 +306,38 @@ describe("createTaskAction, edit branch", () => {
       queryKey: ["taskCountsByProject"],
     });
     expect(setIsModalOpen).toHaveBeenCalledWith(false);
+  });
+
+  it("should send the submitted assigneeId in the merged update payload", async () => {
+    let patchBody: unknown;
+    server.use(
+      http.patch(`${SUPABASE_URL}/rest/v1/tasks`, async ({ request }) => {
+        patchBody = await request.json();
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const queryClient = new QueryClient();
+    const setIsModalOpen = jest.fn();
+    const action = createTaskAction({
+      editingTaskRef: { current: existingTask },
+      queryClient,
+      setIsModalOpen,
+    });
+    const newAssigneeId = crypto.randomUUID();
+
+    const result = await action(
+      { error: null, errorKind: null },
+      buildFormData({
+        projectId: existingTask.projectId,
+        title: existingTask.title,
+        description: existingTask.description,
+        status: existingTask.status,
+        assigneeId: newAssigneeId,
+      }),
+    );
+
+    expect(result).toEqual({ error: null, errorKind: null });
+    expect(patchBody).toMatchObject({ assignee_id: newAssigneeId });
   });
 
   it("should return sessionExpired for PGRST301 without closing the modal", async () => {

@@ -801,6 +801,37 @@ T[]
 
 `dotColor` is required. Do not generalize for hypothetical non-status needs.
 
+`features/tasks/AssigneeListbox.tsx` is a second, separate custom listbox,
+not folded into `StatusBox` since a member option needs an avatar and a
+fixed Unassigned entry, neither expressible in `StatusBox`'s label/dotColor
+config shape. It shares the same interaction model: internal state owns
+the selected value, a hidden input carries it into `FormData` only when a
+`name` prop is given, `onChange` is a side notification on top of that
+state, not the source of truth for it.
+
+It renders one of two trigger shapes from a `variant` prop, not two
+components, since the option list, keyboard nav, and open/close behavior
+are identical either way:
+
+- `variant="field"`: a full-width labelled trigger, used by
+  `TaskModal.AssigneeField` for the create/edit form.
+- `variant="avatar"`: a bare avatar circle trigger, used by
+  `AssigneeControl` for `TaskList`'s inline quick-assign. Selecting an
+  option here calls a direct Supabase update, not a form submission, so no
+  `name` is passed and no hidden input renders.
+
+`AssigneeListbox` and `StatusBox` both use `hooks/useOutsideClick.ts` for
+the outside-mousedown-plus-capture-phase-Escape close behavior, one
+implementation, two consumers. `useOutsideClick` takes an optional third
+`extraRef` argument for exactly this case, a second element to also treat
+as inside that isn't a DOM descendant of the trigger ref, `StatusBox`
+doesn't pass one and is unaffected.
+
+`AssigneeListbox`'s options panel is portaled into `document.body` via
+`createPortal` and positioned with `position: fixed` from the trigger's
+`getBoundingClientRect()`, not `position: absolute` nested in place. See
+`docs/decisions.md` for why.
+
 ### Overlay and modal semantics
 
 Sidebar:

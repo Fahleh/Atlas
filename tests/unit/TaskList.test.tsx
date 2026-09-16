@@ -3,10 +3,11 @@
  */
 
 import "@testing-library/jest-dom";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { TaskList } from "@/features/tasks/TaskList";
 import { useTasks } from "@/hooks/useTasks";
 import { SupabaseReadError } from "@/lib/supabase/errors";
+import { renderWithClient } from "@/tests/mocks/queryClient";
 import type { Task } from "@/types/atlas.types";
 
 jest.mock("@/hooks/useTasks", () => ({ useTasks: jest.fn() }));
@@ -38,7 +39,7 @@ describe("TaskList", () => {
       refetch: jest.fn(),
     } as unknown as ReturnType<typeof useTasks>);
 
-    render(<TaskList projectId="project-1" onTaskSelect={jest.fn()} />);
+    renderWithClient(<TaskList projectId="project-1" members={[]} onTaskSelect={jest.fn()} />);
 
     expect(screen.getByRole("status", { name: "Loading tasks" })).toBeInTheDocument();
   });
@@ -55,7 +56,7 @@ describe("TaskList", () => {
       refetch: jest.fn(),
     } as unknown as ReturnType<typeof useTasks>);
 
-    render(<TaskList projectId="project-1" onTaskSelect={jest.fn()} />);
+    renderWithClient(<TaskList projectId="project-1" members={[]} onTaskSelect={jest.fn()} />);
 
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Your session has expired. Log in again to continue.",
@@ -80,7 +81,7 @@ describe("TaskList", () => {
       refetch,
     } as unknown as ReturnType<typeof useTasks>);
 
-    render(<TaskList projectId="project-1" onTaskSelect={jest.fn()} />);
+    renderWithClient(<TaskList projectId="project-1" members={[]} onTaskSelect={jest.fn()} />);
 
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Couldn't connect. Check your connection and try again.",
@@ -98,7 +99,7 @@ describe("TaskList", () => {
       refetch: jest.fn(),
     } as unknown as ReturnType<typeof useTasks>);
 
-    render(<TaskList projectId="project-1" onTaskSelect={jest.fn()} />);
+    renderWithClient(<TaskList projectId="project-1" members={[]} onTaskSelect={jest.fn()} />);
 
     expect(screen.getByText("No tasks yet.")).toBeInTheDocument();
   });
@@ -113,7 +114,7 @@ describe("TaskList", () => {
       refetch: jest.fn(),
     } as unknown as ReturnType<typeof useTasks>);
 
-    render(<TaskList projectId="project-1" onTaskSelect={onTaskSelect} />);
+    renderWithClient(<TaskList projectId="project-1" members={[]} onTaskSelect={onTaskSelect} />);
 
     const row = screen.getByRole("button", { name: `Open ${FAKE_TASK.title}` });
     row.click();

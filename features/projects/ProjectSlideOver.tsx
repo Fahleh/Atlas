@@ -536,7 +536,11 @@ export function ProjectSlideOver({
                   Add task
                 </button>
               </div>
-              <TaskList projectId={project.id} onTaskSelect={openForEdit} />
+              <TaskList
+                projectId={project.id}
+                members={members}
+                onTaskSelect={openForEdit}
+              />
             </section>
 
             <section className={styles.section}>
@@ -789,6 +793,14 @@ export function ProjectSlideOver({
                 placeholder="Optional description"
               />
             </TaskModal.Field>
+            <TaskModal.AssigneeField
+              name="assigneeId"
+              members={members}
+              defaultValue={editingTask?.assigneeId ?? null}
+              onChange={(value) =>
+                markTaskDirtyIfChanged(value ?? "", editingTask?.assigneeId ?? "")
+              }
+            />
             <TaskModal.StatusField
               name="status"
               defaultValue={editingTask?.status ?? "todo"}

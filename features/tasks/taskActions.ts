@@ -30,6 +30,41 @@ async function invalidateTaskQueries(
   ]);
 }
 
+// ---- Assign -------------------------------------------------------------------
+
+export type AssignTaskParams = {
+  taskId: string;
+  projectId: string;
+  assigneeId: string | null;
+  queryClient: QueryClient;
+};
+
+/**
+ * Directly updates a task's assignee. Used by the inline quick-assign
+ * popover in TaskList, not a form action, there is no form here, the
+ * popover selection is the action itself.
+ *
+ * @param params - taskId, projectId (for cache invalidation), the new assigneeId, and queryClient
+ * @returns `{ error, errorKind }`, both null on success
+ */
+export async function assignTask({
+  taskId,
+  projectId,
+  assigneeId,
+  queryClient,
+}: AssignTaskParams): Promise<TaskFormState> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("tasks")
+    .update({ assignee_id: assigneeId })
+    .eq("id", taskId);
+
+  if (error) return interpretSupabaseWriteError(error, supabase);
+
+  await invalidateTaskQueries(queryClient, ["tasks", projectId]);
+  return { error: null, errorKind: null };
+}
+
 // ---- Delete factory ---------------------------------------------------------
 
 /**
@@ -108,7 +143,9 @@ export function createTaskAction(
     const statusRaw = formData.get("status") as string | null;
     const dueDateRaw = formData.get("dueDate") as string | null;
     const projectId = formData.get("projectId") as string | null;
+    const assigneeIdRaw = formData.get("assigneeId") as string | null;
     const dueDate = dueDateRaw ? new Date(dueDateRaw) : null;
+    const assigneeId = !assigneeIdRaw?.trim() ? null : assigneeIdRaw;
 
     if (!projectId)
       return { error: "Project ID is required", errorKind: null };
@@ -140,6 +177,7 @@ export function createTaskAction(
         title,
         description,
         dueDate,
+        assigneeId,
       });
       const final = updateTaskStatus(withChanges, status);
 
@@ -152,6 +190,7 @@ export function createTaskAction(
           due_date: final.dueDate
             ? final.dueDate.toISOString().split("T")[0]
             : null,
+          assignee_id: final.assigneeId,
         })
         .eq("id", final.id);
 
@@ -164,6 +203,7 @@ export function createTaskAction(
         description,
         status,
         due_date: dueDate ? dueDate.toISOString().split("T")[0] : null,
+        assignee_id: assigneeId,
       });
 
       if (error) return interpretSupabaseWriteError(error, supabase);
