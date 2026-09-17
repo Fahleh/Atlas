@@ -75,7 +75,7 @@ reason to document something here.
 - [AssigneeListbox's options panel is portaled, the first portal in this codebase](#assigneelistboxs-options-panel-is-portaled-the-first-portal-in-this-codebase)
 - [Clearing assignee_id when a member is removed from a project](#clearing-assignee_id-when-a-member-is-removed-from-a-project)
 - [`buildActivityMessage` returns a segment array, not a string](#buildactivitymessage-returns-a-segment-array-not-a-string)
-- [A narrow RPC to resolve an assignee's email, not a service-role client](#a-narrow-rpc-to-resolve-an-assignees-email-not-a-service-role-client)
+- [A narrow RPC to resolve an assignee's email, gated on both sides' membership, not a service-role client](#a-narrow-rpc-to-resolve-an-assignees-email-not-a-service-role-client)
 
 ---
 
@@ -1957,17 +1957,20 @@ long task title in the browser, not picked from a guess.
 
 ---
 
-## A narrow RPC to resolve an assignee's email, not a service-role client
+## A narrow RPC to resolve an assignee's email, gated on both sides' membership, not a service-role client
 
 **Decision:** `get_email_for_project_member` (migration 023) is a new
-`SECURITY DEFINER` RPC, gated on the caller's own project membership.
-No service-role/admin Supabase client was introduced.
+`SECURITY DEFINER` RPC. It checks two things before returning
+anything: the caller must be a member of the given project, and the
+target user whose email is being resolved must also be a member of
+that same project. No service-role/admin Supabase client was
+introduced.
 
-**Why:** the task-assigned notification needs an email from a user ID,
-the opposite direction of the existing `lookup_user_id_by_email`. A
-service-role client would work too, but it's a standing capability with
-no scope limit of its own, every future query made with it bypasses RLS
-entirely, not just this one lookup. A new RPC keeps the same privilege
-boundary this codebase already uses everywhere else: narrow, single
-purpose, and re-checked against the caller's actual membership inside
+**Why:** the task-assigned notification needs an email from a user
+ID, the opposite direction of the existing `lookup_user_id_by_email`.
+A service-role client would work too, but it's a standing capability
+with no scope limit of its own, every future query made with it
+bypasses RLS entirely, not just this one lookup. A new RPC keeps the
+same privilege boundary this codebase already uses everywhere else:
+narrow, single purpose, and re-checked against real membership inside
 the function itself, not assumed from what the caller claims.
