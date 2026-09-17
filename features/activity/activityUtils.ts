@@ -8,6 +8,7 @@ import { STATUS_CONFIG } from "@/features/tasks/taskUtils";
 import type {
   ActivityEntityType,
   ActivityLogEntry,
+  ActivityMessageSegment,
   ProjectStatus,
   TaskStatus,
 } from "@/types/atlas.types";
@@ -104,77 +105,145 @@ function formatFieldValue(
   return value ?? "";
 }
 
+function textSeg(text: string): ActivityMessageSegment {
+  return { type: "text", text };
+}
+
+function personSeg(text: string): ActivityMessageSegment {
+  return { type: "person", text };
+}
+
+function thingSeg(text: string): ActivityMessageSegment {
+  return { type: "thing", text };
+}
+
 function buildFieldChangeMessage(
   actorName: string,
   changes: ActivityFieldChange[],
   entityType: ActivityEntityType,
-): string {
+): ActivityMessageSegment[] {
+  const subject = entityType === "task" ? "a task's" : "this project's";
+
   if (changes.length === 1) {
     const [change] = changes;
     const label = formatFieldLabel(change.field);
     const value = formatFieldValue(change.field, change.to, entityType);
-    return `${actorName} updated ${label} to ${value}`;
+    return [
+      personSeg(actorName),
+      textSeg(` updated ${subject} ${label} to `),
+      thingSeg(value),
+    ];
   }
-  const labels = changes.map((change) => formatFieldLabel(change.field));
-  return `${actorName} updated ${labels.join(", ")}`;
+
+  const labels = changes
+    .map((change) => formatFieldLabel(change.field))
+    .join(", ");
+  return [personSeg(actorName), textSeg(` updated ${subject} ${labels}`)];
 }
 
 /**
- * Builds the exact per-verb activity message for one activity_log entry.
+ * Builds the exact per-verb activity message for one activity_log entry as
+ * an ordered list of typed segments, so the renderer can style a person's
+ * name and an entity's name differently within the same sentence.
  *
  * @param entry - A single activity log entry
- * @returns Display-ready message string
+ * @returns Ordered display segments
  */
-export function buildActivityMessage(entry: ActivityLogEntry): string {
+export function buildActivityMessage(
+  entry: ActivityLogEntry,
+): ActivityMessageSegment[] {
   const { verb, actorName, entityName, entityType, metadata } = entry;
 
   switch (verb) {
     case "project_created":
-      return `${actorName} created this project`;
+      return [personSeg(actorName), textSeg(" created this project")];
 
     case "project_updated":
     case "task_updated":
       if (isChangesMetadata(metadata) && metadata.changes.length > 0) {
         return buildFieldChangeMessage(actorName, metadata.changes, entityType);
       }
-      return `${actorName} updated ${entityName}`;
+      return [personSeg(actorName), textSeg(" updated "), thingSeg(entityName)];
 
     case "task_status_changed":
       if (isStatusChangeMetadata(metadata)) {
         const status = metadata.to as TaskStatus;
         if (status === "done") {
-          return `${actorName} completed ${entityName}`;
+          return [
+            personSeg(actorName),
+            textSeg(" completed "),
+            thingSeg(entityName),
+          ];
         }
-        return `${actorName} moved ${entityName} to ${STATUS_CONFIG[status].label}`;
+        return [
+          personSeg(actorName),
+          textSeg(" moved "),
+          thingSeg(entityName),
+          textSeg(` to ${STATUS_CONFIG[status].label}`),
+        ];
       }
-      return `${actorName} moved ${entityName}`;
+      return [personSeg(actorName), textSeg(" moved "), thingSeg(entityName)];
 
     case "task_created":
-      return `${actorName} created ${entityName}`;
+      return [personSeg(actorName), textSeg(" created "), thingSeg(entityName)];
 
     case "task_deleted":
-      return `${actorName} deleted ${entityName}`;
+      return [personSeg(actorName), textSeg(" deleted "), thingSeg(entityName)];
 
     case "member_added":
-      return `${actorName} added ${entityName} to the project`;
+      return [
+        personSeg(actorName),
+        textSeg(" added "),
+        personSeg(entityName),
+        textSeg(" to the project"),
+      ];
 
     case "member_removed":
-      return `${actorName} removed ${entityName} from the project`;
+      return [
+        personSeg(actorName),
+        textSeg(" removed "),
+        personSeg(entityName),
+        textSeg(" from the project"),
+      ];
 
     case "ownership_transferred":
-      return `${actorName} transferred ownership to ${entityName}`;
+      return [
+        personSeg(actorName),
+        textSeg(" transferred ownership to "),
+        personSeg(entityName),
+      ];
 
     case "task_assigned":
       if (isAssignedMetadata(metadata)) {
-        return `${actorName} assigned ${entityName} to ${metadata.assigneeName}`;
+        return [
+          personSeg(actorName),
+          textSeg(" assigned "),
+          thingSeg(entityName),
+          textSeg(" to "),
+          personSeg(metadata.assigneeName),
+        ];
       }
-      return `${actorName} assigned ${entityName}`;
+      return [
+        personSeg(actorName),
+        textSeg(" assigned "),
+        thingSeg(entityName),
+      ];
 
     case "task_unassigned":
       if (isUnassignedMetadata(metadata)) {
-        return `${actorName} unassigned ${entityName} from ${metadata.previousAssigneeName}`;
+        return [
+          personSeg(actorName),
+          textSeg(" unassigned "),
+          thingSeg(entityName),
+          textSeg(" from "),
+          personSeg(metadata.previousAssigneeName),
+        ];
       }
-      return `${actorName} unassigned ${entityName}`;
+      return [
+        personSeg(actorName),
+        textSeg(" unassigned "),
+        thingSeg(entityName),
+      ];
   }
 }
 

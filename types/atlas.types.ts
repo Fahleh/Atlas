@@ -74,6 +74,11 @@ export type ActivityVerb =
 
 export type ActivityEntityType = "project" | "task" | "project_member";
 
+export type ActivityMessageSegment =
+  | { type: "text"; text: string }
+  | { type: "person"; text: string }
+  | { type: "thing"; text: string };
+
 export type ActivityLogEntry = {
   id: string;
   projectId: string;

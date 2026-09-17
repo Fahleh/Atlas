@@ -23,19 +23,26 @@ function buildEntry(overrides: Partial<ActivityLogEntry>): ActivityLogEntry {
 }
 
 describe("buildActivityMessage", () => {
-  it("should say a project was created", () => {
+  it("should say a project was created, actor name as a person segment", () => {
     const entry = buildEntry({ verb: "project_created" });
 
-    expect(buildActivityMessage(entry)).toBe("Priya created this project");
+    expect(buildActivityMessage(entry)).toEqual([
+      { type: "person", text: "Priya" },
+      { type: "text", text: " created this project" },
+    ]);
   });
 
-  it("should describe a single changed field with its new value", () => {
+  it("should describe a single changed field, label as plain text and the new value as a thing segment", () => {
     const entry = buildEntry({
       verb: "project_updated",
       metadata: { changes: [{ field: "name", from: "Old", to: "New" }] },
     });
 
-    expect(buildActivityMessage(entry)).toBe("Priya updated Name to New");
+    expect(buildActivityMessage(entry)).toEqual([
+      { type: "person", text: "Priya" },
+      { type: "text", text: " updated this project's Name to " },
+      { type: "thing", text: "New" },
+    ]);
   });
 
   it("should render a status change through PROJECT_STATUS_CONFIG's label, not the raw value", () => {
@@ -46,12 +53,14 @@ describe("buildActivityMessage", () => {
       },
     });
 
-    expect(buildActivityMessage(entry)).toBe(
-      "Priya updated Status to Completed",
-    );
+    expect(buildActivityMessage(entry)).toEqual([
+      { type: "person", text: "Priya" },
+      { type: "text", text: " updated this project's Status to " },
+      { type: "thing", text: "Completed" },
+    ]);
   });
 
-  it("should list multiple changed field labels without values", () => {
+  it("should list multiple changed field labels without values, still carrying the project subject", () => {
     const entry = buildEntry({
       verb: "project_updated",
       metadata: {
@@ -62,7 +71,32 @@ describe("buildActivityMessage", () => {
       },
     });
 
-    expect(buildActivityMessage(entry)).toBe("Priya updated Name, Due date");
+    expect(buildActivityMessage(entry)).toEqual([
+      { type: "person", text: "Priya" },
+      {
+        type: "text",
+        text: " updated this project's Name, Due date",
+      },
+    ]);
+  });
+
+  it("should list multiple changed task fields carrying the task subject, not the project one", () => {
+    const entry = buildEntry({
+      verb: "task_updated",
+      entityType: "task",
+      entityName: "Fix login bug",
+      metadata: {
+        changes: [
+          { field: "title", from: "Old title", to: "New title" },
+          { field: "due_date", from: null, to: "2026-02-01" },
+        ],
+      },
+    });
+
+    expect(buildActivityMessage(entry)).toEqual([
+      { type: "person", text: "Priya" },
+      { type: "text", text: " updated a task's Title, Due date" },
+    ]);
   });
 
   it("should render a cleared due date as No due date, not an invalid date string", () => {
@@ -73,22 +107,28 @@ describe("buildActivityMessage", () => {
       },
     });
 
-    expect(buildActivityMessage(entry)).toBe(
-      "Priya updated Due date to No due date",
-    );
+    expect(buildActivityMessage(entry)).toEqual([
+      { type: "person", text: "Priya" },
+      { type: "text", text: " updated this project's Due date to " },
+      { type: "thing", text: "No due date" },
+    ]);
   });
 
-  it("should say a task was created", () => {
+  it("should say a task was created, actor as person and task title as thing", () => {
     const entry = buildEntry({
       verb: "task_created",
       entityType: "task",
       entityName: "Fix login bug",
     });
 
-    expect(buildActivityMessage(entry)).toBe("Priya created Fix login bug");
+    expect(buildActivityMessage(entry)).toEqual([
+      { type: "person", text: "Priya" },
+      { type: "text", text: " created " },
+      { type: "thing", text: "Fix login bug" },
+    ]);
   });
 
-  it("should describe a single changed task field with its new value", () => {
+  it("should describe a single changed task field with the task subject and the value as a thing segment", () => {
     const entry = buildEntry({
       verb: "task_updated",
       entityType: "task",
@@ -98,9 +138,11 @@ describe("buildActivityMessage", () => {
       },
     });
 
-    expect(buildActivityMessage(entry)).toBe(
-      "Priya updated Title to New title",
-    );
+    expect(buildActivityMessage(entry)).toEqual([
+      { type: "person", text: "Priya" },
+      { type: "text", text: " updated a task's Title to " },
+      { type: "thing", text: "New title" },
+    ]);
   });
 
   it("should not crash or route through PROJECT_STATUS_CONFIG for a task-entity status change", () => {
@@ -116,7 +158,11 @@ describe("buildActivityMessage", () => {
     });
 
     expect(() => buildActivityMessage(entry)).not.toThrow();
-    expect(buildActivityMessage(entry)).toBe("Priya updated Status to done");
+    expect(buildActivityMessage(entry)).toEqual([
+      { type: "person", text: "Priya" },
+      { type: "text", text: " updated a task's Status to " },
+      { type: "thing", text: "done" },
+    ]);
   });
 
   it("should say a task was deleted", () => {
@@ -126,7 +172,11 @@ describe("buildActivityMessage", () => {
       entityName: "Fix login bug",
     });
 
-    expect(buildActivityMessage(entry)).toBe("Priya deleted Fix login bug");
+    expect(buildActivityMessage(entry)).toEqual([
+      { type: "person", text: "Priya" },
+      { type: "text", text: " deleted " },
+      { type: "thing", text: "Fix login bug" },
+    ]);
   });
 
   it("should say a task was completed when the new status is done", () => {
@@ -137,10 +187,14 @@ describe("buildActivityMessage", () => {
       metadata: { from: "in_progress", to: "done" },
     });
 
-    expect(buildActivityMessage(entry)).toBe("Priya completed Fix login bug");
+    expect(buildActivityMessage(entry)).toEqual([
+      { type: "person", text: "Priya" },
+      { type: "text", text: " completed " },
+      { type: "thing", text: "Fix login bug" },
+    ]);
   });
 
-  it("should say a task was moved when the new status is not done", () => {
+  it("should say a task was moved when the new status is not done, trailing status label as plain text", () => {
     const entry = buildEntry({
       verb: "task_status_changed",
       entityType: "task",
@@ -148,31 +202,120 @@ describe("buildActivityMessage", () => {
       metadata: { from: "todo", to: "in_progress" },
     });
 
-    expect(buildActivityMessage(entry)).toBe(
-      "Priya moved Fix login bug to In Progress",
-    );
+    expect(buildActivityMessage(entry)).toEqual([
+      { type: "person", text: "Priya" },
+      { type: "text", text: " moved " },
+      { type: "thing", text: "Fix login bug" },
+      { type: "text", text: " to In Progress" },
+    ]);
   });
 
-  it("should say a member was added", () => {
+  it("should say a member was added, both actor and the added member as person segments", () => {
     const entry = buildEntry({
       verb: "member_added",
       entityType: "project_member",
       entityName: "Jonas",
     });
 
-    expect(buildActivityMessage(entry)).toBe("Priya added Jonas to the project");
+    expect(buildActivityMessage(entry)).toEqual([
+      { type: "person", text: "Priya" },
+      { type: "text", text: " added " },
+      { type: "person", text: "Jonas" },
+      { type: "text", text: " to the project" },
+    ]);
   });
 
-  it("should say a member was removed", () => {
+  it("should say a member was removed, both actor and the removed member as person segments", () => {
     const entry = buildEntry({
       verb: "member_removed",
       entityType: "project_member",
       entityName: "Jonas",
     });
 
-    expect(buildActivityMessage(entry)).toBe(
-      "Priya removed Jonas from the project",
-    );
+    expect(buildActivityMessage(entry)).toEqual([
+      { type: "person", text: "Priya" },
+      { type: "text", text: " removed " },
+      { type: "person", text: "Jonas" },
+      { type: "text", text: " from the project" },
+    ]);
+  });
+
+  it("should say ownership was transferred, both names as person segments", () => {
+    const entry = buildEntry({
+      verb: "ownership_transferred",
+      entityType: "project_member",
+      entityName: "Jonas",
+    });
+
+    expect(buildActivityMessage(entry)).toEqual([
+      { type: "person", text: "Priya" },
+      { type: "text", text: " transferred ownership to " },
+      { type: "person", text: "Jonas" },
+    ]);
+  });
+
+  it("should say a task was assigned, the task as a thing segment and the assignee as a person segment", () => {
+    const entry = buildEntry({
+      verb: "task_assigned",
+      entityType: "task",
+      entityName: "Fix login bug",
+      metadata: { assigneeName: "Jonas" },
+    });
+
+    expect(buildActivityMessage(entry)).toEqual([
+      { type: "person", text: "Priya" },
+      { type: "text", text: " assigned " },
+      { type: "thing", text: "Fix login bug" },
+      { type: "text", text: " to " },
+      { type: "person", text: "Jonas" },
+    ]);
+  });
+
+  it("should fall back to a plain assigned message when metadata carries no assignee name", () => {
+    const entry = buildEntry({
+      verb: "task_assigned",
+      entityType: "task",
+      entityName: "Fix login bug",
+      metadata: {},
+    });
+
+    expect(buildActivityMessage(entry)).toEqual([
+      { type: "person", text: "Priya" },
+      { type: "text", text: " assigned " },
+      { type: "thing", text: "Fix login bug" },
+    ]);
+  });
+
+  it("should say a task was unassigned, the task as a thing segment and the previous assignee as a person segment", () => {
+    const entry = buildEntry({
+      verb: "task_unassigned",
+      entityType: "task",
+      entityName: "Fix login bug",
+      metadata: { previousAssigneeName: "Jonas" },
+    });
+
+    expect(buildActivityMessage(entry)).toEqual([
+      { type: "person", text: "Priya" },
+      { type: "text", text: " unassigned " },
+      { type: "thing", text: "Fix login bug" },
+      { type: "text", text: " from " },
+      { type: "person", text: "Jonas" },
+    ]);
+  });
+
+  it("should fall back to a plain unassigned message when metadata carries no previous assignee name", () => {
+    const entry = buildEntry({
+      verb: "task_unassigned",
+      entityType: "task",
+      entityName: "Fix login bug",
+      metadata: {},
+    });
+
+    expect(buildActivityMessage(entry)).toEqual([
+      { type: "person", text: "Priya" },
+      { type: "text", text: " unassigned " },
+      { type: "thing", text: "Fix login bug" },
+    ]);
   });
 });
 

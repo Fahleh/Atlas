@@ -52,6 +52,16 @@ Do not suspend an entire page unnecessarily.
 Run `npm run build` after routing, Suspense, or rendering-mode changes and
 confirm the route's `○` or `ƒ` output matches intent.
 
+### Typed segments instead of an interpolated string
+
+When a piece of text needs to style parts of itself differently, don't
+build one interpolated string and parse it back apart in the renderer.
+Have the builder function return an ordered array of typed segments (a
+discriminated union, e.g. `{ type: "text" | "person" | "thing"; text:
+string }`) and map over it in the component, each type to its own
+element or styling. See `features/activity/activityUtils.ts`'s
+`buildActivityMessage` and `ActivityItem.tsx`.
+
 ### Cached entities in shared state
 
 Do not store whole React Query entities in Context or lifted state. Store the
