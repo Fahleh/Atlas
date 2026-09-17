@@ -190,11 +190,18 @@ export default function DashboardPage() {
                       <Skeleton width="100%" height="0.75rem" />
                       <Skeleton width="55%" height="0.75rem" />
                     </div>
-                    <Skeleton
-                      width="100%"
-                      height="4px"
-                      borderRadius="var(--radius-pill)"
-                    />
+                    <div className={styles.skeletonProgressSection}>
+                      <Skeleton
+                        width="100%"
+                        height="4px"
+                        borderRadius="var(--radius-pill)"
+                      />
+                      <Skeleton
+                        width="48px"
+                        height="0.75rem"
+                        borderRadius="var(--radius-pill)"
+                      />
+                    </div>
                     <div className={styles.skeletonAvatars}>
                       <Skeleton
                         width="28px"

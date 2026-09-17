@@ -21,10 +21,10 @@ build checks, browser verification requirements, and debugging process.
 Current automated coverage is broad, not limited to early lib/ utilities.
 tests/unit/ has 33 files: pure utilities, error interpretation, and
 component behavior, including the activity feed's person/thing message
-segments and title truncation. tests/integration/ has 19 files: Server
+segments and title truncation. tests/integration/ has 20 files: Server
 Actions, React Query hooks, and other business logic against mocked
 Supabase responses via MSW. tests/e2e/
-has 11 Playwright spec files covering full flows, login, signup, project and
+has 12 Playwright spec files covering full flows, login, signup, project and
 task CRUD, membership, cross-user data isolation, an authorization
 boundary check confirming a collaborator cannot remove a member even
 by calling the API directly, and React 19's field-reset-on-error behavior

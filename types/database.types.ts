@@ -269,6 +269,10 @@ export type Database = {
     }
     Functions: {
       activity_actor_name: { Args: { _user_id: string }; Returns: string }
+      get_email_for_project_member: {
+        Args: { _project_id: string; _user_id: string }
+        Returns: string
+      }
       is_active_user: { Args: never; Returns: boolean }
       is_project_member: {
         Args: { _project_id: string; _user_id: string }

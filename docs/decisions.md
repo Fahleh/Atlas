@@ -75,6 +75,8 @@ reason to document something here.
 - [AssigneeListbox's options panel is portaled, the first portal in this codebase](#assigneelistboxs-options-panel-is-portaled-the-first-portal-in-this-codebase)
 - [Clearing assignee_id when a member is removed from a project](#clearing-assignee_id-when-a-member-is-removed-from-a-project)
 - [`buildActivityMessage` returns a segment array, not a string](#buildactivitymessage-returns-a-segment-array-not-a-string)
+- [A narrow RPC to resolve an assignee's email, gated on both sides' membership, not a service-role client](#a-narrow-rpc-to-resolve-an-assignees-email-not-a-service-role-client)
+- [Two different mechanisms for the same class of skeleton-height bug](#two-different-mechanisms-for-the-same-class-of-skeleton-height-bug)
 
 ---
 
@@ -1953,3 +1955,46 @@ that styling onto.
 `--activity-thing-max-width` (`styles/tokens.css`, 280px) is the box a
 thing segment ellipsis-truncates against. Chosen by rendering a real
 long task title in the browser, not picked from a guess.
+
+---
+
+## A narrow RPC to resolve an assignee's email, gated on both sides' membership, not a service-role client
+
+**Decision:** `get_email_for_project_member` (migration 023) is a new
+`SECURITY DEFINER` RPC. It checks two things before returning
+anything: the caller must be a member of the given project, and the
+target user whose email is being resolved must also be a member of
+that same project. No service-role/admin Supabase client was
+introduced.
+
+**Why:** the task-assigned notification needs an email from a user
+ID, the opposite direction of the existing `lookup_user_id_by_email`.
+A service-role client would work too, but it's a standing capability
+with no scope limit of its own, every future query made with it
+bypasses RLS entirely, not just this one lookup. A new RPC keeps the
+same privilege boundary this codebase already uses everywhere else:
+narrow, single purpose, and re-checked against real membership inside
+the function itself, not assumed from what the caller claims.
+
+---
+
+## Two different mechanisms for the same class of skeleton-height bug
+
+**Decision:** `ProjectStats.module.css`'s `.value` reserves space with
+`min-height: calc(var(--font-size-4xl) * var(--line-height-tight))`,
+tied to the actual tokens it renders at. `page.module.css`'s
+`.skeletonCard` reserves space with a static measured `height: 264px`,
+the same convention `.taskCard` already used. Both fix a real dashboard
+layout shift, both are the same class of bug, skeleton height not
+matching loaded content, but the mechanism differs on purpose.
+
+**Why:** the stats bar bug was specifically a wrong token reference,
+the skeleton was sized against `--font-size-2xl` in a comment while
+`.value` actually renders at `--font-size-4xl`. Tying the reserved
+space to the real tokens directly closes that exact class of mistake,
+a future change to either token stays correct automatically instead of
+needing a second hand-edit to stay in sync. The card's height isn't
+governed by one token, it's four summed sections (header, body,
+progress, footer) plus padding and gaps, there's no single calc()
+expression that represents it. A static measured value, matching
+`.taskCard`'s existing convention, is the honest option there.

@@ -47,6 +47,7 @@ export function AssigneeControl({ task, members }: AssigneeControlProps) {
       taskId: task.id,
       projectId: task.projectId,
       assigneeId,
+      previousAssigneeId: task.assigneeId,
       queryClient,
     });
     if (result.error) {
