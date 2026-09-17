@@ -45,7 +45,8 @@ export function ProjectStats({
     (p) => p.dueDate !== null && p.dueDate < now && p.status !== "completed",
   ).length;
 
-  // Skeleton size roughly matches the --font-size-2xl numeric value it replaces.
+  // Just a visual placeholder, .value's own min-height is what reserves
+  // the real space, so this doesn't need to match the real number's size.
   const valueSkeleton = <Skeleton width="2.5rem" height="1.5rem" />;
 
   return (
