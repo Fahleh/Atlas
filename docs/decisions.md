@@ -74,6 +74,7 @@ reason to document something here.
 - [task_assigned and task_unassigned use entity_type 'task', not project_member](#task_assigned-and-task_unassigned-use-entity_type-task-not-project_member)
 - [AssigneeListbox's options panel is portaled, the first portal in this codebase](#assigneelistboxs-options-panel-is-portaled-the-first-portal-in-this-codebase)
 - [Clearing assignee_id when a member is removed from a project](#clearing-assignee_id-when-a-member-is-removed-from-a-project)
+- [`buildActivityMessage` returns a segment array, not a string](#buildactivitymessage-returns-a-segment-array-not-a-string)
 
 ---
 
@@ -1937,3 +1938,18 @@ removed was considered and rejected. Removing a member is meant to
 stay a quick, everyday action. Gating it behind clearing out someone's
 whole task list first turns a one-click action into a multi-step chore
 that doesn't match how often or how casually removal actually happens.
+
+---
+
+## `buildActivityMessage` returns a segment array, not a string
+
+**Decision:** `buildActivityMessage` and `buildFieldChangeMessage` return
+`ActivityMessageSegment[]`, not a string.
+
+**Why:** a person's name and an entity's name need different styling
+within one sentence. A flat string gives the renderer nothing to hook
+that styling onto.
+
+`--activity-thing-max-width` (`styles/tokens.css`, 280px) is the box a
+thing segment ellipsis-truncates against. Chosen by rendering a real
+long task title in the browser, not picked from a guess.
