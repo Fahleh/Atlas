@@ -36,21 +36,50 @@ export type AssignTaskParams = {
   taskId: string;
   projectId: string;
   assigneeId: string | null;
+  previousAssigneeId: string | null;
   queryClient: QueryClient;
 };
+
+/**
+ * Fires the task-assigned notification, unawaited, own .catch(), outside
+ * cache invalidation. Only for a genuine new assignment to someone other
+ * than the acting user: assigneeId must be set, must differ from what it
+ * was before, and must not be the person doing the assigning. See
+ * docs/decisions.md.
+ */
+function notifyTaskAssigned(params: {
+  taskId: string;
+  projectId: string;
+  assigneeId: string | null;
+  previousAssigneeId: string | null;
+  actorId: string | undefined;
+}) {
+  const { taskId, projectId, assigneeId, previousAssigneeId, actorId } =
+    params;
+  if (!assigneeId) return;
+  if (assigneeId === previousAssigneeId) return;
+  if (assigneeId === actorId) return;
+
+  fetch("/api/task-assigned-email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ taskId, projectId, assigneeId }),
+  }).catch(() => {});
+}
 
 /**
  * Directly updates a task's assignee. Used by the inline quick-assign
  * popover in TaskList, not a form action, there is no form here, the
  * popover selection is the action itself.
  *
- * @param params - taskId, projectId (for cache invalidation), the new assigneeId, and queryClient
+ * @param params - taskId, projectId (for cache invalidation), the new assigneeId, previousAssigneeId (for the notification's change guard), and queryClient
  * @returns `{ error, errorKind }`, both null on success
  */
 export async function assignTask({
   taskId,
   projectId,
   assigneeId,
+  previousAssigneeId,
   queryClient,
 }: AssignTaskParams): Promise<TaskFormState> {
   const supabase = createClient();
@@ -62,6 +91,16 @@ export async function assignTask({
   if (error) return interpretSupabaseWriteError(error, supabase);
 
   await invalidateTaskQueries(queryClient, ["tasks", projectId]);
+
+  const { data: claims } = await supabase.auth.getClaims();
+  notifyTaskAssigned({
+    taskId,
+    projectId,
+    assigneeId,
+    previousAssigneeId,
+    actorId: claims?.claims.sub,
+  });
+
   return { error: null, errorKind: null };
 }
 
@@ -170,6 +209,8 @@ export function createTaskAction(
 
     const supabase = createClient();
     const currentTask = editingTaskRef.current;
+    const { data: claims } = await supabase.auth.getClaims();
+    const actorId = claims?.claims.sub;
 
     if (currentTask) {
       // Edit. Apply general changes then status change, merge into one update.
@@ -195,21 +236,42 @@ export function createTaskAction(
         .eq("id", final.id);
 
       if (error) return interpretSupabaseWriteError(error, supabase);
+
+      await invalidateTaskQueries(queryClient, ["tasks", projectId]);
+      notifyTaskAssigned({
+        taskId: final.id,
+        projectId,
+        assigneeId: final.assigneeId,
+        previousAssigneeId: currentTask.assigneeId,
+        actorId,
+      });
     } else {
       // Create
-      const { error } = await supabase.from("tasks").insert({
-        project_id: projectId,
-        title,
-        description,
-        status,
-        due_date: dueDate ? dueDate.toISOString().split("T")[0] : null,
-        assignee_id: assigneeId,
-      });
+      const { data: created, error } = await supabase
+        .from("tasks")
+        .insert({
+          project_id: projectId,
+          title,
+          description,
+          status,
+          due_date: dueDate ? dueDate.toISOString().split("T")[0] : null,
+          assignee_id: assigneeId,
+        })
+        .select("id")
+        .single();
 
       if (error) return interpretSupabaseWriteError(error, supabase);
+
+      await invalidateTaskQueries(queryClient, ["tasks", projectId]);
+      notifyTaskAssigned({
+        taskId: created.id,
+        projectId,
+        assigneeId,
+        previousAssigneeId: null,
+        actorId,
+      });
     }
 
-    await invalidateTaskQueries(queryClient, ["tasks", projectId]);
     setIsModalOpen(false);
     return { error: null, errorKind: null };
   };

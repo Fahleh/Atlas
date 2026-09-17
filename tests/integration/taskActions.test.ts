@@ -3,6 +3,7 @@ import "@/jest.setup";
 import { QueryClient } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
 import {
+  assignTask,
   createDeleteTaskAction,
   createTaskAction,
 } from "@/features/tasks/taskActions";
@@ -10,6 +11,24 @@ import type { Task } from "@/types/atlas.types";
 import { server } from "@/tests/mocks/server";
 import { postgrestError } from "@/tests/mocks/postgrestError";
 import { SUPABASE_URL } from "@/tests/mocks/handlers/baseUrl";
+import { FAKE_TASK_ROW } from "@/tests/mocks/handlers/tasks";
+import { mockLiveSession, mockNoSession } from "@/tests/mocks/getClaims";
+
+/**
+ * Spies on global.fetch, short-circuiting only the task-assigned
+ * notification endpoint and falling through to the real (MSW-patched)
+ * fetch for everything else, so the Supabase calls underneath still work.
+ * Mirrors the equivalent addMember spy in projectActions.test.ts.
+ */
+function spyOnNotifyFetch() {
+  const realFetch = global.fetch;
+  return jest.spyOn(global, "fetch").mockImplementation((input, init) => {
+    if (input === "/api/task-assigned-email") {
+      return Promise.resolve(new Response(null, { status: 200 }));
+    }
+    return realFetch(input, init);
+  });
+}
 
 afterEach(() => {
   jest.restoreAllMocks();
@@ -123,6 +142,166 @@ describe("createDeleteTaskAction", () => {
   });
 });
 
+describe("assignTask", () => {
+  const taskId = crypto.randomUUID();
+  const projectId = crypto.randomUUID();
+  const newAssigneeId = crypto.randomUUID();
+
+  it("should update assignee_id, invalidate the coupled queries, and notify on a genuine new assignment", async () => {
+    mockLiveSession("acting-user");
+    const fetchSpy = spyOnNotifyFetch();
+    const queryClient = new QueryClient();
+    const invalidateSpy = jest.spyOn(queryClient, "invalidateQueries");
+
+    const result = await assignTask({
+      taskId,
+      projectId,
+      assigneeId: newAssigneeId,
+      previousAssigneeId: null,
+      queryClient,
+    });
+
+    expect(result).toEqual({ error: null, errorKind: null });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["tasks", projectId],
+    });
+    expect(fetchSpy).toHaveBeenCalledWith("/api/task-assigned-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ taskId, projectId, assigneeId: newAssigneeId }),
+    });
+  });
+
+  it("should notify on reassignment, replacing a different previous assignee", async () => {
+    mockLiveSession("acting-user");
+    const fetchSpy = spyOnNotifyFetch();
+    const queryClient = new QueryClient();
+    const previousAssigneeId = crypto.randomUUID();
+
+    await assignTask({
+      taskId,
+      projectId,
+      assigneeId: newAssigneeId,
+      previousAssigneeId,
+      queryClient,
+    });
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "/api/task-assigned-email",
+      expect.anything(),
+    );
+  });
+
+  it("should not notify when unassigning (assigneeId null)", async () => {
+    mockLiveSession("acting-user");
+    const fetchSpy = spyOnNotifyFetch();
+    const queryClient = new QueryClient();
+
+    const result = await assignTask({
+      taskId,
+      projectId,
+      assigneeId: null,
+      previousAssigneeId: newAssigneeId,
+      queryClient,
+    });
+
+    expect(result).toEqual({ error: null, errorKind: null });
+    expect(fetchSpy).not.toHaveBeenCalledWith(
+      "/api/task-assigned-email",
+      expect.anything(),
+    );
+  });
+
+  it("should not notify when reselecting the same assignee (no-op)", async () => {
+    mockLiveSession("acting-user");
+    const fetchSpy = spyOnNotifyFetch();
+    const queryClient = new QueryClient();
+
+    await assignTask({
+      taskId,
+      projectId,
+      assigneeId: newAssigneeId,
+      previousAssigneeId: newAssigneeId,
+      queryClient,
+    });
+
+    expect(fetchSpy).not.toHaveBeenCalledWith(
+      "/api/task-assigned-email",
+      expect.anything(),
+    );
+  });
+
+  it("should not notify when assigning the task to yourself", async () => {
+    mockLiveSession(newAssigneeId);
+    const fetchSpy = spyOnNotifyFetch();
+    const queryClient = new QueryClient();
+
+    await assignTask({
+      taskId,
+      projectId,
+      assigneeId: newAssigneeId,
+      previousAssigneeId: null,
+      queryClient,
+    });
+
+    expect(fetchSpy).not.toHaveBeenCalledWith(
+      "/api/task-assigned-email",
+      expect.anything(),
+    );
+  });
+
+  it("should not notify when there is no session to read the acting user's id from", async () => {
+    mockNoSession();
+    const fetchSpy = spyOnNotifyFetch();
+    const queryClient = new QueryClient();
+
+    const result = await assignTask({
+      taskId,
+      projectId,
+      assigneeId: newAssigneeId,
+      previousAssigneeId: null,
+      queryClient,
+    });
+
+    // No session means actorId is undefined, so the self-assignment guard
+    // (assigneeId === actorId) can never match a truthy assigneeId, this
+    // isn't a suppression case, just confirming the write itself still
+    // succeeds and still notifies without a session to compare against.
+    expect(result).toEqual({ error: null, errorKind: null });
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "/api/task-assigned-email",
+      expect.anything(),
+    );
+  });
+
+  it("should return sessionExpired for PGRST301 without notifying", async () => {
+    server.use(
+      http.patch(`${SUPABASE_URL}/rest/v1/tasks`, () =>
+        postgrestError({ code: "PGRST301", message: "JWT expired" }, 401),
+      ),
+    );
+    const fetchSpy = spyOnNotifyFetch();
+    const queryClient = new QueryClient();
+
+    const result = await assignTask({
+      taskId,
+      projectId,
+      assigneeId: newAssigneeId,
+      previousAssigneeId: null,
+      queryClient,
+    });
+
+    expect(result).toEqual({
+      error: "Your session has expired. Log in again to continue.",
+      errorKind: "sessionExpired",
+    });
+    expect(fetchSpy).not.toHaveBeenCalledWith(
+      "/api/task-assigned-email",
+      expect.anything(),
+    );
+  });
+});
+
 describe("createTaskAction, create branch", () => {
   it("should return an error and make no Supabase call when projectId is missing", async () => {
     let insertCalled = false;
@@ -183,7 +362,7 @@ describe("createTaskAction, create branch", () => {
     server.use(
       http.post(`${SUPABASE_URL}/rest/v1/tasks`, async ({ request }) => {
         insertBody = await request.json();
-        return new HttpResponse(null, { status: 201 });
+        return HttpResponse.json(FAKE_TASK_ROW, { status: 201 });
       }),
     );
     const queryClient = new QueryClient();
@@ -248,6 +427,88 @@ describe("createTaskAction, create branch", () => {
       errorKind: "sessionExpired",
     });
     expect(setIsModalOpen).not.toHaveBeenCalled();
+  });
+
+  it("should notify when a task is created with a non-self assignee already picked", async () => {
+    const projectId = crypto.randomUUID();
+    const newAssigneeId = crypto.randomUUID();
+    mockLiveSession("acting-user");
+    const fetchSpy = spyOnNotifyFetch();
+    const queryClient = new QueryClient();
+    const setIsModalOpen = jest.fn();
+    const action = createTaskAction({
+      editingTaskRef: { current: null },
+      queryClient,
+      setIsModalOpen,
+    });
+
+    await action(
+      { error: null, errorKind: null },
+      buildFormData({
+        projectId,
+        title: "Create navbar",
+        assigneeId: newAssigneeId,
+      }),
+    );
+
+    expect(fetchSpy).toHaveBeenCalledWith("/api/task-assigned-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        taskId: FAKE_TASK_ROW.id,
+        projectId,
+        assigneeId: newAssigneeId,
+      }),
+    });
+  });
+
+  it("should not notify when a task is created with no assignee picked", async () => {
+    mockLiveSession("acting-user");
+    const fetchSpy = spyOnNotifyFetch();
+    const queryClient = new QueryClient();
+    const setIsModalOpen = jest.fn();
+    const action = createTaskAction({
+      editingTaskRef: { current: null },
+      queryClient,
+      setIsModalOpen,
+    });
+
+    await action(
+      { error: null, errorKind: null },
+      buildFormData({ projectId: crypto.randomUUID(), title: "Create navbar" }),
+    );
+
+    expect(fetchSpy).not.toHaveBeenCalledWith(
+      "/api/task-assigned-email",
+      expect.anything(),
+    );
+  });
+
+  it("should not notify when a task is created and assigned to yourself", async () => {
+    const selfId = crypto.randomUUID();
+    mockLiveSession(selfId);
+    const fetchSpy = spyOnNotifyFetch();
+    const queryClient = new QueryClient();
+    const setIsModalOpen = jest.fn();
+    const action = createTaskAction({
+      editingTaskRef: { current: null },
+      queryClient,
+      setIsModalOpen,
+    });
+
+    await action(
+      { error: null, errorKind: null },
+      buildFormData({
+        projectId: crypto.randomUUID(),
+        title: "Create navbar",
+        assigneeId: selfId,
+      }),
+    );
+
+    expect(fetchSpy).not.toHaveBeenCalledWith(
+      "/api/task-assigned-email",
+      expect.anything(),
+    );
   });
 });
 
@@ -367,5 +628,131 @@ describe("createTaskAction, edit branch", () => {
       errorKind: "sessionExpired",
     });
     expect(setIsModalOpen).not.toHaveBeenCalled();
+  });
+
+  it("should notify when editing changes the assignee to someone new", async () => {
+    const newAssigneeId = crypto.randomUUID();
+    mockLiveSession("acting-user");
+    const fetchSpy = spyOnNotifyFetch();
+    const queryClient = new QueryClient();
+    const setIsModalOpen = jest.fn();
+    const action = createTaskAction({
+      editingTaskRef: { current: existingTask },
+      queryClient,
+      setIsModalOpen,
+    });
+
+    await action(
+      { error: null, errorKind: null },
+      buildFormData({
+        projectId: existingTask.projectId,
+        title: existingTask.title,
+        description: existingTask.description,
+        status: existingTask.status,
+        assigneeId: newAssigneeId,
+      }),
+    );
+
+    expect(fetchSpy).toHaveBeenCalledWith("/api/task-assigned-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        taskId: existingTask.id,
+        projectId: existingTask.projectId,
+        assigneeId: newAssigneeId,
+      }),
+    });
+  });
+
+  it("should not notify when editing leaves the assignee unchanged", async () => {
+    const alreadyAssignedTask: Task = {
+      ...existingTask,
+      assigneeId: "00000000-0000-4000-8000-00000000000a",
+    };
+    mockLiveSession("acting-user");
+    const fetchSpy = spyOnNotifyFetch();
+    const queryClient = new QueryClient();
+    const setIsModalOpen = jest.fn();
+    const action = createTaskAction({
+      editingTaskRef: { current: alreadyAssignedTask },
+      queryClient,
+      setIsModalOpen,
+    });
+
+    await action(
+      { error: null, errorKind: null },
+      buildFormData({
+        projectId: alreadyAssignedTask.projectId,
+        title: alreadyAssignedTask.title,
+        description: alreadyAssignedTask.description,
+        status: alreadyAssignedTask.status,
+        assigneeId: alreadyAssignedTask.assigneeId ?? "",
+      }),
+    );
+
+    expect(fetchSpy).not.toHaveBeenCalledWith(
+      "/api/task-assigned-email",
+      expect.anything(),
+    );
+  });
+
+  it("should not notify when editing clears the assignee", async () => {
+    const alreadyAssignedTask: Task = {
+      ...existingTask,
+      assigneeId: "00000000-0000-4000-8000-00000000000a",
+    };
+    mockLiveSession("acting-user");
+    const fetchSpy = spyOnNotifyFetch();
+    const queryClient = new QueryClient();
+    const setIsModalOpen = jest.fn();
+    const action = createTaskAction({
+      editingTaskRef: { current: alreadyAssignedTask },
+      queryClient,
+      setIsModalOpen,
+    });
+
+    await action(
+      { error: null, errorKind: null },
+      buildFormData({
+        projectId: alreadyAssignedTask.projectId,
+        title: alreadyAssignedTask.title,
+        description: alreadyAssignedTask.description,
+        status: alreadyAssignedTask.status,
+      }),
+    );
+
+    expect(fetchSpy).not.toHaveBeenCalledWith(
+      "/api/task-assigned-email",
+      expect.anything(),
+    );
+  });
+
+  it("should not notify when editing assigns the task to yourself", async () => {
+    const selfId = crypto.randomUUID();
+    mockLiveSession(selfId);
+    const fetchSpy = spyOnNotifyFetch();
+    const queryClient = new QueryClient();
+    const setIsModalOpen = jest.fn();
+    const action = createTaskAction({
+      editingTaskRef: { current: existingTask },
+      queryClient,
+      setIsModalOpen,
+    });
+
+    await action(
+      { error: null, errorKind: null },
+      buildFormData({
+        projectId: existingTask.projectId,
+        title: existingTask.title,
+        description: existingTask.description,
+        status: existingTask.status,
+        assigneeId: selfId,
+      }),
+    );
+
+    expect(fetchSpy).not.toHaveBeenCalledWith(
+      "/api/task-assigned-email",
+      expect.anything(),
+    );
   });
 });

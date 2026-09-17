@@ -323,6 +323,24 @@ in this project's scope.
 Use this pattern for future reads from `auth.users`. Never expose `auth.users`
 to direct client queries.
 
+### `get_email_for_project_member`
+
+- `SECURITY DEFINER`;
+- `LANGUAGE plpgsql`;
+- reads `auth.users`;
+- takes a target user ID and a project ID;
+- returns that user's email, or `null`;
+- gated on `is_project_member(auth.uid(), _project_id)`.
+
+Resolves the recipient address for the task-assigned notification
+(`app/api/task-assigned-email/route.ts`), the reverse direction from
+`lookup_user_id_by_email`. That reverse direction is why this one is not
+open the same way: given any user ID, an unrestricted version would let any
+authenticated caller learn that person's real email. Gating on the caller's
+own membership in the target's project means the privilege only ever
+applies to someone the caller could already see in that project's member
+list.
+
 ### Ownership transfer
 
 - `SECURITY DEFINER`;
