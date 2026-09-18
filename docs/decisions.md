@@ -63,6 +63,7 @@ reason to document something here.
 - [Trusted Types createScriptURL: default policy design and the Next.js 16.3 immutable-assets update](#trusted-types-createscripturl-default-policy-design-and-the-nextjs-163-immutable-assets-update)
 - [Extending `authenticated-lighthouse.mts` for CSP violation checks, and sharing the chunk URL regex](#extending-authenticated-lighthousemts-for-csp-violation-checks-and-sharing-the-chunk-url-regex)
 - [Why `authenticated-lighthouse.mts` doesn't import `lib/baseUrl.ts`](#why-authenticated-lighthousemts-doesnt-import-libbaseurlts)
+- [Why project_task_stats needs both an explicit GRANT and security_invoker = true](#why-project_task_stats-needs-both-an-explicit-grant-and-security_invoker-true)
 - [Hardcoded hex colors in the Supabase email templates, not CSS custom properties](#hardcoded-hex-colors-in-the-supabase-email-templates-not-css-custom-properties)
 - [A Route Handler side channel for addMember's notification email, not a Server Action conversion](#a-route-handler-side-channel-for-addmembers-notification-email-not-a-server-action-conversion)
 - [Staying on Office 365 SMTP after diagnosing spam-folder delivery as an SCL reputation issue, not misconfiguration](#staying-on-office-365-smtp-after-diagnosing-spam-folder-delivery-as-an-scl-reputation-issue-not-misconfiguration)
@@ -1590,6 +1591,37 @@ environment this script actually runs in. If the import problem is
 ever fixed, for example by adding `"type": "module"` project-wide,
 replace this literal with a real import instead of hand-copying the
 logic further.
+
+---
+
+## Why project_task_stats needs both an explicit GRANT and security_invoker = true
+
+**Decision:** `project_task_stats` has an explicit `grant select` to
+`authenticated` and `security_invoker = true`, not left at
+PostgreSQL's respective defaults for either.
+
+**Why the grant. Incident: confirmed via a live `403`/`42501` error.**
+PostgreSQL checks table and view privileges before RLS ever runs. A
+view with correct RLS-respecting SQL still returns nothing but a
+permission error without its own explicit grant, confirmed live: a
+`403` in devtools with `data: null` despite a query that looked
+resolved. Views don't inherit the underlying tables' grants.
+
+**Why security_invoker. Incident: confirmed by querying as a real
+non-privileged user.** A view runs with its owning role's privileges
+by default, not the querying user's, bypassing the underlying
+tables' RLS entirely regardless of how correct that RLS is.
+`security_invoker = true` is what makes the view respect the
+querying user's own RLS instead. Confirmed directly, not assumed
+from the view's SQL looking correct: querying as a real,
+non-privileged authenticated user before this was set returned rows
+across every user's projects, not just the querying user's own.
+
+**Takeaway:** grants, RLS, and view ownership/security_invoker are
+three independent layers, a correct setting on one says nothing
+about the other two. See `docs/database.md`'s "Grants and Policies
+Are Separate" section for the general mechanism; this entry is why
+`project_task_stats` specifically needed both, not just one.
 
 ---
 
