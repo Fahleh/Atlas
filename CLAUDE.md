@@ -22,10 +22,17 @@ implementing changes:
   cookies, session refresh, redirects, route protection, and cross-user
   cache isolation.
 
-`docs/deployment.md` is reserved for CI/CD, hosting, and environment
-configuration once Atlas has any; it holds no real content yet. `docs/security.md`
-is reserved for security topics broader than authentication and is not yet
-written.
+`docs/deployment.md` currently covers Vercel Fluid Compute and per-route
+`maxDuration`. It is still reserved for the rest of CI/CD, hosting, and
+environment configuration once Atlas has more of that in place.
+
+`docs/security.md` (lowercase) is reserved for security topics broader than
+authentication, CSP and security headers, the RLS threat model, dependency
+and secrets hygiene, a living engineering reference in the same vein as
+`frontend.md` or `database.md`, and is not yet written. This is distinct
+from `docs/SECURITY.md` (uppercase), which already exists and serves a
+different, standard purpose: GitHub's vulnerability-disclosure file,
+how to report a security issue, not an engineering reference.
 
 Read multiple documents for cross-cutting tasks. Do not load every document by
 default merely because it exists.

@@ -16,8 +16,11 @@ atlas/
 │   ├── not-found.tsx
 │   ├── not-found.module.css
 │   ├── robots.ts
+│   ├── favicon.ico
+│   ├── layout.tsx
 │   ├── (auth)/
 │   │   ├── layout.tsx
+│   │   ├── layout.module.css
 │   │   ├── error.tsx
 │   │   ├── error.module.css
 │   │   ├── authShared.module.css
@@ -40,7 +43,9 @@ atlas/
 │   │   └── recovery-confirm/
 │   │       └── route.ts
 │   ├── api/
-│   │   └── member-added-email/
+│   │   ├── member-added-email/
+│   │   │   └── route.ts
+│   │   └── task-assigned-email/
 │   │       └── route.ts
 │   └── (dashboard)/
 │       ├── layout.tsx
@@ -56,9 +61,13 @@ atlas/
 │           └── page.tsx
 ├── components/
 │   ├── EntityModal.tsx
+│   ├── EntityModal.module.css
 │   ├── StatusBox.tsx
+│   ├── StatusBox.module.css
 │   ├── Avatar.tsx
+│   ├── Avatar.module.css
 │   ├── Skeleton.tsx
+│   ├── Skeleton.module.css
 │   ├── Header.tsx
 │   ├── Header.module.css
 │   ├── Sidebar.tsx
@@ -89,13 +98,19 @@ atlas/
 │   │   ├── TaskList.tsx
 │   │   ├── TaskList.module.css
 │   │   ├── TaskItem.tsx
+│   │   ├── TaskItem.module.css
 │   │   ├── TaskModal.tsx
 │   │   ├── TaskModal.module.css
+│   │   ├── AssigneeListbox.tsx
+│   │   ├── AssigneeListbox.module.css
+│   │   ├── AssigneeControl.tsx
 │   │   ├── taskActions.ts
 │   │   └── taskUtils.ts
 │   ├── profile/
 │   │   ├── ProfileForm.tsx
 │   │   ├── ProfileForm.module.css
+│   │   ├── DeleteAccountSection.tsx
+│   │   ├── DeleteAccountSection.module.css
 │   │   └── profileActions.ts
 │   └── activity/
 │       ├── ActivityFeed.tsx
@@ -110,10 +125,13 @@ atlas/
 │   ├── useMembersByProject.ts
 │   ├── useTaskCountsByProject.ts
 │   ├── useDueSoonTaskCount.ts
-│   └── useActivityLog.ts
+│   ├── useActivityLog.ts
+│   ├── useOutsideClick.ts
+│   └── useOwnedMultiMemberProjects.ts
 ├── lib/
 │   ├── asyncQueue.ts
 │   ├── authorizeMemberAddedEmail.ts
+│   ├── authorizeTaskAssignedEmail.ts
 │   ├── baseUrl.ts
 │   ├── createCache.ts
 │   ├── createCounter.ts
@@ -125,7 +143,8 @@ atlas/
 │   ├── updateImmutable.ts
 │   ├── utils.ts
 │   ├── email/
-│   │   └── sendMemberAddedEmail.ts
+│   │   ├── sendMemberAddedEmail.ts
+│   │   └── sendTaskAssignedEmail.ts
 │   ├── supabase/
 │   │   ├── client.ts
 │   │   ├── server.ts
@@ -152,10 +171,12 @@ atlas/
 ├── supabase/
 │   ├── config.toml
 │   ├── migrations/
-│   ├── snippets/
 │   └── templates/
 ├── scripts/
-│   └── authenticated-lighthouse.mts
+│   ├── authenticated-lighthouse.mts
+│   ├── assert-no-csp-violations.mjs
+│   ├── generate-skeleton-hashes.mjs
+│   └── print-lighthouse-tbt.mjs
 └── docs/
     ├── architecture.md
     ├── testing.md
@@ -166,7 +187,10 @@ atlas/
     ├── decisions.md
     ├── findings.md
     ├── roadmap.md
-    └── a11y.md
+    ├── a11y.md
+    ├── SECURITY.md
+    ├── lighthouse/
+    └── screenshots/
 ```
 
 The tree shows location, not full responsibility. A file's detailed role should
@@ -230,9 +254,9 @@ app/(dashboard)/actions.ts
 ```
 
 Shared Supabase client creation stays in `lib/supabase/`, and other real
-I/O infrastructure like `lib/email/sendMemberAddedEmail.ts`'s SMTP send
-lives in its own `lib/` subfolder, because both are infrastructure, not
-business logic.
+I/O infrastructure like `lib/email/sendMemberAddedEmail.ts` and
+`sendTaskAssignedEmail.ts`'s SMTP sends live in their own `lib/` subfolder,
+because both are infrastructure, not business logic.
 
 Client-rendered task/project mutation logic is not a Next.js Server Action.
 Keep it in feature action files:
@@ -263,15 +287,18 @@ called from a Route Handler.
 
 ```text
 lib/authorizeMemberAddedEmail.ts
+lib/authorizeTaskAssignedEmail.ts
 ```
 
 ```typescript
 authorizeMemberAddedEmail(supabase, { projectId, email })
+authorizeTaskAssignedEmail(supabase, { taskId, projectId, assigneeId })
 ```
 
 Deliberately shaped this way for testability without a real Next request
 context. See `docs/decisions.md`'s "A Route Handler side channel for
-addMember's notification email" entry for why.
+addMember's notification email" entry for why. `authorizeTaskAssignedEmail`
+follows the same shape for the task-assignment notification.
 
 ---
 
@@ -298,13 +325,15 @@ a visually similar component is compound.
 - `app/auth/confirm/route.ts` and `app/auth/recovery-confirm/route.ts` are
   Route Handlers outside route groups.
 - The auth-confirm route must remain publicly reachable through `proxy.ts`.
-- `app/api/member-added-email/route.ts` is a Route Handler under `app/api/`,
-  called internally via `fetch()` from client code
-  (`features/projects/projectActions.ts`'s `addMember`), never reached by
-  external navigation. `app/api/` is the convention for that shape.
-  `app/auth/*/route.ts` is reserved for routes reached by an external link,
-  an email confirmation or password-reset link, not an internal fetch call.
-  A future Route Handler's location follows this same distinction.
+- `app/api/member-added-email/route.ts` and `app/api/task-assigned-email/route.ts`
+  are Route Handlers under `app/api/`, each called internally via `fetch()`
+  from client code (`features/projects/projectActions.ts`'s `addMember` and
+  `features/tasks/taskActions.ts`'s `notifyTaskAssigned`, respectively),
+  never reached by external navigation. `app/api/` is the convention for
+  that shape. `app/auth/*/route.ts` is reserved for routes reached by an
+  external link, an email confirmation or password-reset link, not an
+  internal fetch call. Any future Route Handler's location follows this
+  same distinction.
 
 ---
 
@@ -442,10 +471,11 @@ Use `calculateProgressPercent` in `projectUtils.ts`.
 
 Invalidations that must always happen together belong in one helper.
 
-Task mutations must invalidate both:
+Task mutations must invalidate all three:
 
 - `["tasks", projectId]`;
-- `["taskCountsByProject"]`.
+- `["taskCountsByProject"]`;
+- `["activityLog"]`.
 
 Use the module-private `invalidateTaskQueries(...)` helper and run independent
 invalidations with `Promise.all`.

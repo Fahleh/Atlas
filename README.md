@@ -48,6 +48,9 @@ Live demo: https://atlas-murex-nine.vercel.app
 
 - Project and task CRUD with status tracking
 - Project membership: add and remove collaborators by email, owner/collaborator roles, with a notification email sent to a newly added collaborator
+- Task assignment to a project member, with a notification email sent to the newly assigned person
+- Project ownership transfer to an existing collaborator
+- Account deletion, soft delete, blocked when the account solely owns a project with other members until ownership is transferred
 - Dashboard with recent projects, upcoming tasks, a velocity indicator, and a recent activity feed
 - Append-only activity log, written entirely by database triggers, never by application code
 - Activity messages style people and things differently within the same sentence, semi-bold names, italic truncated entity names, instead of one flat string
