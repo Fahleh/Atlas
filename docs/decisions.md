@@ -1411,6 +1411,16 @@ real CI load) rather than a genuinely caught bug. A run where E2E
 correctly catches a real regression doesn't count against this. An
 infrastructure-caused failure resets the count to zero.
 
+**E2E promoted to a required check, September 2026.** 18 consecutive
+non-blocking runs since the last infrastructure-caused failure (Sep 2,
+a shared mail-catcher delivery timing issue affecting two specs at
+once), spanning 16 days, both well past the bar above. An earlier
+failure, Aug 29, predates that reset point and was investigated
+separately: a stale assertion left behind by a legitimate`pluralize()` fix,
+already corrected, not infrastructure-caused. It would not have broken the 
+streak either way, but Sep 2 is the actual start of the current qualifying 
+run regardless.
+
 ---
 
 ## `EntityModal.SubmitButton`'s action-identity comparison against `useFormStatus`
