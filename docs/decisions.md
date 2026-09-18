@@ -78,6 +78,7 @@ reason to document something here.
 - [`buildActivityMessage` returns a segment array, not a string](#buildactivitymessage-returns-a-segment-array-not-a-string)
 - [A narrow RPC to resolve an assignee's email, gated on both sides' membership, not a service-role client](#a-narrow-rpc-to-resolve-an-assignees-email-gated-on-both-sides-membership-not-a-service-role-client)
 - [Two different mechanisms for the same class of skeleton-height bug](#two-different-mechanisms-for-the-same-class-of-skeleton-height-bug)
+- [Why buildCsp lives in lib/csp.ts, not next.config.ts](#why-buildcsp-lives-in-libcspts-not-nextconfigts)
 
 ---
 
@@ -2032,3 +2033,23 @@ governed by one token, it's four summed sections (header, body,
 progress, footer) plus padding and gaps, there's no single calc()
 expression that represents it. A static measured value, matching
 `.taskCard`'s existing convention, is the honest option there.
+
+---
+
+## Why buildCsp lives in lib/csp.ts, not next.config.ts
+
+**Decision:** `buildCsp` and `PROD_SUPABASE_ORIGIN` live in `lib/csp.ts`,
+not inline in `next.config.ts` where the rest of the config, including
+`images.remotePatterns`, stays.
+
+**Why:** `next.config.ts` loads through Next's own SWC-based config
+transpiler, not through Jest, and that loader's require hook applies to
+anything it imports transitively, including `scripts/generate-skeleton-
+hashes.mjs`, real ESM that walks the filesystem at import time. Logic
+that needs direct unit test coverage has to live somewhere Jest can
+import on its own, without dragging in `next.config.ts` itself or that
+side-effecting dependency. `lib/csp.ts` has no import of the generator
+at all, `buildCsp` takes the hash list as a parameter instead, which is
+what makes it callable from a test with a small fixture list. Nothing
+else in `next.config.ts` needed this same treatment, since nothing else
+in that file has logic worth testing in isolation.
