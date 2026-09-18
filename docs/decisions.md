@@ -46,7 +46,7 @@ reason to document something here.
 - [Security headers: `unsafe-inline` for `script-src`, no HSTS preload, strict COOP](#security-headers-unsafe-inline-for-script-src-no-hsts-preload-strict-coop)
 - [Zero-exception style-src-attr: class refactors, a generated hash allowlist, and native `<progress>`](#zero-exception-style-src-attr-class-refactors-a-generated-hash-allowlist-and-native-progress)
 - [Trusted Types and style-src: production-only enforcement](#trusted-types-and-style-src-production-only-enforcement)
-- [Splitting `--color-accent` into a background token and a text token, and fixing the two gray text tokens alongside it](#splitting-color-accent-into-a-background-token-and-a-text-token-and-fixing-the-two-gray-text-tokens-alongside-it)
+- [Splitting `--color-accent` into a background token and a text token, and fixing the two gray text tokens alongside it](#splitting---color-accent-into-a-background-token-and-a-text-token-and-fixing-the-two-gray-text-tokens-alongside-it)
 - [Theme toggle reads via `useSyncExternalStore`, not `ThemeContext`'s own state](#theme-toggle-reads-via-usesyncexternalstore-not-themecontexts-own-state)
 - [`ProjectCard` moved from a `role="button"` div to a real `<Link>`](#projectcard-moved-from-a-rolebutton-div-to-a-real-link)
 - [`npm test` runs with `--forceExit`: MSW leaves an open handle for any FormData request body](#npm-test-runs-with---forceexit-msw-leaves-an-open-handle-for-any-formdata-request-body)
@@ -56,7 +56,7 @@ reason to document something here.
 - [Separate Route Handlers for signup confirmation and password recovery](#separate-route-handlers-for-signup-confirmation-and-password-recovery)
 - [Restoring non-sensitive fields via defaultValue on login, signup, and reset-password errors](#restoring-non-sensitive-fields-via-defaultvalue-on-login-signup-and-reset-password-errors)
 - [Storage errors surface as-is, not through `interpretSupabaseWriteError`](#storage-errors-surface-as-is-not-through-interpretsupabasewriteerror)
-- [Why `loginAction.test.ts`'s malformed-`redirectTo` test uses an unclosed IPv6-bracket host](#why-loginactiontestts-malformed-redirectto-test-uses-an-unclosed-ipv6-bracket-host)
+- [Why `loginAction.test.ts`'s malformed-`redirectTo` test uses an unclosed IPv6-bracket host](#why-loginactiontesttss-malformed-redirectto-test-uses-an-unclosed-ipv6-bracket-host)
 - [CI performance gate: lab proxies, form-factor-split thresholds, and the file-count guard](#ci-performance-gate-lab-proxies-form-factor-split-thresholds-and-the-file-count-guard)
 - [`EntityModal.SubmitButton`'s action-identity comparison against `useFormStatus`](#entitymodalsubmitbuttons-action-identity-comparison-against-useformstatus)
 - [Using `ts-node`'s ESM loader instead of `tsx` for `authenticated-lighthouse.mts`](#using-ts-nodes-esm-loader-instead-of-tsx-for-authenticated-lighthousemts)
@@ -75,7 +75,7 @@ reason to document something here.
 - [AssigneeListbox's options panel is portaled, the first portal in this codebase](#assigneelistboxs-options-panel-is-portaled-the-first-portal-in-this-codebase)
 - [Clearing assignee_id when a member is removed from a project](#clearing-assignee_id-when-a-member-is-removed-from-a-project)
 - [`buildActivityMessage` returns a segment array, not a string](#buildactivitymessage-returns-a-segment-array-not-a-string)
-- [A narrow RPC to resolve an assignee's email, gated on both sides' membership, not a service-role client](#a-narrow-rpc-to-resolve-an-assignees-email-not-a-service-role-client)
+- [A narrow RPC to resolve an assignee's email, gated on both sides' membership, not a service-role client](#a-narrow-rpc-to-resolve-an-assignees-email-gated-on-both-sides-membership-not-a-service-role-client)
 - [Two different mechanisms for the same class of skeleton-height bug](#two-different-mechanisms-for-the-same-class-of-skeleton-height-bug)
 
 ---
@@ -227,17 +227,18 @@ can't reliably express.
 originally written, despite Supabase's dashboard flagging that it allows
 bucket-wide listing/enumeration.
 
-**Why, confirmed by directly testing both configurations.** Confirmed (via
-a Supabase maintainer's own answer, and by directly testing both with and
-without the policy) that `list` and single-file access share the same RLS
-SELECT policy. There is no way to grant one without the other. Removing
-the policy was tested and found to break `upsert: true` re-uploads
-(Postgres/the client needs read access to determine whether a row already
-exists before deciding insert vs. overwrite), confirmed by attempting a
-second upload with the policy removed and observing a `403`. The actual
-exposure from keeping it is narrow: avatar storage paths are
-`{userId}/avatar.ext`, so the only information enumerable is which user IDs
-have uploaded a photo, not any other data. Accepted as a documented
+**Why list and read can't be separated.** `list` and single-file access
+share the same RLS SELECT policy, confirmed directly, there is no way to
+grant one without the other.
+
+**Why removing it breaks uploads.** Removing the policy breaks `upsert:
+true` re-uploads: the client needs read access to determine whether a row
+already exists before deciding insert vs. overwrite. Confirmed by
+attempting a second upload with the policy removed and observing a `403`.
+
+**Why the residual exposure is acceptable.** Avatar storage paths are
+`{userId}/avatar.ext`, so the only information enumerable is which user
+IDs have uploaded a photo, not any other data. Accepted as a documented
 tradeoff, same reasoning as `lookup_user_id_by_email`'s deliberate scope
 decision.
 
@@ -347,14 +348,17 @@ a project, navigated away without closing it, and later returned to
 unrelated to anything on that visit. Making the URL the sole source of truth
 removes the second copy of the state entirely rather than patching the
 symptom, and as a side effect makes an open project genuinely shareable and
-bookmarkable. `ProjectList` calling `useSearchParams()` makes it depend on
-`/projects` at build time; per Next's docs, a statically-prerendered page
-calling `useSearchParams` from a Client Component must be wrapped in
-`<Suspense>` or the production build fails — `app/(dashboard)/projects/page.tsx`
-wraps `<ProjectList />` in `<Suspense fallback={null}>` for this reason. The
-`null` fallback is invisible in practice since all of `ProjectList`'s real
-content is already fetched client-side via React Query with its own loading
-skeletons, independent of prerendering.
+bookmarkable.
+
+**The `<Suspense>` requirement this creates.** `ProjectList` calling
+`useSearchParams()` makes it depend on `/projects` at build time; per
+Next's docs, a statically-prerendered page calling `useSearchParams` from a
+Client Component must be wrapped in `<Suspense>` or the production build
+fails. `app/(dashboard)/projects/page.tsx` wraps `<ProjectList />` in
+`<Suspense fallback={null}>` for this reason. The `null` fallback is
+invisible in practice since all of `ProjectList`'s real content is already
+fetched client-side via React Query with its own loading skeletons,
+independent of prerendering.
 
 ---
 
@@ -499,14 +503,17 @@ by sign-out in another tab) sent a write as `anon`; Postgres's raw `42501`
 message reached the UI verbatim. `42501` (insufficient privilege) alone
 doesn't distinguish that from a live, correctly-authenticated user
 legitimately denied by RLS (e.g. a collaborator calling an owner-only
-action) — only `PGRST301` (expired JWT) is unambiguous. For `42501`, the
-helper calls `getClaims()` to tell the two apart: no session →
-`sessionExpired`, live session → `forbidden`. A proactive `getClaims()`
-check before the write (used in `createProjectAction`'s owner-id lookup) is
-a fast-fail convenience only, per `useCurrentUser`'s finite-`staleTime`
-entry above; the code-based check after the write is the actual fix.
-`components/ActionErrorMessage.tsx` renders the result everywhere (a login
-link only for `sessionExpired`), replacing several duplicated error-banner call sites​
+action). Only `PGRST301` (expired JWT) is unambiguous. For `42501`, the
+helper calls `getClaims()` to tell the two apart: no session becomes
+`sessionExpired`, live session becomes `forbidden`.
+
+**Why the proactive pre-write check isn't the actual fix.** A proactive
+`getClaims()` check before the write (used in `createProjectAction`'s
+owner-id lookup) is a fast-fail convenience only, per `useCurrentUser`'s
+finite-`staleTime` entry above. The code-based check after the write is
+the actual fix. `components/ActionErrorMessage.tsx` renders the result
+everywhere (a login link only for `sessionExpired`), replacing several
+duplicated error-banner call sites.
 
 ---
 
@@ -688,9 +695,8 @@ cookie hand-off to a separately launched process.
 scripts/get-auth-cookie.ts (since deleted), used Playwright to log
 into Atlas and capture a real cookie set for Lighthouse's
 --extra-headers, replacing a manual DevTools copy-paste approach.
-Playwright was the choice there rather than Puppeteer or Lighthouse's
-own User Flow API because docs/testing.md already commits to
-Playwright for E2E, so there was no reason to bring in a second
+Playwright was the choice there since docs/testing.md already commits
+to Playwright for E2E, so there was no reason to bring in a second
 browser-automation tool for the same job. context.cookies() reads the
 real post-login cookie jar, HttpOnly and any chunked
 sb-<ref>-auth-token.0/.1/.2 included.
@@ -905,13 +911,9 @@ enforcement silently. None of this touches how Atlas is actually used
 in production, so scoping to production is the correct fix, not a
 workaround.
 
-**Verification.** Re-run after the fix: a real `npm run dev` session
-loads clean, `securitypolicyviolation`-free, with Fast Refresh
-confirmed still working (an edited file hot-reloads without a full
-page reload). A real `npm run build && npm run start` session
-confirmed still clean across all three routes, the post-login
-client-side redirect, and both `<Link>` navigations, matching the
-result from before this bug was found.
+**Verification.** Re-confirmed clean, `securitypolicyviolation`-free,
+under both `npm run dev` and a production build, matching the baseline
+from before this bug was found.
 
 ---
 
