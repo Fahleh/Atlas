@@ -112,6 +112,8 @@
   -webkit-line-clamp: 2;
   line-clamp: 2;
   overflow: hidden;
+  /* 2 full clamped lines, always reserved regardless of actual text length */
+  min-height: calc(var(--font-size-sm) * var(--line-height-normal) * 2);
 }
 
 /* ---- Progress ---- */
