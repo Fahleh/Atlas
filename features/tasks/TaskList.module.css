@@ -2,6 +2,8 @@
   list-style: none;
   margin: 0;
   padding: 0;
+  /* 4 skeleton rows * 32px measured real row height, matches SKELETON_ROW_COUNT */
+  min-height: 128px;
   /* max-height keeps a long list scrolling in place instead of growing the
      whole panel; overscroll-behavior stops that scroll chaining outward. */
   max-height: 45vh;
@@ -15,7 +17,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
-  padding: var(--space-3) var(--space-2);
+  padding: var(--space-2);
 }
 
 .stateContainer {
