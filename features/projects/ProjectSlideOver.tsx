@@ -17,6 +17,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRightLeft,
   Check,
+  FolderX,
   Loader2,
   Pencil,
   Plus,
@@ -138,6 +139,9 @@ function AddMemberForm({ project }: AddMemberFormProps) {
 
 type ProjectSlideOverProps = {
   project: Project | null;
+  /** The raw `?project=` URL value. Kept separate from `project` so the panel
+   * can tell "no selection" apart from "selection that didn't resolve." */
+  selectedProjectId: string | null;
   onClose: () => void;
   /** Called when the user clicks "Edit project" — hoists modal state to ProjectList. */
   onEditProject?: (project: Project) => void;
@@ -165,18 +169,20 @@ const DUE_DATE_LONG_FORMAT: Intl.DateTimeFormatOptions = {
  * Always rendered in the DOM — visibility is CSS-controlled via isOpen state.
  * Includes focus trap, body scroll lock, and Escape key handling.
  *
- * @param project - The selected project, or null when no project is selected
+ * @param project - The selected project, or null when no project is selected or the id didn't resolve
+ * @param selectedProjectId - The raw `?project=` URL value, drives isOpen independently of whether it resolved
  * @param onClose - Callback to clear the selected project
  * @param onEditProject - Optional callback to open the project edit modal
  * @param members - Members of the selected project
  */
 export function ProjectSlideOver({
   project,
+  selectedProjectId,
   onClose,
   onEditProject,
   members,
 }: ProjectSlideOverProps) {
-  const isOpen = project !== null;
+  const isOpen = selectedProjectId !== null;
   const panelRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -709,6 +715,16 @@ export function ProjectSlideOver({
                 </ul>
               )}
             </section>
+          </div>
+        )}
+
+        {selectedProjectId && !project && (
+          <div className={styles.stateContainer}>
+            <FolderX size={48} className={styles.stateIcon} aria-hidden="true" />
+            <p className={styles.stateMessage}>Project not found.</p>
+            <p className={styles.stateSubtitle}>
+              It may have been deleted, or you may no longer have access.
+            </p>
           </div>
         )}
       </div>
