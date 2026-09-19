@@ -129,29 +129,16 @@
 /* ---- Skeleton loading cards — mirrors ProjectList.module.css's pattern;
    duplicated rather than shared per docs/frontend.md's third-use threshold ---- */
 
-/* Fixed height matching the real ProjectCard's measured height, so the
-   loading skeleton and the loaded card occupy identical space. .name's
-   line-clamp: 1 (ProjectCard.module.css) is what makes the real card's
-   height stable enough for a fixed number to hold up. Derivation, each
-   piece measured directly against a real loaded card, not summed from
-   tokens alone:
-   - cardHeader: 36px (the avatar box, tallest element in that row)
-   - cardBody: 66px (name 20px + --space-1 gap 4px + 2-line clamped
-     description 42px, 21px per line at font-size-sm/line-height-normal)
-   - progressSection: 30px (bar 4px + --space-2 gap 8px + taskCount
-     text 18px)
-   - cardFooter: up to 42px (member avatar row plus the due date detail
-     row, real avatar images make this taller than it looks from the
-     markup alone)
-   - .card's own padding (--space-5, 20px top and bottom) and three
-     --space-4 (16px) gaps between the four sections
-   See docs/decisions.md. */
+/* 260px, matching the real ProjectCard's measured height. .name's
+   line-clamp and .description's min-height (ProjectCard.module.css)
+   keep that height stable regardless of content. See
+   docs/decisions.md. */
 .skeletonCard {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
   padding: var(--space-5);
-  height: 264px;
+  height: 260px;
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);

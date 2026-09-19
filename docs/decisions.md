@@ -2044,6 +2044,14 @@ progress, footer) plus padding and gaps, there's no single calc()
 expression that represents it. A static measured value, matching
 `.taskCard`'s existing convention, is the honest option there.
 
+**Update, September 2026:** `.skeletonCard`'s height was corrected
+from `264px` to `260px`. The original number had been measured
+against a project whose description happened to fill both clamped
+lines. Once `.description` gained its own `min-height`, reserving
+space for 2 lines regardless of actual text length, the real card's
+measured height came down slightly, and the skeleton needed to
+follow it.
+
 ---
 
 ## Why buildCsp lives in lib/csp.ts, not next.config.ts
