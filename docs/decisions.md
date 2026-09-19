@@ -841,7 +841,7 @@ template-literal-interpolated class name never satisfies that, no
 matter how reasonable the resulting code looks. A real Tailwind-based
 fix exists (call sites passing complete literal classes directly,
 not `Skeleton` building them from props), but changes `Skeleton`'s
-API across all 30 call sites for a benefit, one fewer CSP relaxation
+API across all 34 call sites for a benefit, one fewer CSP relaxation
 keyword, judged not worth that surface today. The hash list is
 generated at build time from the actual call sites (verified: 18 of 18
 independently-observed live violation hashes matched the generator's
