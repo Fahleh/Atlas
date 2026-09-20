@@ -24,10 +24,12 @@ component behavior, including the activity feed's person/thing message
 segments and title truncation. tests/integration/ has 20 files: Server
 Actions, React Query hooks, and other business logic against mocked
 Supabase responses via MSW. tests/e2e/
-has 12 Playwright spec files covering full flows, login, signup, project and
+has 13 Playwright spec files covering full flows, login, signup, project and
 task CRUD, membership, cross-user data isolation, an authorization
 boundary check confirming a collaborator cannot remove a member even
-by calling the API directly, and React 19's field-reset-on-error behavior
+by calling the API directly, a cross-tenant row isolation check confirming
+a non-member can't read, update, or delete another user's task row via
+direct PostgREST calls, and React 19's field-reset-on-error behavior
 across login, signup, and reset-password, and the soft-deleted-account
 login block, both grant types, against the real local stack.
 
@@ -53,7 +55,7 @@ cover.
 ### E2E Data Strategy
 - Local Supabase stack via the CLI (Docker), not a second cloud project — free-tier projects pause after 7 days idle, unsuitable for repeatable runs
 - `globalSetup` runs `supabase db reset --local` once per suite run — this, not per-test cleanup, is what guarantees repeatability across runs
-- Three fixed seed accounts (primary, secondary, and a reset account dedicated to password-reset.spec.ts, which mutates its password), seeded idempotently, not reseeded fresh per test
+- Five fixed seed accounts (primary, secondary, a reset account dedicated to password-reset.spec.ts, which mutates its password, and two soft-deleted accounts, one for the password grant and one for the refresh grant, kept separate so account-deletion-login-block.spec.ts never shares a mutated account with another spec), seeded idempotently, not reseeded fresh per test
 - Per-test cleanup (deleting what a test created) only applies where deletion is the behavior under test, not as a blanket rule — e.g. `project-crud-membership.spec.ts` deletes its own project because proving delete works is the point of that test
 - Revisit if a future test asserts an exact project count or exercises a capped/sorted list (e.g. the dashboard's Recent Projects) — accumulated same-run projects would start to matter at that point
 
