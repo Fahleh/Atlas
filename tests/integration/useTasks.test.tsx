@@ -35,6 +35,7 @@ describe("useTasks", () => {
         title: FAKE_TASK_ROW.title,
         description: FAKE_TASK_ROW.description,
         status: FAKE_TASK_ROW.status,
+        position: FAKE_TASK_ROW.position,
         dueDate: null,
         createdAt: new Date(FAKE_TASK_ROW.created_at),
       },

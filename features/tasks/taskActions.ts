@@ -2,7 +2,12 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { interpretSupabaseWriteError } from "@/lib/supabase/errors";
-import { updateTask, updateTaskStatus } from "@/lib";
+import {
+  computeAppendPosition,
+  computeDropPosition,
+  updateTask,
+  updateTaskStatus,
+} from "@/lib";
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
 import type { Task, TaskStatus } from "@/types/atlas.types";
 import { STATUS_CONFIG } from "./taskUtils";
@@ -101,6 +106,62 @@ export async function assignTask({
     actorId: claims?.claims.sub,
   });
 
+  return { error: null, errorKind: null };
+}
+
+// ---- Reorder --------------------------------------------------------------
+
+export type ReorderTaskParams = {
+  projectId: string;
+  orderedTasks: Task[];
+  movedTaskId: string;
+  queryClient: QueryClient;
+};
+
+/**
+ * Persists a drag-and-drop reorder. orderedTasks is the full task list in
+ * its new order, movedTaskId already placed in its dropped slot, same
+ * shape dnd-kit's arrayMove produces. Writes a single row when the gap
+ * between the moved task's new neighbors still has room to bisect.
+ * Otherwise calls the renormalize_task_positions RPC, which re-spaces
+ * every task in the project atomically inside one Postgres function,
+ * not a batch of independent client updates, see docs/decisions.md.
+ * Used directly from TaskList's onDragEnd, not a form action, there is
+ * no form here.
+ *
+ * @param params - projectId, the full reordered task list, the id of
+ *   the task that moved, and queryClient
+ * @returns `{ error, errorKind }`, both null on success
+ */
+export async function reorderTask({
+  projectId,
+  orderedTasks,
+  movedTaskId,
+  queryClient,
+}: ReorderTaskParams): Promise<TaskFormState> {
+  const supabase = createClient();
+  const movedIndex = orderedTasks.findIndex((task) => task.id === movedTaskId);
+  const before = orderedTasks[movedIndex - 1]?.position ?? null;
+  const after = orderedTasks[movedIndex + 1]?.position ?? null;
+  const newPosition = computeDropPosition({ before, after });
+
+  if (newPosition !== null) {
+    const { error } = await supabase
+      .from("tasks")
+      .update({ position: newPosition })
+      .eq("id", movedTaskId);
+
+    if (error) return interpretSupabaseWriteError(error, supabase);
+  } else {
+    const { error } = await supabase.rpc("renormalize_task_positions", {
+      _project_id: projectId,
+      _ordered_task_ids: orderedTasks.map((task) => task.id),
+    });
+
+    if (error) return interpretSupabaseWriteError(error, supabase);
+  }
+
+  await invalidateTaskQueries(queryClient, ["tasks", projectId]);
   return { error: null, errorKind: null };
 }
 
@@ -246,7 +307,15 @@ export function createTaskAction(
         actorId,
       });
     } else {
-      // Create
+      // Create, appended to the end of the project's current order.
+      const { data: lastTask } = await supabase
+        .from("tasks")
+        .select("position")
+        .eq("project_id", projectId)
+        .order("position", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
       const { data: created, error } = await supabase
         .from("tasks")
         .insert({
@@ -256,6 +325,7 @@ export function createTaskAction(
           status,
           due_date: dueDate ? dueDate.toISOString().split("T")[0] : null,
           assignee_id: assigneeId,
+          position: computeAppendPosition(lastTask?.position ?? null),
         })
         .select("id")
         .single();

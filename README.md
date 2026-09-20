@@ -72,9 +72,9 @@ A curated selection. Full reasoning for each, and everything else, lives in
 
 ## Testing strategy
 
-- 34 unit test files (`tests/unit/`): pure utilities, error interpretation, and component behavior, including the activity feed's person/thing message segments and title truncation.
+- 35 unit test files (`tests/unit/`): pure utilities, error interpretation, and component behavior, including the activity feed's person/thing message segments and title truncation.
 - 20 integration test files (`tests/integration/`): Server Actions, React Query hooks, and other business logic against mocked Supabase responses via MSW.
-- 13 Playwright E2E spec files (`tests/e2e/`): full flows including login, signup, project and task CRUD, membership, cross-user data isolation, an authorization boundary check confirming a collaborator cannot remove a member even by calling the API directly, a cross-tenant row isolation check confirming a non-member can't read, update, or delete another user's task row via direct PostgREST calls, and React 19's field-reset-on-error behavior across login, signup, and reset-password, and the soft-deleted-account login block, both grant types, run against a local Supabase stack.
+- 14 Playwright E2E spec files (`tests/e2e/`): full flows including login, signup, project and task CRUD, membership, cross-user data isolation, an authorization boundary check confirming a collaborator cannot remove a member even by calling the API directly, a cross-tenant row isolation check confirming a non-member can't read, update, or delete another user's task row via direct PostgREST calls, a task-reordering check confirming a drag persists across a reload, and React 19's field-reset-on-error behavior across login, signup, and reset-password, and the soft-deleted-account login block, both grant types, run against a local Supabase stack.
 - CI runs the unit and integration suite (`npm test`) on every pull request to develop & main, required to merge.
 - E2E runs in CI and is a **required check**, promoted after clearing the non-blocking bar described in [docs/decisions.md](docs/decisions.md#ci-performance-gate-lab-proxies-form-factor-split-thresholds-and-the-file-count-guard), see that entry for the real numbers.
 - A Lighthouse-based performance budget also runs in CI, required, split by desktop and mobile thresholds.

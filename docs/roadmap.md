@@ -30,14 +30,6 @@ own plan.
 
 ---
 
-## Deferred to v2 (out of scope for the current version)
-
-- **Drag-and-drop.** Task reordering, or a Kanban-style status-column
-  board. No design work done yet; would likely need its own state
-  management approach distinct from the current form-action-based
-  mutations.
-
-
 ## Deferred until required (not tied to a version)
 
 Items here are not scheduled for any specific version. They get built

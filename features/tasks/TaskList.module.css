@@ -20,6 +20,12 @@
   padding: var(--space-2);
 }
 
+.reorderError {
+  font-size: var(--font-size-sm);
+  color: var(--color-danger);
+  margin-bottom: var(--space-2);
+}
+
 .stateContainer {
   display: flex;
   flex-direction: column;
