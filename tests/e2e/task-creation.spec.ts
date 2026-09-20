@@ -18,13 +18,12 @@ test("creating a task updates the project card's task count without a manual ref
     .click();
   await expect(page.getByRole("dialog", { name: "New project" })).not.toBeVisible();
 
-  // The project name and its task count sit in separate sibling sections
-  // inside the card, so the card itself is the smallest div containing
-  // both texts, not the innermost div containing just the name.
+  // "Due date" disambiguates the card since it's present unconditionally,
+  // unlike the task-count text which flips singular once a task exists.
   const card = page
     .locator("div")
     .filter({ hasText: projectName })
-    .filter({ hasText: "tasks" })
+    .filter({ hasText: "Due date" })
     .last();
   await expect(card.getByText("0/0 tasks")).toBeVisible();
 
