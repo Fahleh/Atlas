@@ -28,6 +28,7 @@ export type Task = {
   title: string;
   description: string;
   status: TaskStatus;
+  position: number;
   dueDate: Date | null;
   createdAt: Date;
 };

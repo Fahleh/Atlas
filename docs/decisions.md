@@ -79,6 +79,8 @@ reason to document something here.
 - [A narrow RPC to resolve an assignee's email, gated on both sides' membership, not a service-role client](#a-narrow-rpc-to-resolve-an-assignees-email-gated-on-both-sides-membership-not-a-service-role-client)
 - [Two different mechanisms for the same class of skeleton-height bug](#two-different-mechanisms-for-the-same-class-of-skeleton-height-bug)
 - [Why buildCsp lives in lib/csp.ts, not next.config.ts](#why-buildcsp-lives-in-libcspts-not-nextconfigts)
+- [Task position uses a fixed gap threshold, and its update trigger needs a WHEN clause](#task-position-uses-a-fixed-gap-threshold-and-its-update-trigger-needs-a-when-clause)
+- [Renormalizing task positions through a SECURITY DEFINER RPC, not a client-side batch write](#renormalizing-task-positions-through-a-security-definer-rpc-not-a-client-side-batch-write)
 
 ---
 
@@ -2071,3 +2073,75 @@ at all, `buildCsp` takes the hash list as a parameter instead, which is
 what makes it callable from a test with a small fixture list. Nothing
 else in `next.config.ts` needed this same treatment, since nothing else
 in that file has logic worth testing in isolation.
+
+---
+
+## Task position uses a fixed gap threshold, and its update trigger needs a WHEN clause
+
+**Decision:** `tasks.position` (migration 024) uses fractional/sortable-key
+positioning with a fixed starting gap (`POSITION_GAP = 1000`) and a fixed
+minimum-gap threshold (`MIN_POSITION_GAP = 1`) before renormalizing, not a
+threshold computed from `float64`'s actual precision limit at runtime.
+`handle_task_activity()`'s update trigger also gained a `WHEN` clause.
+
+**Why a fixed threshold, not computed epsilon.** The true precision limit
+of a `double precision` value depends on its magnitude, which grows every
+time positions are renormalized to larger round numbers. Computing that
+limit at runtime would mean the renormalization threshold itself shifts
+over the life of a project's task list, real complexity this feature
+doesn't need. A starting gap of 1000 survives roughly 10 consecutive
+bisections before falling under `MIN_POSITION_GAP`, generous headroom for
+real drag behavior, and renormalization itself is cheap and lazy,
+triggered inline by the one drag that needs it, not scheduled, so a
+conservative fixed threshold costs nothing to accept.
+
+**Why the WHEN clause.** `on_task_updated_activity` fires on every update
+to a `tasks` row regardless of which column changed, and
+`handle_task_activity()` already checks internally which fields moved
+before deciding whether to log anything. A position-only write, every
+drag, would otherwise still invoke the function for no reason. A `WHEN`
+clause evaluated against `OLD`/`NEW` skips the function call itself when
+none of the tracked fields (`status`, `title`, `description`, `due_date`,
+`assignee_id`) changed, cheaper than invoking the function and returning
+early inside it.
+
+---
+
+## Renormalizing task positions through a SECURITY DEFINER RPC, not a client-side batch write
+
+**Decision:** `reorderTask`'s renormalization branch calls a new
+`SECURITY DEFINER` RPC, `renormalize_task_positions(_project_id uuid,
+_ordered_task_ids uuid[])`, instead of N independent client `.update()`
+calls through `Promise.all`.
+
+**Why.** Supabase calls resolve with `{ error }` rather than throwing, so a
+failure partway through a `Promise.all` batch leaves some tasks
+renormalized and others not, a real, silent, inconsistent ordering, not a
+cleanly retryable failed save. Same reasoning as
+`transfer_project_ownership`'s multi-statement update: an all-or-nothing
+operation needs one transaction, which PostgREST only gives you through
+one function call, not N separate HTTP requests.
+
+**Why the function re-checks membership itself.** A `SECURITY DEFINER`
+function runs with its owner's privileges, not the caller's, so
+`tasks: project members can update` never applies to its internal
+`UPDATE` the way it would to a direct client query. The function
+re-implements that same check explicitly, member or owner of
+`_project_id`, since nothing enforces it for a definer function
+otherwise.
+
+**Why the client sends the full ordered id array, verified, not trusted.**
+The array is the only place the user's just-performed drag exists, nothing
+in the database reflects it yet, so deriving order from `position` or
+`created_at` inside the function would silently discard it. Before writing
+anything, the function compares the array's id set against the project's
+real current task ids and raises if they don't match, catching a stale
+client array rather than mis-assigning or dropping a row.
+
+**A separate, narrower race, not fixed here.** `createTaskAction`'s
+append-position lookup can let two tasks created in the same project at
+nearly the same instant land on the same position. Accepted as
+self-correcting: Postgres gives no ordering guarantee between tied
+positions, and the next drag involving either task resolves it through
+the same reorder path above. A cosmetic ambiguity between two rows, not
+the data-integrity gap this entry's fix addresses.

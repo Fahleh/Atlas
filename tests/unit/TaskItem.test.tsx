@@ -15,6 +15,7 @@ const task: Task = {
   title: "Write the report",
   description: "",
   status: "in_progress",
+  position: 1000,
   dueDate: null,
   createdAt: new Date(),
 };

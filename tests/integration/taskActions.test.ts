@@ -6,6 +6,7 @@ import {
   assignTask,
   createDeleteTaskAction,
   createTaskAction,
+  reorderTask,
 } from "@/features/tasks/taskActions";
 import type { Task } from "@/types/atlas.types";
 import { server } from "@/tests/mocks/server";
@@ -302,6 +303,155 @@ describe("assignTask", () => {
   });
 });
 
+describe("reorderTask", () => {
+  const projectId = crypto.randomUUID();
+
+  function buildTask(id: string, position: number): Task {
+    return {
+      id,
+      projectId,
+      assigneeId: null,
+      title: `Task ${id}`,
+      description: "",
+      status: "todo",
+      position,
+      dueDate: null,
+      createdAt: new Date(),
+    };
+  }
+
+  it("should write a single midpoint position when the gap has room", async () => {
+    // task-c dropped into the middle slot, between task-a and task-b.
+    const orderedTasks = [
+      buildTask("task-a", 1000),
+      buildTask("task-c", 3000),
+      buildTask("task-b", 2000),
+    ];
+    let patchCount = 0;
+    let patchBody: unknown;
+    let patchUrl = "";
+    server.use(
+      http.patch(`${SUPABASE_URL}/rest/v1/tasks`, async ({ request }) => {
+        patchCount += 1;
+        patchBody = await request.json();
+        patchUrl = request.url;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const queryClient = new QueryClient();
+    const invalidateSpy = jest.spyOn(queryClient, "invalidateQueries");
+
+    const result = await reorderTask({
+      projectId,
+      orderedTasks,
+      movedTaskId: "task-c",
+      queryClient,
+    });
+
+    expect(result).toEqual({ error: null, errorKind: null });
+    expect(patchCount).toBe(1);
+    expect(patchBody).toEqual({ position: 1500 });
+    expect(patchUrl).toContain("id=eq.task-c");
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["tasks", projectId],
+    });
+  });
+
+  it("should call the renormalize RPC with the full ordered id list when the gap has collapsed", async () => {
+    // task-moved dropped between task-a and task-c, whose positions are
+    // only 0.5 apart, too tight for computeDropPosition to bisect.
+    const orderedTasks = [
+      buildTask("task-a", 1000),
+      buildTask("task-moved", 5000),
+      buildTask("task-c", 1000.5),
+    ];
+    let rpcBody: unknown;
+    let patchCalled = false;
+    server.use(
+      http.post(
+        `${SUPABASE_URL}/rest/v1/rpc/renormalize_task_positions`,
+        async ({ request }) => {
+          rpcBody = await request.json();
+          return new HttpResponse(null, { status: 204 });
+        },
+      ),
+      http.patch(`${SUPABASE_URL}/rest/v1/tasks`, () => {
+        patchCalled = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const queryClient = new QueryClient();
+    const invalidateSpy = jest.spyOn(queryClient, "invalidateQueries");
+
+    const result = await reorderTask({
+      projectId,
+      orderedTasks,
+      movedTaskId: "task-moved",
+      queryClient,
+    });
+
+    expect(result).toEqual({ error: null, errorKind: null });
+    expect(rpcBody).toEqual({
+      _project_id: projectId,
+      _ordered_task_ids: ["task-a", "task-moved", "task-c"],
+    });
+    // The renormalization branch must never fall back to per-row client
+    // updates, that's the exact non-atomic behavior this RPC replaces.
+    expect(patchCalled).toBe(false);
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["tasks", projectId],
+    });
+  });
+
+  it("should return sessionExpired for PGRST301 when the renormalize RPC fails", async () => {
+    const orderedTasks = [
+      buildTask("task-a", 1000),
+      buildTask("task-moved", 5000),
+      buildTask("task-c", 1000.5),
+    ];
+    server.use(
+      http.post(`${SUPABASE_URL}/rest/v1/rpc/renormalize_task_positions`, () =>
+        postgrestError({ code: "PGRST301", message: "JWT expired" }, 401),
+      ),
+    );
+    const queryClient = new QueryClient();
+
+    const result = await reorderTask({
+      projectId,
+      orderedTasks,
+      movedTaskId: "task-moved",
+      queryClient,
+    });
+
+    expect(result).toEqual({
+      error: "Your session has expired. Log in again to continue.",
+      errorKind: "sessionExpired",
+    });
+  });
+
+  it("should return sessionExpired for PGRST301 on the single-row path", async () => {
+    const orderedTasks = [buildTask("task-a", 1000), buildTask("task-b", 2000)];
+    server.use(
+      http.patch(`${SUPABASE_URL}/rest/v1/tasks`, () =>
+        postgrestError({ code: "PGRST301", message: "JWT expired" }, 401),
+      ),
+    );
+    const queryClient = new QueryClient();
+
+    const result = await reorderTask({
+      projectId,
+      orderedTasks,
+      movedTaskId: "task-a",
+      queryClient,
+    });
+
+    expect(result).toEqual({
+      error: "Your session has expired. Log in again to continue.",
+      errorKind: "sessionExpired",
+    });
+  });
+});
+
 describe("createTaskAction, create branch", () => {
   it("should return an error and make no Supabase call when projectId is missing", async () => {
     let insertCalled = false;
@@ -360,6 +510,7 @@ describe("createTaskAction, create branch", () => {
     const projectId = crypto.randomUUID();
     let insertBody: unknown;
     server.use(
+      http.get(`${SUPABASE_URL}/rest/v1/tasks`, () => HttpResponse.json([])),
       http.post(`${SUPABASE_URL}/rest/v1/tasks`, async ({ request }) => {
         insertBody = await request.json();
         return HttpResponse.json(FAKE_TASK_ROW, { status: 201 });
@@ -393,6 +544,7 @@ describe("createTaskAction, create branch", () => {
       status: "in_progress",
       due_date: "2026-12-31",
       assignee_id: null,
+      position: 1000,
     });
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ["tasks", projectId],
@@ -521,6 +673,7 @@ describe("createTaskAction, edit branch", () => {
     description: "Build the nav menu",
     dueDate: null,
     status: "todo",
+    position: 1000,
     createdAt: new Date(),
   };
 

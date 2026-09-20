@@ -1,5 +1,8 @@
 "use client";
 
+import { GripVertical } from "lucide-react";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import type { Member, Task } from "@/types/atlas.types";
 import { AssigneeControl } from "./AssigneeControl";
 import { STATUS_CONFIG } from "./taskUtils";
@@ -13,12 +16,13 @@ type TaskItemProps = {
 };
 
 /**
- * Renders a single task row: title and status indicator behind a real
- * button that opens the edit modal, plus an inline assignee control as a
- * sibling. Not one big role="button" div, a real interactive element
- * nested inside one would be stripped out of the accessibility tree by
- * ARIA's presentational-children behavior, see docs/decisions.md's
- * ProjectCard entry for the same issue caught there.
+ * Renders a single task row: a drag handle, title and status indicator
+ * behind a real button that opens the edit modal, plus an inline assignee
+ * control, three siblings, not one nested inside another. A real
+ * interactive element nested inside another interactive element would be
+ * stripped out of the accessibility tree by ARIA's presentational-children
+ * behavior, see docs/decisions.md's ProjectCard entry for the same issue
+ * caught there.
  *
  * @param task - The task to display
  * @param members - Members of the task's project, for the assignee popover
@@ -26,9 +30,29 @@ type TaskItemProps = {
  */
 export function TaskItem({ task, members, onSelect }: TaskItemProps) {
   const config = STATUS_CONFIG[task.status];
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: task.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
 
   return (
-    <div className={styles.row}>
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`${styles.row} ${isDragging ? styles.rowDragging : ""}`}
+    >
+      <button
+        type="button"
+        aria-label={`Reorder ${task.title}`}
+        className={styles.dragHandle}
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical size={16} aria-hidden="true" />
+      </button>
       <button
         type="button"
         aria-label={`Open ${task.title}`}

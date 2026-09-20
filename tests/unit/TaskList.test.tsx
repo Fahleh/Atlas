@@ -21,6 +21,7 @@ const FAKE_TASK: Task = {
   title: "Write the report",
   description: "",
   status: "todo",
+  position: 1000,
   dueDate: null,
   createdAt: new Date("2026-01-01T00:00:00.000Z"),
 };

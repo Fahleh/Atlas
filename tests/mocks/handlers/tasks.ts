@@ -13,6 +13,7 @@ export const FAKE_TASK_ROW = {
   title: "Fake task",
   description: "",
   status: "todo",
+  position: 1000,
   due_date: null,
   created_at: "2026-01-01T00:00:00.000Z",
 };

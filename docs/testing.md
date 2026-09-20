@@ -19,17 +19,18 @@ build checks, browser verification requirements, and debugging process.
   tests/integration/, same convention as Server Action tests.
 
 Current automated coverage is broad, not limited to early lib/ utilities.
-tests/unit/ has 34 files: pure utilities, error interpretation, and
+tests/unit/ has 35 files: pure utilities, error interpretation, and
 component behavior, including the activity feed's person/thing message
 segments and title truncation. tests/integration/ has 20 files: Server
 Actions, React Query hooks, and other business logic against mocked
 Supabase responses via MSW. tests/e2e/
-has 13 Playwright spec files covering full flows, login, signup, project and
+has 14 Playwright spec files covering full flows, login, signup, project and
 task CRUD, membership, cross-user data isolation, an authorization
 boundary check confirming a collaborator cannot remove a member even
 by calling the API directly, a cross-tenant row isolation check confirming
 a non-member can't read, update, or delete another user's task row via
-direct PostgREST calls, and React 19's field-reset-on-error behavior
+direct PostgREST calls, a task-reordering check confirming a drag persists
+across a reload, and React 19's field-reset-on-error behavior
 across login, signup, and reset-password, and the soft-deleted-account
 login block, both grant types, against the real local stack.
 

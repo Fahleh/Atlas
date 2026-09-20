@@ -65,6 +65,7 @@ const task: Task = {
   title: "Existing task",
   description: "",
   status: "todo",
+  position: 1000,
   dueDate: null,
   createdAt: new Date(),
 };
