@@ -5,6 +5,7 @@ import { interpretSupabaseWriteError } from "@/lib/supabase/errors";
 import {
   computeAppendPosition,
   computeDropPosition,
+  datesEqual,
   updateTask,
   updateTaskStatus,
 } from "@/lib";
@@ -288,6 +289,18 @@ export function createTaskAction(
         assigneeId,
       });
       const final = updateTaskStatus(withChanges, status);
+
+      const isUnchanged =
+        final.title === currentTask.title &&
+        final.description === currentTask.description &&
+        final.status === currentTask.status &&
+        final.assigneeId === currentTask.assigneeId &&
+        datesEqual(final.dueDate, currentTask.dueDate);
+
+      if (isUnchanged) {
+        setIsModalOpen(false);
+        return { error: null, errorKind: null };
+      }
 
       const { error } = await supabase
         .from("tasks")

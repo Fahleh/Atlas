@@ -829,7 +829,7 @@ describe("createTaskAction, edit branch", () => {
     });
   });
 
-  it("should not notify when editing leaves the assignee unchanged", async () => {
+  it("should skip the Supabase update, invalidation, and notification entirely when every field is unchanged, but still close the modal", async () => {
     const alreadyAssignedTask: Task = {
       ...existingTask,
       assigneeId: "00000000-0000-4000-8000-00000000000a",
@@ -837,14 +837,22 @@ describe("createTaskAction, edit branch", () => {
     mockLiveSession("acting-user");
     const fetchSpy = spyOnNotifyFetch();
     const queryClient = new QueryClient();
+    const invalidateSpy = jest.spyOn(queryClient, "invalidateQueries");
     const setIsModalOpen = jest.fn();
+    let updateCalled = false;
+    server.use(
+      http.patch(`${SUPABASE_URL}/rest/v1/tasks`, () => {
+        updateCalled = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
     const action = createTaskAction({
       editingTaskRef: { current: alreadyAssignedTask },
       queryClient,
       setIsModalOpen,
     });
 
-    await action(
+    const result = await action(
       { error: null, errorKind: null },
       buildFormData({
         projectId: alreadyAssignedTask.projectId,
@@ -855,6 +863,10 @@ describe("createTaskAction, edit branch", () => {
       }),
     );
 
+    expect(result).toEqual({ error: null, errorKind: null });
+    expect(updateCalled).toBe(false);
+    expect(invalidateSpy).not.toHaveBeenCalled();
+    expect(setIsModalOpen).toHaveBeenCalledWith(false);
     expect(fetchSpy).not.toHaveBeenCalledWith(
       "/api/task-assigned-email",
       expect.anything(),

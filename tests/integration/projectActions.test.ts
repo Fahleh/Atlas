@@ -656,6 +656,38 @@ describe("createProjectAction, edit branch", () => {
     expect(setIsModalOpen).toHaveBeenCalledWith(false);
   });
 
+  it("should skip the Supabase update and invalidation entirely when every field is unchanged, but still close the modal", async () => {
+    let updateCalled = false;
+    server.use(
+      http.patch(`${SUPABASE_URL}/rest/v1/projects`, () => {
+        updateCalled = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const queryClient = new QueryClient();
+    const invalidateSpy = jest.spyOn(queryClient, "invalidateQueries");
+    const setIsModalOpen = jest.fn();
+    const action = createProjectAction({
+      editingProjectRef: { current: existingProject },
+      queryClient,
+      setIsModalOpen,
+    });
+
+    const result = await action(
+      { error: null, errorKind: null },
+      buildFormData({
+        name: existingProject.name,
+        description: existingProject.description,
+        status: existingProject.status,
+      }),
+    );
+
+    expect(result).toEqual({ error: null, errorKind: null });
+    expect(updateCalled).toBe(false);
+    expect(invalidateSpy).not.toHaveBeenCalled();
+    expect(setIsModalOpen).toHaveBeenCalledWith(false);
+  });
+
   it("should return sessionExpired for PGRST301 without closing the modal", async () => {
     server.use(
       http.patch(`${SUPABASE_URL}/rest/v1/projects`, () =>
