@@ -14,13 +14,7 @@ own plan.
 
 ## Current version, remaining work
 
-1. **Screen reader testing.** No automated or manual screen reader testing
-   (NVDA, VoiceOver, JAWS) has been performed against any part of the app.
-   Every ARIA pattern in `docs/a11y.md` and `docs/frontend.md` has been
-   built to the documented WAI-ARIA specification, but none of it has been
-   verified against a real assistive-technology tool.
-
-2. **Color contrast audit.** No formal WCAG contrast ratio check has been
+1. **Color contrast audit.** No formal WCAG contrast ratio check has been
    run against the token palette in either light or dark mode. The palette
    was chosen for aesthetic and brand reasons (see `docs/decisions.md`),
    not verified against AA contrast minimums.
