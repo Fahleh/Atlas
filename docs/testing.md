@@ -24,15 +24,17 @@ component behavior, including the activity feed's person/thing message
 segments and title truncation. tests/integration/ has 20 files: Server
 Actions, React Query hooks, and other business logic against mocked
 Supabase responses via MSW. tests/e2e/
-has 14 Playwright spec files covering full flows, login, signup, project and
+has 15 Playwright spec files covering full flows, login, signup, project and
 task CRUD, membership, cross-user data isolation, an authorization
 boundary check confirming a collaborator cannot remove a member even
 by calling the API directly, a cross-tenant row isolation check confirming
 a non-member can't read, update, or delete another user's task row via
 direct PostgREST calls, a task-reordering check confirming a drag persists
 across a reload, and React 19's field-reset-on-error behavior
-across login, signup, and reset-password, and the soft-deleted-account
-login block, both grant types, against the real local stack.
+across login, signup, and reset-password, the soft-deleted-account
+login block, both grant types, and an ownership-transfer check confirming
+a transfer to a soft-deleted collaborator is rejected and ownership never
+changes, against the real local stack.
 
 `jest.config.ts` has `collectCoverage`/`collectCoverageFrom` configured
 (`npm test -- --coverage` reports real numbers) but no `coverageThreshold`.
