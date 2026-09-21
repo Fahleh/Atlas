@@ -42,6 +42,8 @@ export function AssigneeControl({ task, members }: AssigneeControlProps) {
   const [failedAttemptCount, setFailedAttemptCount] = useState(0);
 
   async function handleChange(assigneeId: string | null) {
+    if (assigneeId === task.assigneeId) return;
+
     setAssignState({ error: null, errorKind: null });
     const result = await assignTask({
       taskId: task.id,

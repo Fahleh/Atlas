@@ -213,12 +213,20 @@ describe("assignTask", () => {
     );
   });
 
-  it("should not notify when reselecting the same assignee (no-op)", async () => {
-    mockLiveSession("acting-user");
+  it("should skip the Supabase update, invalidation, and notification entirely when reselecting the same assignee (no-op)", async () => {
+    const getClaimsSpy = mockLiveSession("acting-user");
     const fetchSpy = spyOnNotifyFetch();
     const queryClient = new QueryClient();
+    const invalidateSpy = jest.spyOn(queryClient, "invalidateQueries");
+    let updateCalled = false;
+    server.use(
+      http.patch(`${SUPABASE_URL}/rest/v1/tasks`, () => {
+        updateCalled = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
 
-    await assignTask({
+    const result = await assignTask({
       taskId,
       projectId,
       assigneeId: newAssigneeId,
@@ -226,6 +234,10 @@ describe("assignTask", () => {
       queryClient,
     });
 
+    expect(result).toEqual({ error: null, errorKind: null });
+    expect(updateCalled).toBe(false);
+    expect(invalidateSpy).not.toHaveBeenCalled();
+    expect(getClaimsSpy).not.toHaveBeenCalled();
     expect(fetchSpy).not.toHaveBeenCalledWith(
       "/api/task-assigned-email",
       expect.anything(),

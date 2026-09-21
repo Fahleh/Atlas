@@ -19,7 +19,7 @@ build checks, browser verification requirements, and debugging process.
   tests/integration/, same convention as Server Action tests.
 
 Current automated coverage is broad, not limited to early lib/ utilities.
-tests/unit/ has 35 files: pure utilities, error interpretation, and
+tests/unit/ has 37 files: pure utilities, error interpretation, and
 component behavior, including the activity feed's person/thing message
 segments and title truncation. tests/integration/ has 20 files: Server
 Actions, React Query hooks, and other business logic against mocked

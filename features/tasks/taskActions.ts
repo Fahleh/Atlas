@@ -77,7 +77,11 @@ function notifyTaskAssigned(params: {
  * popover in TaskList, not a form action, there is no form here, the
  * popover selection is the action itself.
  *
- * @param params - taskId, projectId (for cache invalidation), the new assigneeId, previousAssigneeId (for the notification's change guard), and queryClient
+ * Returns early when assigneeId already matches previousAssigneeId,
+ * reselecting the same option is a real path with no UI guard against
+ * it.
+ *
+ * @param params - taskId, projectId (for cache invalidation), the new assigneeId, previousAssigneeId (for the no-op and notification guards), and queryClient
  * @returns `{ error, errorKind }`, both null on success
  */
 export async function assignTask({
@@ -87,6 +91,8 @@ export async function assignTask({
   previousAssigneeId,
   queryClient,
 }: AssignTaskParams): Promise<TaskFormState> {
+  if (assigneeId === previousAssigneeId) return { error: null, errorKind: null };
+
   const supabase = createClient();
   const { error } = await supabase
     .from("tasks")
