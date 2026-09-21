@@ -1,6 +1,6 @@
 # Architectural Decisions
 
-> Last updated: August 2026
+> Last updated: September 2026
 
 This document explains _why_ certain choices were made where the reasoning
 is not obvious from the code alone. It is not a changelog, and not a
@@ -46,7 +46,7 @@ reason to document something here.
 - [Security headers: `unsafe-inline` for `script-src`, no HSTS preload, strict COOP](#security-headers-unsafe-inline-for-script-src-no-hsts-preload-strict-coop)
 - [Zero-exception style-src-attr: class refactors, a generated hash allowlist, and native `<progress>`](#zero-exception-style-src-attr-class-refactors-a-generated-hash-allowlist-and-native-progress)
 - [Trusted Types and style-src: production-only enforcement](#trusted-types-and-style-src-production-only-enforcement)
-- [Splitting `--color-accent` into a background token and a text token, and fixing the two gray text tokens alongside it](#splitting-color-accent-into-a-background-token-and-a-text-token-and-fixing-the-two-gray-text-tokens-alongside-it)
+- [Splitting `--color-accent` into a background token and a text token, and fixing the two gray text tokens alongside it](#splitting---color-accent-into-a-background-token-and-a-text-token-and-fixing-the-two-gray-text-tokens-alongside-it)
 - [Theme toggle reads via `useSyncExternalStore`, not `ThemeContext`'s own state](#theme-toggle-reads-via-usesyncexternalstore-not-themecontexts-own-state)
 - [`ProjectCard` moved from a `role="button"` div to a real `<Link>`](#projectcard-moved-from-a-rolebutton-div-to-a-real-link)
 - [`npm test` runs with `--forceExit`: MSW leaves an open handle for any FormData request body](#npm-test-runs-with---forceexit-msw-leaves-an-open-handle-for-any-formdata-request-body)
@@ -56,13 +56,14 @@ reason to document something here.
 - [Separate Route Handlers for signup confirmation and password recovery](#separate-route-handlers-for-signup-confirmation-and-password-recovery)
 - [Restoring non-sensitive fields via defaultValue on login, signup, and reset-password errors](#restoring-non-sensitive-fields-via-defaultvalue-on-login-signup-and-reset-password-errors)
 - [Storage errors surface as-is, not through `interpretSupabaseWriteError`](#storage-errors-surface-as-is-not-through-interpretsupabasewriteerror)
-- [Why `loginAction.test.ts`'s malformed-`redirectTo` test uses an unclosed IPv6-bracket host](#why-loginactiontestts-malformed-redirectto-test-uses-an-unclosed-ipv6-bracket-host)
+- [Why `loginAction.test.ts`'s malformed-`redirectTo` test uses an unclosed IPv6-bracket host](#why-loginactiontesttss-malformed-redirectto-test-uses-an-unclosed-ipv6-bracket-host)
 - [CI performance gate: lab proxies, form-factor-split thresholds, and the file-count guard](#ci-performance-gate-lab-proxies-form-factor-split-thresholds-and-the-file-count-guard)
 - [`EntityModal.SubmitButton`'s action-identity comparison against `useFormStatus`](#entitymodalsubmitbuttons-action-identity-comparison-against-useformstatus)
 - [Using `ts-node`'s ESM loader instead of `tsx` for `authenticated-lighthouse.mts`](#using-ts-nodes-esm-loader-instead-of-tsx-for-authenticated-lighthousemts)
 - [Trusted Types createScriptURL: default policy design and the Next.js 16.3 immutable-assets update](#trusted-types-createscripturl-default-policy-design-and-the-nextjs-163-immutable-assets-update)
 - [Extending `authenticated-lighthouse.mts` for CSP violation checks, and sharing the chunk URL regex](#extending-authenticated-lighthousemts-for-csp-violation-checks-and-sharing-the-chunk-url-regex)
 - [Why `authenticated-lighthouse.mts` doesn't import `lib/baseUrl.ts`](#why-authenticated-lighthousemts-doesnt-import-libbaseurlts)
+- [Why project_task_stats needs both an explicit GRANT and security_invoker = true](#why-project_task_stats-needs-both-an-explicit-grant-and-security_invoker-true)
 - [Hardcoded hex colors in the Supabase email templates, not CSS custom properties](#hardcoded-hex-colors-in-the-supabase-email-templates-not-css-custom-properties)
 - [A Route Handler side channel for addMember's notification email, not a Server Action conversion](#a-route-handler-side-channel-for-addmembers-notification-email-not-a-server-action-conversion)
 - [Staying on Office 365 SMTP after diagnosing spam-folder delivery as an SCL reputation issue, not misconfiguration](#staying-on-office-365-smtp-after-diagnosing-spam-folder-delivery-as-an-scl-reputation-issue-not-misconfiguration)
@@ -70,6 +71,16 @@ reason to document something here.
 - [DeletedAccountGuard's retry is a self-contained backoff loop, not disabled structural sharing](#deletedaccountguards-retry-is-a-self-contained-backoff-loop-not-disabled-structural-sharing)
 - [The database enforces account-deletion blocking, the UI is a convenience, not a gate](#the-database-enforces-account-deletion-blocking-the-ui-is-a-convenience-not-a-gate)
 - [useCurrentUserEmail as its own hook, not folded into useCurrentUser](#usecurrentuseremail-as-its-own-hook-not-folded-into-usecurrentuser)
+- [Ownership transfer as a SECURITY DEFINER RPC, logging inside the function itself](#ownership-transfer-as-a-security-definer-rpc-logging-inside-the-function-itself)
+- [task_assigned and task_unassigned use entity_type 'task', not project_member](#task_assigned-and-task_unassigned-use-entity_type-task-not-project_member)
+- [AssigneeListbox's options panel is portaled, the first portal in this codebase](#assigneelistboxs-options-panel-is-portaled-the-first-portal-in-this-codebase)
+- [Clearing assignee_id when a member is removed from a project](#clearing-assignee_id-when-a-member-is-removed-from-a-project)
+- [`buildActivityMessage` returns a segment array, not a string](#buildactivitymessage-returns-a-segment-array-not-a-string)
+- [A narrow RPC to resolve an assignee's email, gated on both sides' membership, not a service-role client](#a-narrow-rpc-to-resolve-an-assignees-email-gated-on-both-sides-membership-not-a-service-role-client)
+- [Two different mechanisms for the same class of skeleton-height bug](#two-different-mechanisms-for-the-same-class-of-skeleton-height-bug)
+- [Why buildCsp lives in lib/csp.ts, not next.config.ts](#why-buildcsp-lives-in-libcspts-not-nextconfigts)
+- [Task position uses a fixed gap threshold, and its update trigger needs a WHEN clause](#task-position-uses-a-fixed-gap-threshold-and-its-update-trigger-needs-a-when-clause)
+- [Renormalizing task positions through a SECURITY DEFINER RPC, not a client-side batch write](#renormalizing-task-positions-through-a-security-definer-rpc-not-a-client-side-batch-write)
 
 ---
 
@@ -220,17 +231,18 @@ can't reliably express.
 originally written, despite Supabase's dashboard flagging that it allows
 bucket-wide listing/enumeration.
 
-**Why, confirmed by directly testing both configurations.** Confirmed (via
-a Supabase maintainer's own answer, and by directly testing both with and
-without the policy) that `list` and single-file access share the same RLS
-SELECT policy. There is no way to grant one without the other. Removing
-the policy was tested and found to break `upsert: true` re-uploads
-(Postgres/the client needs read access to determine whether a row already
-exists before deciding insert vs. overwrite), confirmed by attempting a
-second upload with the policy removed and observing a `403`. The actual
-exposure from keeping it is narrow: avatar storage paths are
-`{userId}/avatar.ext`, so the only information enumerable is which user IDs
-have uploaded a photo, not any other data. Accepted as a documented
+**Why list and read can't be separated.** `list` and single-file access
+share the same RLS SELECT policy, confirmed directly, there is no way to
+grant one without the other.
+
+**Why removing it breaks uploads.** Removing the policy breaks `upsert:
+true` re-uploads: the client needs read access to determine whether a row
+already exists before deciding insert vs. overwrite. Confirmed by
+attempting a second upload with the policy removed and observing a `403`.
+
+**Why the residual exposure is acceptable.** Avatar storage paths are
+`{userId}/avatar.ext`, so the only information enumerable is which user
+IDs have uploaded a photo, not any other data. Accepted as a documented
 tradeoff, same reasoning as `lookup_user_id_by_email`'s deliberate scope
 decision.
 
@@ -340,14 +352,17 @@ a project, navigated away without closing it, and later returned to
 unrelated to anything on that visit. Making the URL the sole source of truth
 removes the second copy of the state entirely rather than patching the
 symptom, and as a side effect makes an open project genuinely shareable and
-bookmarkable. `ProjectList` calling `useSearchParams()` makes it depend on
-`/projects` at build time; per Next's docs, a statically-prerendered page
-calling `useSearchParams` from a Client Component must be wrapped in
-`<Suspense>` or the production build fails — `app/(dashboard)/projects/page.tsx`
-wraps `<ProjectList />` in `<Suspense fallback={null}>` for this reason. The
-`null` fallback is invisible in practice since all of `ProjectList`'s real
-content is already fetched client-side via React Query with its own loading
-skeletons, independent of prerendering.
+bookmarkable.
+
+**The `<Suspense>` requirement this creates.** `ProjectList` calling
+`useSearchParams()` makes it depend on `/projects` at build time; per
+Next's docs, a statically-prerendered page calling `useSearchParams` from a
+Client Component must be wrapped in `<Suspense>` or the production build
+fails. `app/(dashboard)/projects/page.tsx` wraps `<ProjectList />` in
+`<Suspense fallback={null}>` for this reason. The `null` fallback is
+invisible in practice since all of `ProjectList`'s real content is already
+fetched client-side via React Query with its own loading skeletons,
+independent of prerendering.
 
 ---
 
@@ -492,14 +507,17 @@ by sign-out in another tab) sent a write as `anon`; Postgres's raw `42501`
 message reached the UI verbatim. `42501` (insufficient privilege) alone
 doesn't distinguish that from a live, correctly-authenticated user
 legitimately denied by RLS (e.g. a collaborator calling an owner-only
-action) — only `PGRST301` (expired JWT) is unambiguous. For `42501`, the
-helper calls `getClaims()` to tell the two apart: no session →
-`sessionExpired`, live session → `forbidden`. A proactive `getClaims()`
-check before the write (used in `createProjectAction`'s owner-id lookup) is
-a fast-fail convenience only, per `useCurrentUser`'s finite-`staleTime`
-entry above; the code-based check after the write is the actual fix.
-`components/ActionErrorMessage.tsx` renders the result everywhere (a login
-link only for `sessionExpired`), replacing several duplicated error-banner call sites​
+action). Only `PGRST301` (expired JWT) is unambiguous. For `42501`, the
+helper calls `getClaims()` to tell the two apart: no session becomes
+`sessionExpired`, live session becomes `forbidden`.
+
+**Why the proactive pre-write check isn't the actual fix.** A proactive
+`getClaims()` check before the write (used in `createProjectAction`'s
+owner-id lookup) is a fast-fail convenience only, per `useCurrentUser`'s
+finite-`staleTime` entry above. The code-based check after the write is
+the actual fix. `components/ActionErrorMessage.tsx` renders the result
+everywhere (a login link only for `sessionExpired`), replacing several
+duplicated error-banner call sites.
 
 ---
 
@@ -681,9 +699,8 @@ cookie hand-off to a separately launched process.
 scripts/get-auth-cookie.ts (since deleted), used Playwright to log
 into Atlas and capture a real cookie set for Lighthouse's
 --extra-headers, replacing a manual DevTools copy-paste approach.
-Playwright was the choice there rather than Puppeteer or Lighthouse's
-own User Flow API because docs/testing.md already commits to
-Playwright for E2E, so there was no reason to bring in a second
+Playwright was the choice there since docs/testing.md already commits
+to Playwright for E2E, so there was no reason to bring in a second
 browser-automation tool for the same job. context.cookies() reads the
 real post-login cookie jar, HttpOnly and any chunked
 sb-<ref>-auth-token.0/.1/.2 included.
@@ -826,7 +843,7 @@ template-literal-interpolated class name never satisfies that, no
 matter how reasonable the resulting code looks. A real Tailwind-based
 fix exists (call sites passing complete literal classes directly,
 not `Skeleton` building them from props), but changes `Skeleton`'s
-API across all 30 call sites for a benefit, one fewer CSP relaxation
+API across all 34 call sites for a benefit, one fewer CSP relaxation
 keyword, judged not worth that surface today. The hash list is
 generated at build time from the actual call sites (verified: 18 of 18
 independently-observed live violation hashes matched the generator's
@@ -898,13 +915,9 @@ enforcement silently. None of this touches how Atlas is actually used
 in production, so scoping to production is the correct fix, not a
 workaround.
 
-**Verification.** Re-run after the fix: a real `npm run dev` session
-loads clean, `securitypolicyviolation`-free, with Fast Refresh
-confirmed still working (an edited file hot-reloads without a full
-page reload). A real `npm run build && npm run start` session
-confirmed still clean across all three routes, the post-login
-client-side redirect, and both `<Link>` navigations, matching the
-result from before this bug was found.
+**Verification.** Re-confirmed clean, `securitypolicyviolation`-free,
+under both `npm run dev` and a production build, matching the baseline
+from before this bug was found.
 
 ---
 
@@ -1002,7 +1015,7 @@ the affected subtree client-side, and that recovery path writes
 through a raw `innerHTML` call. `app/layout.tsx`'s Trusted Types
 `default` policy only defines `createScriptURL`, not `createHTML`
 (see the Trusted Types entry above), so that write throws once
-enforcement is active in production. The policy did what it's for;
+enforcement is active in production. The policy did what it's for;CSP
 this wasn't a gap to widen.
 
 **Why `useSyncExternalStore`, not a `mounted`-flag guard.** A
@@ -1400,6 +1413,16 @@ real CI load) rather than a genuinely caught bug. A run where E2E
 correctly catches a real regression doesn't count against this. An
 infrastructure-caused failure resets the count to zero.
 
+**E2E promoted to a required check, September 2026.** 18 consecutive
+non-blocking runs since the last infrastructure-caused failure (Sep 2,
+a shared mail-catcher delivery timing issue affecting two specs at
+once), spanning 16 days, both well past the bar above. An earlier
+failure, Aug 29, predates that reset point and was investigated
+separately: a stale assertion left behind by a legitimate`pluralize()` fix,
+already corrected, not infrastructure-caused. It would not have broken the 
+streak either way, but Sep 2 is the actual start of the current qualifying 
+run regardless.
+
 ---
 
 ## `EntityModal.SubmitButton`'s action-identity comparison against `useFormStatus`
@@ -1581,6 +1604,37 @@ environment this script actually runs in. If the import problem is
 ever fixed, for example by adding `"type": "module"` project-wide,
 replace this literal with a real import instead of hand-copying the
 logic further.
+
+---
+
+## Why project_task_stats needs both an explicit GRANT and security_invoker = true
+
+**Decision:** `project_task_stats` has an explicit `grant select` to
+`authenticated` and `security_invoker = true`, not left at
+PostgreSQL's respective defaults for either.
+
+**Why the grant. Incident: confirmed via a live `403`/`42501` error.**
+PostgreSQL checks table and view privileges before RLS ever runs. A
+view with correct RLS-respecting SQL still returns nothing but a
+permission error without its own explicit grant, confirmed live: a
+`403` in devtools with `data: null` despite a query that looked
+resolved. Views don't inherit the underlying tables' grants.
+
+**Why security_invoker. Incident: confirmed by querying as a real
+non-privileged user.** A view runs with its owning role's privileges
+by default, not the querying user's, bypassing the underlying
+tables' RLS entirely regardless of how correct that RLS is.
+`security_invoker = true` is what makes the view respect the
+querying user's own RLS instead. Confirmed directly, not assumed
+from the view's SQL looking correct: querying as a real,
+non-privileged authenticated user before this was set returned rows
+across every user's projects, not just the querying user's own.
+
+**Takeaway:** grants, RLS, and view ownership/security_invoker are
+three independent layers, a correct setting on one says nothing
+about the other two. See `docs/database.md`'s "Grants and Policies
+Are Separate" section for the general mechanism; this entry is why
+`project_task_stats` specifically needed both, not just one.
 
 ---
 
@@ -1784,3 +1838,310 @@ that needs the account's email, and it comes from the same local JWT
 claims `useCurrentUser()` already reads, `getClaims()`, no network call,
 so a second small hook local to `DeleteAccountSection.tsx` was the
 smaller change.
+
+---
+
+## Ownership transfer as a SECURITY DEFINER RPC, logging inside the function itself
+
+**Decision:** `transfer_project_ownership()` is a `SECURITY DEFINER` plpgsql
+function called via `supabase.rpc(...)`, not three separate client writes.
+It also inserts its own `activity_log` row directly, rather than extending
+`handle_member_activity` to react to a role change on `project_members`.
+
+**Why an RPC, not client writes.** Checked before deciding, not assumed:
+`project_members` has no `UPDATE` policy anywhere in `002`, `003`, or
+`018_account_deletion.sql`, so a direct client update is rejected by RLS
+for every user, not just a non-owner. `projects: owner can update` has no
+explicit `WITH CHECK`, so its `USING` clause doubles as the check on the
+new row, `owner_id = auth.uid()`, which would reject writing a new owner's
+ID in the first place. Both writes this feature needs are structurally
+blocked by policies as they already exist, so this isn't a preference for
+atomicity over three calls, a client-side version cannot work at all
+without loosening RLS specifically to allow it, which is the thing
+`docs/database.md` says not to do to route around a missing mechanism.
+
+**Why the old owner is demoted before the new owner is promoted.**
+`create unique index` has no deferrable option, only a table `unique
+constraint` can defer its check to end of transaction, so each `UPDATE`
+here is checked against the partial index the moment it runs. Promoting
+the new owner first would leave both rows matching `role = 'owner'` for
+the same `project_id` for that one statement, which the index rejects
+immediately, the second statement never runs. Demoting first avoids that
+overlap entirely. This ordering is required by the index, not a
+stylistic preference.
+
+**Why the log insert lives inside the RPC instead of a trigger.**
+`handle_member_activity` only fires on `INSERT`/`DELETE` on
+`project_members` (`014_activity_log.sql`). A transfer does two `UPDATE`s,
+so that trigger never sees it, there's no existing behavior to extend.
+Adding a third, `AFTER UPDATE` trigger that infers "this was a transfer"
+from a `role` change was considered and rejected: inferring intent from a
+generic row change is indirect, and the function that performs the change
+already knows exactly what happened. Having it log itself is the more
+direct choice, the same way `handle_new_project` owns its own bootstrap
+insert without going through a shared trigger.
+
+**The bootstrap-insert skip in `handle_member_activity` needed no fix.**
+The `if new.role = 'collaborator' then ... end if` guard that skips
+logging an owner-role insert was never explained by a comment or by either
+doc, checked directly, not assumed. It didn't need one: it's still correct
+after this feature ships, project creation still shouldn't log a "member
+added" line for its own bootstrap owner row. `020_ownership_transfer.sql`
+recreates the function with a comment now, since this feature is exactly
+the context a future reader would want it in, pointing at
+`transfer_project_ownership()` as where a real ownership change gets
+logged instead.
+
+**Why inline two-step confirm in `ProjectSlideOver`, not a modal.** This
+sits closer to "Low-blast-radius non-form removal" than to an account-level
+irreversible action in `docs/frontend.md`'s severity ladder: the initiating
+owner keeps full project access afterward, just as a collaborator, nothing
+is deleted or lost, unlike account deletion where the user gives up their
+own access entirely. The same pattern already used for removing a member,
+trash icon swapping to explicit Cancel/Confirm with focus moved to Cancel,
+applies directly. It uses its own state
+(`confirmingTransferMemberId`, not `confirmingMemberId`) and its own focus
+ref, since a row can have a remove action and a transfer action confirming
+independently of each other.
+
+---
+
+## task_assigned and task_unassigned use entity_type 'task', not project_member
+
+**Decision:** both verbs point `entity_type` at the task itself
+(`entity_id` and `entity_name` are the task's own id and title), matching
+every other `task_*` verb, rather than pointing at the member being
+assigned or unassigned.
+
+**Why.** `activity_log` already has two competing shapes for this kind of
+choice. `task_created`, `task_status_changed`, `task_updated`, and
+`task_deleted` all treat the task as the entity, with anything else that
+matters carried in metadata. `ownership_transferred` is the one exception,
+it points at the member, because a change of owner is fundamentally about
+who runs the project, not about any single task. An assignment change is
+the opposite case, it's something happening to a task, so it stays on the
+task-pointing side of that split. Who the assignee is, and who it used to
+be when replacing an existing one, lives entirely in metadata
+(`assigneeId`/`assigneeName`, `previousAssigneeId`/`previousAssigneeName`),
+not in the entity fields.
+
+---
+
+## AssigneeListbox's options panel is portaled, the first portal in this codebase
+
+**Decision:** the options panel renders through `createPortal` into
+`document.body`, positioned with `position: fixed` computed from the
+trigger's own bounding rect, instead of `position: absolute` nested
+inside the row. There was no existing portal anywhere in this codebase
+before this, so this sets the pattern rather than following one.
+
+**Why a portal was necessary.** An element with `position: absolute` is
+out of normal flow, but it's still counted as part of its nearest
+scrolling ancestor's content for the purpose of that ancestor's
+scrollable overflow. `TaskList`'s rows sit inside a container with
+`overflow-y: auto`, so a popover anchored there with `position: absolute`
+still added to that container's scroll height, opening it near the
+bottom of a scrolled list pushed the list's own scrollbar even though the
+popover visually read as detached from the row. Fixed positioning alone
+escapes an ancestor's overflow clipping, but only moving the element out
+of that ancestor's subtree actually removes it from the scroll
+calculation, so the portal and the position change belong together.
+
+**Why useOutsideClick needed a second ref.** Once the panel is portaled,
+it's no longer a DOM descendant of the trigger that opens it, it's a
+sibling appended elsewhere in the tree. `useOutsideClick`'s containment
+check only looked at one element before this, so a click on an option
+would register as outside the trigger and close the popover before the
+option's own click handler ran. It now takes an optional `extraRef`, a
+second element also treated as inside, so the portaled panel counts
+alongside the trigger. `StatusBox` doesn't pass one and isn't affected.
+
+**Why z-index 60.** The highest z-index anywhere else in this codebase is
+50, `EntityModal`'s own stacking level. The field variant opens from
+inside that modal but portals out to a sibling of it, so it has to
+outrank that specific value, not just move up from its own previous one.
+
+---
+
+## Clearing assignee_id when a member is removed from a project
+
+**Decision:** removing a member from a project also clears assignee_id
+on any task in that project still assigned to them, rather than leaving
+the assignment in place. Clearing the assignment on removal is the
+ordinary behavior for task assignment scoped to a container someone can
+lose access to.
+
+**Why not leave the old assignee_id in place.** Some systems keep a
+stale assignment around on purpose, to preserve who had something at
+some point in time. That reasoning doesn't carry over here, because
+activity_log already records every task_assigned and task_unassigned
+change as permanent history, independent of whatever assignee_id
+happens to hold right now. A task still pointing at someone with no
+membership left on that project isn't preserving information, it's
+just a value nothing can act on and a name the UI would show for
+someone who isn't there anymore.
+
+**Why not block the removal instead.** Requiring every one of a
+member's assigned tasks to be manually reassigned before they can be
+removed was considered and rejected. Removing a member is meant to
+stay a quick, everyday action. Gating it behind clearing out someone's
+whole task list first turns a one-click action into a multi-step chore
+that doesn't match how often or how casually removal actually happens.
+
+---
+
+## `buildActivityMessage` returns a segment array, not a string
+
+**Decision:** `buildActivityMessage` and `buildFieldChangeMessage` return
+`ActivityMessageSegment[]`, not a string.
+
+**Why:** a person's name and an entity's name need different styling
+within one sentence. A flat string gives the renderer nothing to hook
+that styling onto.
+
+`--activity-thing-max-width` (`styles/tokens.css`, 280px) is the box a
+thing segment ellipsis-truncates against. Chosen by rendering a real
+long task title in the browser, not picked from a guess.
+
+---
+
+## A narrow RPC to resolve an assignee's email, gated on both sides' membership, not a service-role client
+
+**Decision:** `get_email_for_project_member` (migration 023) is a new
+`SECURITY DEFINER` RPC. It checks two things before returning
+anything: the caller must be a member of the given project, and the
+target user whose email is being resolved must also be a member of
+that same project. No service-role/admin Supabase client was
+introduced.
+
+**Why:** the task-assigned notification needs an email from a user
+ID, the opposite direction of the existing `lookup_user_id_by_email`.
+A service-role client would work too, but it's a standing capability
+with no scope limit of its own, every future query made with it
+bypasses RLS entirely, not just this one lookup. A new RPC keeps the
+same privilege boundary this codebase already uses everywhere else:
+narrow, single purpose, and re-checked against real membership inside
+the function itself, not assumed from what the caller claims.
+
+---
+
+## Two different mechanisms for the same class of skeleton-height bug
+
+**Decision:** `ProjectStats.module.css`'s `.value` reserves space with
+`min-height: calc(var(--font-size-4xl) * var(--line-height-tight))`,
+tied to the actual tokens it renders at. `page.module.css`'s
+`.skeletonCard` reserves space with a static measured `height: 264px`,
+the same convention `.taskCard` already used. Both fix a real dashboard
+layout shift, both are the same class of bug, skeleton height not
+matching loaded content, but the mechanism differs on purpose.
+
+**Why:** the stats bar bug was specifically a wrong token reference,
+the skeleton was sized against `--font-size-2xl` in a comment while
+`.value` actually renders at `--font-size-4xl`. Tying the reserved
+space to the real tokens directly closes that exact class of mistake,
+a future change to either token stays correct automatically instead of
+needing a second hand-edit to stay in sync. The card's height isn't
+governed by one token, it's four summed sections (header, body,
+progress, footer) plus padding and gaps, there's no single calc()
+expression that represents it. A static measured value, matching
+`.taskCard`'s existing convention, is the honest option there.
+
+**Update, September 2026:** `.skeletonCard`'s height was corrected
+from `264px` to `260px`. The original number had been measured
+against a project whose description happened to fill both clamped
+lines. Once `.description` gained its own `min-height`, reserving
+space for 2 lines regardless of actual text length, the real card's
+measured height came down slightly, and the skeleton needed to
+follow it.
+
+---
+
+## Why buildCsp lives in lib/csp.ts, not next.config.ts
+
+**Decision:** `buildCsp` and `PROD_SUPABASE_ORIGIN` live in `lib/csp.ts`,
+not inline in `next.config.ts` where the rest of the config, including
+`images.remotePatterns`, stays.
+
+**Why:** `next.config.ts` loads through Next's own SWC-based config
+transpiler, not through Jest, and that loader's require hook applies to
+anything it imports transitively, including `scripts/generate-skeleton-
+hashes.mjs`, real ESM that walks the filesystem at import time. Logic
+that needs direct unit test coverage has to live somewhere Jest can
+import on its own, without dragging in `next.config.ts` itself or that
+side-effecting dependency. `lib/csp.ts` has no import of the generator
+at all, `buildCsp` takes the hash list as a parameter instead, which is
+what makes it callable from a test with a small fixture list. Nothing
+else in `next.config.ts` needed this same treatment, since nothing else
+in that file has logic worth testing in isolation.
+
+---
+
+## Task position uses a fixed gap threshold, and its update trigger needs a WHEN clause
+
+**Decision:** `tasks.position` (migration 024) uses fractional/sortable-key
+positioning with a fixed starting gap (`POSITION_GAP = 1000`) and a fixed
+minimum-gap threshold (`MIN_POSITION_GAP = 1`) before renormalizing, not a
+threshold computed from `float64`'s actual precision limit at runtime.
+`handle_task_activity()`'s update trigger also gained a `WHEN` clause.
+
+**Why a fixed threshold, not computed epsilon.** The true precision limit
+of a `double precision` value depends on its magnitude, which grows every
+time positions are renormalized to larger round numbers. Computing that
+limit at runtime would mean the renormalization threshold itself shifts
+over the life of a project's task list, real complexity this feature
+doesn't need. A starting gap of 1000 survives roughly 10 consecutive
+bisections before falling under `MIN_POSITION_GAP`, generous headroom for
+real drag behavior, and renormalization itself is cheap and lazy,
+triggered inline by the one drag that needs it, not scheduled, so a
+conservative fixed threshold costs nothing to accept.
+
+**Why the WHEN clause.** `on_task_updated_activity` fires on every update
+to a `tasks` row regardless of which column changed, and
+`handle_task_activity()` already checks internally which fields moved
+before deciding whether to log anything. A position-only write, every
+drag, would otherwise still invoke the function for no reason. A `WHEN`
+clause evaluated against `OLD`/`NEW` skips the function call itself when
+none of the tracked fields (`status`, `title`, `description`, `due_date`,
+`assignee_id`) changed, cheaper than invoking the function and returning
+early inside it.
+
+---
+
+## Renormalizing task positions through a SECURITY DEFINER RPC, not a client-side batch write
+
+**Decision:** `reorderTask`'s renormalization branch calls a new
+`SECURITY DEFINER` RPC, `renormalize_task_positions(_project_id uuid,
+_ordered_task_ids uuid[])`, instead of N independent client `.update()`
+calls through `Promise.all`.
+
+**Why.** Supabase calls resolve with `{ error }` rather than throwing, so a
+failure partway through a `Promise.all` batch leaves some tasks
+renormalized and others not, a real, silent, inconsistent ordering, not a
+cleanly retryable failed save. Same reasoning as
+`transfer_project_ownership`'s multi-statement update: an all-or-nothing
+operation needs one transaction, which PostgREST only gives you through
+one function call, not N separate HTTP requests.
+
+**Why the function re-checks membership itself.** A `SECURITY DEFINER`
+function runs with its owner's privileges, not the caller's, so
+`tasks: project members can update` never applies to its internal
+`UPDATE` the way it would to a direct client query. The function
+re-implements that same check explicitly, member or owner of
+`_project_id`, since nothing enforces it for a definer function
+otherwise.
+
+**Why the client sends the full ordered id array, verified, not trusted.**
+The array is the only place the user's just-performed drag exists, nothing
+in the database reflects it yet, so deriving order from `position` or
+`created_at` inside the function would silently discard it. Before writing
+anything, the function compares the array's id set against the project's
+real current task ids and raises if they don't match, catching a stale
+client array rather than mis-assigning or dropping a row.
+
+**A separate, narrower race, not fixed here.** `createTaskAction`'s
+append-position lookup can let two tasks created in the same project at
+nearly the same instant land on the same position. Accepted as
+self-correcting: Postgres gives no ordering guarantee between tied
+positions, and the next drag involving either task resolves it through
+the same reorder path above. A cosmetic ambiguity between two rows, not
+the data-integrity gap this entry's fix addresses.

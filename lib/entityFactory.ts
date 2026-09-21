@@ -56,6 +56,7 @@ export function createTask(input: CreateTaskInput): Task {
     title,
     description,
     status: "todo",
+    position: 0,
     dueDate,
     createdAt: new Date(),
   };

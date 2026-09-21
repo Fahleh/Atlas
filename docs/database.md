@@ -244,7 +244,9 @@ depend on a deleted user's row staying readable by everyone else regardless
 of their own account status.
 
 A second function blocks deleting an account that solely owns a project with
-other members, since ownership transfer isn't built (`docs/roadmap.md`):
+other members. The way out is transferring ownership to another
+collaborator, not removing every other member, see "Ownership transfer"
+below. This function's own block is unchanged by that feature shipping:
 
 ```sql
 create or replace function public.owner_has_multi_member_project()
@@ -320,6 +322,108 @@ in this project's scope.
 
 Use this pattern for future reads from `auth.users`. Never expose `auth.users`
 to direct client queries.
+
+### `get_email_for_project_member`
+
+- `SECURITY DEFINER`;
+- `LANGUAGE plpgsql`;
+- reads `auth.users`;
+- takes a target user ID and a project ID;
+- returns that user's email, or `null`;
+- gated on `is_project_member(auth.uid(), _project_id)`.
+
+Resolves the recipient address for the task-assigned notification
+(`app/api/task-assigned-email/route.ts`), the reverse direction from
+`lookup_user_id_by_email`. That reverse direction is why this one is not
+open the same way: given any user ID, an unrestricted version would let any
+authenticated caller learn that person's real email. Gating on the caller's
+own membership in the target's project means the privilege only ever
+applies to someone the caller could already see in that project's member
+list.
+
+### Ownership transfer
+
+- `SECURITY DEFINER`;
+- `LANGUAGE plpgsql`;
+- callable by any authenticated user, authorization is checked inside the
+  function body, not delegated to a policy;
+- caller must be the project's current `owner_id`;
+- target must already hold a `collaborator` row on that same project, and
+  that target's `profiles.deleted_at` must be null, joined into the same
+  `exists` check rather than a separate one. A soft-deleted target can
+  still hold a stale `collaborator` row (deletion never removes it), and
+  without this check the transfer would succeed into an account that can
+  never authenticate again (`reject_deleted_user_token` blocks it
+  unconditionally, see "Soft account deletion" above), orphaning the
+  project for every owner-only action with no way back;
+- a partial unique index, `project_members_project_id_idx` on
+  `project_members (project_id) where role = 'owner'`, enforces at most
+  one owner row per project at the schema level;
+- flips both `project_members` roles and `projects.owner_id` in one
+  transaction, then inserts one `ownership_transferred` activity_log row.
+
+`SECURITY DEFINER` is required, not just convenient: `project_members` has
+no `UPDATE` policy at all, so a direct client update is rejected outright.
+`projects: owner can update` also has no explicit `WITH CHECK`, so Postgres
+reuses its `USING` clause (`owner_id = auth.uid()`) as the check on the new
+row, which rejects setting `owner_id` to anyone but the caller. Both
+confirmed by reading the actual policy definitions, not assumed.
+
+Full migration: `020_ownership_transfer.sql`, target-active check added in
+`025_ownership_transfer_deleted_target.sql`.
+
+### Assignee membership
+
+`check_assignee_is_project_member()` is a `before insert or update of
+assignee_id on tasks` trigger. Not `SECURITY DEFINER`: it only reads
+`project_members` for a project the querying user is already a member of
+(or owns), which `project_members: members can read`'s `is_project_member`
+helper already exposes to them under normal invoker RLS. Confirmed by
+reading that policy directly, not assumed.
+
+Raises when `assignee_id` is set to someone who isn't in that project's
+`project_members`. This is the only place assignee-to-project membership is
+enforced, the UI picker only ever offers members that already qualify, it
+is not a second, redundant check.
+
+`014_activity_log.sql`'s `handle_task_activity()` also logs `task_assigned`
+and `task_unassigned`, separate verbs rather than folding into
+`task_updated`'s generic changes array, the same reasoning that already
+gave `task_status_changed` its own verb. `task_assigned` metadata always
+carries `assigneeId`/`assigneeName`; `previousAssigneeId`/
+`previousAssigneeName` are added only when replacing an existing assignee.
+`task_unassigned` carries only the previous* pair. A single `UPDATE` that
+changes `assignee_id` and another tracked field in the same statement
+produces two separate rows, the assignee block and the generic `_changes`
+block are independent inserts, not one merged entry.
+
+Full migration: `021_task_assignment.sql`.
+
+### Clearing assignee on member removal
+
+`clear_assignee_on_member_removal()` is an `after delete on project_members`
+trigger that nulls `assignee_id` on that project's tasks for the removed
+user. Not `SECURITY DEFINER`, only the owner can delete a `project_members`
+row today (`project_members: owner can delete`), and the owner already
+satisfies `tasks: project members can update`.
+
+This reasoning depends on delete staying owner-only. If self-removal by a
+collaborator is ever added, recheck it: a departing collaborator's own
+`project_members` row is already gone by the time this trigger's `UPDATE`
+runs, so they may no longer satisfy `tasks: project members can update` if
+they hold no other membership.
+
+The trigger only runs its update inside
+`if exists (select 1 from public.projects where id = old.project_id)`.
+`deleteProject` cascades both `project_members` and `tasks` off the same
+`projects` row, and by the time this trigger fires during that cascade,
+the `projects` row itself can already be gone. Without the guard, the
+update would still find real task rows and run, which fires
+`handle_task_activity`'s own insert into `activity_log`, and that
+insert's `project_id` would point at a project that no longer exists,
+failing the whole delete.
+
+Full migration: `022_clear_assignee_on_member_removal.sql`.
 
 ---
 

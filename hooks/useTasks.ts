@@ -27,7 +27,7 @@ export function useTasks(projectId: string) {
         .from("tasks")
         .select("*")
         .eq("project_id", projectId)
-        .order("created_at", { ascending: true });
+        .order("position", { ascending: true });
 
       if (error) throw new SupabaseReadError(interpretSupabaseReadError(error));
 

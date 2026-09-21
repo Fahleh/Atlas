@@ -204,6 +204,7 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          position: number
           project_id: string
           status: string | null
           title: string
@@ -215,6 +216,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          position?: number
           project_id: string
           status?: string | null
           title: string
@@ -226,6 +228,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          position?: number
           project_id?: string
           status?: string | null
           title?: string
@@ -269,6 +272,10 @@ export type Database = {
     }
     Functions: {
       activity_actor_name: { Args: { _user_id: string }; Returns: string }
+      get_email_for_project_member: {
+        Args: { _project_id: string; _user_id: string }
+        Returns: string
+      }
       is_active_user: { Args: never; Returns: boolean }
       is_project_member: {
         Args: { _project_id: string; _user_id: string }
@@ -277,6 +284,14 @@ export type Database = {
       lookup_user_id_by_email: { Args: { _email: string }; Returns: string }
       owner_has_multi_member_project: { Args: never; Returns: boolean }
       reject_deleted_user_token: { Args: { event: Json }; Returns: Json }
+      renormalize_task_positions: {
+        Args: { _ordered_task_ids: string[]; _project_id: string }
+        Returns: undefined
+      }
+      transfer_project_ownership: {
+        Args: { _new_owner_id: string; _project_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

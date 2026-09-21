@@ -5,8 +5,9 @@ import { useFormStatus } from "react-dom";
 import { ActionErrorMessage } from "@/components/ActionErrorMessage";
 import { EntityModal, useEntityModalContext } from "@/components/EntityModal";
 import { StatusBox } from "@/components/StatusBox";
+import { AssigneeListbox } from "./AssigneeListbox";
 import type { SupabaseWriteErrorKind } from "@/lib/supabase/errors";
-import type { TaskStatus } from "@/types/atlas.types";
+import type { Member, TaskStatus } from "@/types/atlas.types";
 import { STATUS_CONFIG } from "./taskUtils";
 import styles from "./TaskModal.module.css";
 
@@ -43,6 +44,13 @@ export type StatusFieldProps = {
   defaultValue: TaskStatus;
   name: string;
   onChange?: (value: TaskStatus) => void;
+};
+
+export type AssigneeFieldProps = {
+  members: Member[];
+  defaultValue: string | null;
+  name: string;
+  onChange?: (assigneeId: string | null) => void;
 };
 
 type DeleteButtonProps = {
@@ -141,6 +149,36 @@ function TaskStatusField({ defaultValue, name, onChange }: StatusFieldProps) {
   );
 }
 
+// ---- TaskAssigneeField ------------------------------------------------------
+
+/**
+ * Task-specific assignee listbox: wraps AssigneeListbox with the "field"
+ * variant and its label baked in. Callers only supply members, the
+ * pre-selected assignee, and the field name.
+ *
+ * @param members - Project members offered as options
+ * @param defaultValue - Pre-selected assignee ID; re-mount to reset
+ * @param name - The `name` attribute for the hidden input
+ * @param onChange - Called with the new assignee ID whenever selection changes
+ */
+function TaskAssigneeField({
+  members,
+  defaultValue,
+  name,
+  onChange,
+}: AssigneeFieldProps) {
+  return (
+    <AssigneeListbox
+      variant="field"
+      members={members}
+      defaultValue={defaultValue}
+      name={name}
+      label="Assignee"
+      onChange={onChange}
+    />
+  );
+}
+
 // ---- Root wrapper -----------------------------------------------------------
 
 /**
@@ -187,5 +225,6 @@ export const TaskModal = Object.assign(TaskModalRoot, {
   CancelButton: EntityModal.CancelButton,
   SubmitButton: EntityModal.SubmitButton,
   StatusField: TaskStatusField,
+  AssigneeField: TaskAssigneeField,
   DeleteButton,
 });

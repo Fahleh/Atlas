@@ -48,8 +48,12 @@ Live demo: https://atlas-murex-nine.vercel.app
 
 - Project and task CRUD with status tracking
 - Project membership: add and remove collaborators by email, owner/collaborator roles, with a notification email sent to a newly added collaborator
+- Task assignment to a project member, with a notification email sent to the newly assigned person
+- Project ownership transfer to an existing collaborator
+- Account deletion, soft delete, blocked when the account solely owns a project with other members until ownership is transferred
 - Dashboard with recent projects, upcoming tasks, a velocity indicator, and a recent activity feed
 - Append-only activity log, written entirely by database triggers, never by application code
+- Activity messages style people and things differently within the same sentence, semi-bold names, italic truncated entity names, instead of one flat string
 - Row-level security scoping every table to a user's actual project membership
 - Avatar upload with Supabase Storage
 - Light and dark theme, no flash of wrong theme on load
@@ -68,11 +72,11 @@ A curated selection. Full reasoning for each, and everything else, lives in
 
 ## Testing strategy
 
-- 33 unit test files (`tests/unit/`): pure utilities, error interpretation, and component behavior.
-- 16 integration test files (`tests/integration/`): Server Actions, React Query hooks, and other business logic against mocked Supabase responses via MSW.
-- 11 Playwright E2E spec files (`tests/e2e/`): full flows including login, signup, project and task CRUD, membership, cross-user data isolation, an authorization boundary check confirming a collaborator cannot remove a member even by calling the API directly, React 19's field-reset-on-error behavior across login, signup, and reset-password, and the soft-deleted-account login block, both grant types, run against a local Supabase stack.
+- 37 unit test files (`tests/unit/`): pure utilities, error interpretation, and component behavior, including the activity feed's person/thing message segments and title truncation.
+- 20 integration test files (`tests/integration/`): Server Actions, React Query hooks, and other business logic against mocked Supabase responses via MSW.
+- 15 Playwright E2E spec files (`tests/e2e/`): full flows including login, signup, project and task CRUD, membership, cross-user data isolation, an authorization boundary check confirming a collaborator cannot remove a member even by calling the API directly, a cross-tenant row isolation check confirming a non-member can't read, update, or delete another user's task row via direct PostgREST calls, a task-reordering check confirming a drag persists across a reload, React 19's field-reset-on-error behavior across login, signup, and reset-password, the soft-deleted-account login block, both grant types, and an ownership-transfer check confirming a transfer to a soft-deleted collaborator is rejected and ownership never changes, run against a local Supabase stack.
 - CI runs the unit and integration suite (`npm test`) on every pull request to develop & main, required to merge.
-- E2E runs in CI but is **not yet a required check**. It needs to clear 10 consecutive non-blocking CI runs across at least a week with zero infrastructure-caused failures before it gates merges, a bar it hasn't cleared yet. Full reasoning in [docs/decisions.md](docs/decisions.md#ci-performance-gate-lab-proxies-form-factor-split-thresholds-and-the-file-count-guard).
+- E2E runs in CI and is a **required check**, promoted after clearing the non-blocking bar described in [docs/decisions.md](docs/decisions.md#ci-performance-gate-lab-proxies-form-factor-split-thresholds-and-the-file-count-guard), see that entry for the real numbers.
 - A Lighthouse-based performance budget also runs in CI, required, split by desktop and mobile thresholds.
 
 ## Local setup

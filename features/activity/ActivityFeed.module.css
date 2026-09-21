@@ -1,6 +1,8 @@
 .activityCard {
   display: flex;
   flex-direction: column;
+  /* 4 skeleton rows * 71.5px measured real row height, matches ACTIVITY_SKELETON_ROW_COUNT */
+  min-height: 286px;
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -31,6 +33,24 @@
   margin: 0;
   font-size: var(--font-size-sm);
   color: var(--color-text-primary);
+}
+
+.personSegment {
+  font-weight: var(--font-weight-semibold);
+}
+
+.thingSegment {
+  display: inline-block;
+  max-width: var(--activity-thing-max-width);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+  font-style: italic;
+  color: var(--color-text-muted);
+  /* Italic glyphs overshoot their advance width on the trailing edge,
+     clipping ascenders like d/l/b/h/k/t even with no truncation. */
+  padding-right: var(--space-1);
 }
 
 .activityProjectLink {

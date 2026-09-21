@@ -74,6 +74,7 @@ const task: Task = {
   description: "Build navigation menu bar",
   dueDate: null,
   status: "todo",
+  position: 1000,
   createdAt: new Date(),
 };
 const taskChange = { title: "Create web and mobile nav menus" };

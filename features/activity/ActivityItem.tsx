@@ -17,13 +17,31 @@ export type ActivityItemProps = {
  * @param now - Fixed "now" timestamp from the dashboard, passed through to the relative-time formatter
  */
 export function ActivityItem({ entry, now }: ActivityItemProps) {
-  const message = buildActivityMessage(entry);
+  const segments = buildActivityMessage(entry);
 
   return (
     <div className={styles.activityRow}>
       <Avatar name={entry.actorName} avatarUrl={entry.actorAvatarUrl} />
       <div className={styles.activityContent}>
-        <p className={styles.activityMessage}>{message}</p>
+        <p className={styles.activityMessage}>
+          {segments.map((segment, index) => {
+            if (segment.type === "person") {
+              return (
+                <span key={index} className={styles.personSegment}>
+                  {segment.text}
+                </span>
+              );
+            }
+            if (segment.type === "thing") {
+              return (
+                <span key={index} className={styles.thingSegment}>
+                  {segment.text}
+                </span>
+              );
+            }
+            return segment.text;
+          })}
+        </p>
         {entry.projectName && (
           <Link
             href={`/projects?project=${entry.projectId}`}

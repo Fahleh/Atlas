@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import styles from "./StatusBox.module.css";
 import dotStyles from "@/styles/statusDot.module.css";
 
@@ -19,7 +20,7 @@ export type StatusBoxProps<T extends string> = {
   defaultValue: T;
   /** Name attribute for the hidden `<input>` that carries the value into FormData. */
   name: string;
-  /** Display config keyed by value — label and dot color. */
+  /** Display config keyed by value: label and dot color. */
   config: StatusBoxConfig<T>;
   /** Explicit rendering order for the options. */
   order: T[];
@@ -56,46 +57,9 @@ export function StatusBox<T extends string>({
   const [status, setStatus] = useState<T>(defaultValue);
   const [isOpen, setIsOpen] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(0);
-  const wrapperRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useOutsideClick<HTMLDivElement>(isOpen, setIsOpen);
   const listboxRef = useRef<HTMLDivElement>(null);
   const currentConfig = config[status];
-
-  // Close on Escape — capture phase so this runs before any ancestor's bubble-
-  // phase handler, preventing Escape from closing the modal while dropdown is open.
-  useEffect(() => {
-    if (!isOpen) return;
-
-    function handleEscape(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        e.stopPropagation();
-        setIsOpen(false);
-      }
-    }
-
-    document.addEventListener("keydown", handleEscape, true);
-    return () => {
-      document.removeEventListener("keydown", handleEscape, true);
-    };
-  }, [isOpen]);
-
-  // Close on click outside the wrapper
-  useEffect(() => {
-    if (!isOpen) return;
-
-    function handleMouseDown(e: MouseEvent) {
-      if (
-        wrapperRef.current &&
-        !wrapperRef.current.contains(e.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleMouseDown);
-    return () => {
-      document.removeEventListener("mousedown", handleMouseDown);
-    };
-  }, [isOpen]);
 
   // Move focus to the listbox when it opens so arrow-key navigation works immediately
   useEffect(() => {

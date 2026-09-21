@@ -13,13 +13,16 @@ export const FAKE_TASK_ROW = {
   title: "Fake task",
   description: "",
   status: "todo",
+  position: 1000,
   due_date: null,
   created_at: "2026-01-01T00:00:00.000Z",
 };
 
 /**
- * Default happy-path handlers for the `tasks` table. POST/PATCH/DELETE
- * return empty bodies (no `.select()` in taskActions.ts).
+ * Default happy-path handlers for the `tasks` table. PATCH/DELETE return
+ * empty bodies (no `.select()` on those calls in taskActions.ts). POST
+ * returns the row itself, createTaskAction's create branch chains
+ * `.select("id").single()` to read the database-assigned id back.
  */
 export const tasksHandlers = [
   http.get(`${SUPABASE_URL}/rest/v1/tasks`, () => {
@@ -32,7 +35,7 @@ export const tasksHandlers = [
     });
   }),
   http.post(`${SUPABASE_URL}/rest/v1/tasks`, () => {
-    return new HttpResponse(null, { status: 201 });
+    return HttpResponse.json(FAKE_TASK_ROW, { status: 201 });
   }),
   http.patch(`${SUPABASE_URL}/rest/v1/tasks`, () => {
     return new HttpResponse(null, { status: 204 });

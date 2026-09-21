@@ -1,6 +1,6 @@
 # Atlas Roadmap
 
-> Last updated: August 2026
+> Last updated: September 2026
 
 This document tracks what's intentionally *not* built yet, split into two
 genuinely different categories. Conflating them was an earlier mistake in
@@ -21,31 +21,34 @@ own plan.
 
 ---
 
-## Deferred to v2 (out of scope for the current version)
+## Deferred until required (not tied to a version)
 
-- **Ownership transfer.** Reassigning `projects.owner_id` and the
-  corresponding `project_members` role from one user to another. Deferred
-  because it needs its own design pass: who can initiate it, what
-  confirmation flow is required, and what happens to the outgoing owner's
-  access afterward. Not a small addition to the existing member-management
-  flow.
+Items here are not scheduled for any specific version. They get built
+only if a real, measured need shows up, not by default as the app's
+version number increases.
 
-- **Drag-and-drop.** Task reordering, or a Kanban-style status-column
-  board. No design work done yet; would likely need its own state
-  management approach distinct from the current form-action-based
-  mutations.
+- **Project pagination.** `useProjects()` fetches the complete,
+  unpaginated project list. Reviewed during v2 planning and
+  deliberately not built: at the project counts this app's real usage
+  produces, a plain scrollbar handles the list fine in both views,
+  building pagination now would be complexity ahead of an actual
+  need.
 
-- **Project pagination.** `useProjects()` fetches the complete, unpaginated
-  project list for the current user. Fine at Atlas's current review scale;
-  would need real pagination (or virtualization) at genuine scale. Deferred
-  since building pagination UI now would solve a scale problem the app
-  doesn't currently have.
-
-- **Task assignment.** `tasks.assignee_id` exists in the schema but is
-  never set by any UI. No task form has an assignee field. Needed before
-  any "assigned to me" style view is meaningful, deferred because it
-  needs its own design pass (assignee picker, likely sourced from
-  `useMembersByProject`'s already-fetched project members).
+  If it's ever built, keyset pagination, not offset (`.range()`), is
+  the right mechanism. `projects.updated_at` reorders on every edit
+  (`012_add_updated_at.sql`'s `set_updated_at()` trigger), exactly
+  the condition offset pagination handles worst: editing a project
+  while on a later page shifts every row below it, producing
+  duplicated or skipped rows on the next fetch. Keyset pagination,
+  comparing `(updated_at, id) < (last_updated_at, last_id)`, defines
+  each page relative to the last row actually seen, not a row count,
+  so a reorder above the cursor can't corrupt what's below it. The
+  `id` tiebreaker matters for a real reason, not just defensively:
+  the trigger uses `now()`, confirmed directly, not
+  `clock_timestamp()`, and `now()` is transaction-stable, so a single
+  transaction touching more than one project row produces identical
+  `updated_at` values across them, a real source of ties the moment a
+  bulk update is ever added, not a theoretical one.
 
 ---
 
