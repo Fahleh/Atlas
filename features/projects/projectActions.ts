@@ -8,7 +8,7 @@ import {
 import type { QueryClient } from "@tanstack/react-query";
 import type { Project, ProjectStatus } from "@/types/atlas.types";
 import { PROJECT_STATUS_CONFIG } from "./projectUtils";
-import { updateProject, updateProjectStatus } from "@/lib";
+import { datesEqual, updateProject, updateProjectStatus } from "@/lib";
 
 // ---- Types ------------------------------------------------------------------
 
@@ -257,6 +257,17 @@ export function createProjectAction(
         dueDate,
       });
       const final = updateProjectStatus(withChanges, status);
+
+      const isUnchanged =
+        final.name === currentProject.name &&
+        final.description === currentProject.description &&
+        final.status === currentProject.status &&
+        datesEqual(final.dueDate, currentProject.dueDate);
+
+      if (isUnchanged) {
+        setIsModalOpen(false);
+        return { error: null, errorKind: null };
+      }
 
       const { error } = await supabase
         .from("projects")
