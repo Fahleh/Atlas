@@ -52,6 +52,16 @@ Do not suspend an entire page unnecessarily.
 Run `npm run build` after routing, Suspense, or rendering-mode changes and
 confirm the route's `○` or `ƒ` output matches intent.
 
+### Typed segments instead of an interpolated string
+
+When a piece of text needs to style parts of itself differently, don't
+build one interpolated string and parse it back apart in the renderer.
+Have the builder function return an ordered array of typed segments (a
+discriminated union, e.g. `{ type: "text" | "person" | "thing"; text:
+string }`) and map over it in the component, each type to its own
+element or styling. See `features/activity/activityUtils.ts`'s
+`buildActivityMessage` and `ActivityItem.tsx`.
+
 ### Cached entities in shared state
 
 Do not store whole React Query entities in Context or lifted state. Store the
@@ -800,6 +810,37 @@ T[]
 ```
 
 `dotColor` is required. Do not generalize for hypothetical non-status needs.
+
+`features/tasks/AssigneeListbox.tsx` is a second, separate custom listbox,
+not folded into `StatusBox` since a member option needs an avatar and a
+fixed Unassigned entry, neither expressible in `StatusBox`'s label/dotColor
+config shape. It shares the same interaction model: internal state owns
+the selected value, a hidden input carries it into `FormData` only when a
+`name` prop is given, `onChange` is a side notification on top of that
+state, not the source of truth for it.
+
+It renders one of two trigger shapes from a `variant` prop, not two
+components, since the option list, keyboard nav, and open/close behavior
+are identical either way:
+
+- `variant="field"`: a full-width labelled trigger, used by
+  `TaskModal.AssigneeField` for the create/edit form.
+- `variant="avatar"`: a bare avatar circle trigger, used by
+  `AssigneeControl` for `TaskList`'s inline quick-assign. Selecting an
+  option here calls a direct Supabase update, not a form submission, so no
+  `name` is passed and no hidden input renders.
+
+`AssigneeListbox` and `StatusBox` both use `hooks/useOutsideClick.ts` for
+the outside-mousedown-plus-capture-phase-Escape close behavior, one
+implementation, two consumers. `useOutsideClick` takes an optional third
+`extraRef` argument for exactly this case, a second element to also treat
+as inside that isn't a DOM descendant of the trigger ref, `StatusBox`
+doesn't pass one and is unaffected.
+
+`AssigneeListbox`'s options panel is portaled into `document.body` via
+`createPortal` and positioned with `position: fixed` from the trigger's
+`getBoundingClientRect()`, not `position: absolute` nested in place. See
+`docs/decisions.md` for why.
 
 ### Overlay and modal semantics
 

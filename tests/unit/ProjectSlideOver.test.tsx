@@ -65,6 +65,7 @@ const task: Task = {
   title: "Existing task",
   description: "",
   status: "todo",
+  position: 1000,
   dueDate: null,
   createdAt: new Date(),
 };
@@ -90,13 +91,38 @@ afterEach(() => {
 });
 
 describe("ProjectSlideOver open state", () => {
-  it("should render no dialog when project is null", () => {
+  it("should render no dialog when no project is selected", () => {
     setUp();
     renderWithClient(
-      <ProjectSlideOver project={null} onClose={jest.fn()} members={[]} />,
+      <ProjectSlideOver
+        project={null}
+        selectedProjectId={null}
+        onClose={jest.fn()}
+        members={[]}
+      />,
     );
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("should open with a not-found message when selectedProjectId doesn't resolve to a project", () => {
+    setUp();
+    renderWithClient(
+      <ProjectSlideOver
+        project={null}
+        selectedProjectId="missing-project"
+        onClose={jest.fn()}
+        members={[]}
+      />,
+    );
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText("Project not found.")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "It may have been deleted, or you may no longer have access.",
+      ),
+    ).toBeInTheDocument();
   });
 });
 
@@ -106,6 +132,7 @@ describe("ProjectSlideOver owner gating", () => {
     renderWithClient(
       <ProjectSlideOver
         project={project}
+        selectedProjectId={project.id}
         onClose={jest.fn()}
         onEditProject={jest.fn()}
         members={[ownerMember]}
@@ -121,6 +148,7 @@ describe("ProjectSlideOver owner gating", () => {
     renderWithClient(
       <ProjectSlideOver
         project={project}
+        selectedProjectId={project.id}
         onClose={jest.fn()}
         onEditProject={jest.fn()}
         members={[ownerMember]}
@@ -139,7 +167,12 @@ describe("ProjectSlideOver delete flow", () => {
     setUp({ currentUserId: OWNER_ID });
     mockDeleteProject.mockResolvedValue({ error: null, errorKind: null });
     renderWithClient(
-      <ProjectSlideOver project={project} onClose={jest.fn()} members={[ownerMember]} />,
+      <ProjectSlideOver
+        project={project}
+        selectedProjectId={project.id}
+        onClose={jest.fn()}
+        members={[ownerMember]}
+      />,
     );
 
     fireEvent.click(screen.getByLabelText("Delete project", { selector: "button" }));
@@ -156,7 +189,12 @@ describe("ProjectSlideOver add-member form", () => {
   it("should require an email before calling addMember", async () => {
     setUp({ currentUserId: OWNER_ID });
     renderWithClient(
-      <ProjectSlideOver project={project} onClose={jest.fn()} members={[ownerMember]} />,
+      <ProjectSlideOver
+        project={project}
+        selectedProjectId={project.id}
+        onClose={jest.fn()}
+        members={[ownerMember]}
+      />,
     );
 
     const input = screen.getByPlaceholderText("Add member by email");
@@ -175,7 +213,12 @@ describe("ProjectSlideOver add-member form", () => {
     setUp({ currentUserId: OWNER_ID });
     mockAddMember.mockResolvedValue({ error: null, errorKind: null });
     renderWithClient(
-      <ProjectSlideOver project={project} onClose={jest.fn()} members={[ownerMember]} />,
+      <ProjectSlideOver
+        project={project}
+        selectedProjectId={project.id}
+        onClose={jest.fn()}
+        members={[ownerMember]}
+      />,
     );
 
     fireEvent.change(screen.getByPlaceholderText("Add member by email"), {
@@ -199,6 +242,7 @@ describe("ProjectSlideOver remove-member two-step confirm", () => {
     renderWithClient(
       <ProjectSlideOver
         project={project}
+        selectedProjectId={project.id}
         onClose={jest.fn()}
         members={[ownerMember, collaboratorMember]}
       />,
@@ -213,6 +257,7 @@ describe("ProjectSlideOver remove-member two-step confirm", () => {
     renderWithClient(
       <ProjectSlideOver
         project={project}
+        selectedProjectId={project.id}
         onClose={jest.fn()}
         members={[ownerMember, collaboratorMember]}
       />,
@@ -234,6 +279,7 @@ describe("ProjectSlideOver remove-member two-step confirm", () => {
     renderWithClient(
       <ProjectSlideOver
         project={project}
+        selectedProjectId={project.id}
         onClose={jest.fn()}
         members={[ownerMember, collaboratorMember]}
       />,
@@ -265,6 +311,7 @@ describe("ProjectSlideOver deleted member display", () => {
     renderWithClient(
       <ProjectSlideOver
         project={project}
+        selectedProjectId={project.id}
         onClose={jest.fn()}
         members={[ownerMember, deletedMember]}
       />,
@@ -283,6 +330,7 @@ describe("ProjectSlideOver deleted member display", () => {
     renderWithClient(
       <ProjectSlideOver
         project={project}
+        selectedProjectId={project.id}
         onClose={jest.fn()}
         members={[ownerMember, deletedMember]}
       />,
@@ -305,7 +353,12 @@ describe("ProjectSlideOver task modal", () => {
   it("should open in create mode from Add task", () => {
     setUp({ currentUserId: OWNER_ID, tasks: [] });
     renderWithClient(
-      <ProjectSlideOver project={project} onClose={jest.fn()} members={[ownerMember]} />,
+      <ProjectSlideOver
+        project={project}
+        selectedProjectId={project.id}
+        onClose={jest.fn()}
+        members={[ownerMember]}
+      />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Add task" }));
@@ -316,7 +369,12 @@ describe("ProjectSlideOver task modal", () => {
   it("should open in edit mode, prefilled, from a task row", () => {
     setUp({ currentUserId: OWNER_ID, tasks: [task] });
     renderWithClient(
-      <ProjectSlideOver project={project} onClose={jest.fn()} members={[ownerMember]} />,
+      <ProjectSlideOver
+        project={project}
+        selectedProjectId={project.id}
+        onClose={jest.fn()}
+        members={[ownerMember]}
+      />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Open Existing task" }));
@@ -332,6 +390,7 @@ describe("ProjectSlideOver project-switch reset", () => {
     const { rerender } = renderWithClient(
       <ProjectSlideOver
         project={project}
+        selectedProjectId={project.id}
         onClose={jest.fn()}
         members={[ownerMember, collaboratorMember]}
       />,
@@ -343,6 +402,7 @@ describe("ProjectSlideOver project-switch reset", () => {
     rerender(
       <ProjectSlideOver
         project={otherProject}
+        selectedProjectId={otherProject.id}
         onClose={jest.fn()}
         members={[ownerMember, collaboratorMember]}
       />,

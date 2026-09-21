@@ -392,6 +392,7 @@ export function ProjectList() {
       {/* Slide-over panel: always in DOM, CSS-controlled visibility */}
       <ProjectSlideOver
         project={selectedProject}
+        selectedProjectId={selectedProjectId}
         onClose={closeProject}
         onEditProject={openProjectModalForEdit}
         members={

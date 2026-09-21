@@ -89,6 +89,7 @@
   /* Layout */
   --sidebar-width: 240px;
   --header-height: 56px;
+  --activity-thing-max-width: 280px; /* verified against a real long task title in browser, see docs/decisions.md */
 }
 
 [data-theme="dark"] {

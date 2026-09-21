@@ -2,6 +2,8 @@
 
 .memberAvatars {
   display: flex;
+  /* 34px Avatar default + 2px border top/bottom */
+  min-height: 38px;
 }
 
 .memberAvatar {

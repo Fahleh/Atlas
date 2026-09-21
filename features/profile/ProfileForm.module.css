@@ -5,6 +5,7 @@
   flex-direction: column;
   gap: var(--space-6);
   max-width: 480px;
+  min-height: 410.5px; /* real measured .form height, loaded state, no banners active */
   padding: var(--space-6);
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);

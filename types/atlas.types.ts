@@ -28,6 +28,7 @@ export type Task = {
   title: string;
   description: string;
   status: TaskStatus;
+  position: number;
   dueDate: Date | null;
   createdAt: Date;
 };
@@ -56,6 +57,7 @@ export type UpdateTaskInput = {
   title: string;
   description: string;
   dueDate: Date | null;
+  assigneeId?: string | null;
 };
 
 export type ActivityVerb =
@@ -66,9 +68,17 @@ export type ActivityVerb =
   | "task_updated"
   | "task_deleted"
   | "member_added"
-  | "member_removed";
+  | "member_removed"
+  | "ownership_transferred"
+  | "task_assigned"
+  | "task_unassigned";
 
 export type ActivityEntityType = "project" | "task" | "project_member";
+
+export type ActivityMessageSegment =
+  | { type: "text"; text: string }
+  | { type: "person"; text: string }
+  | { type: "thing"; text: string };
 
 export type ActivityLogEntry = {
   id: string;

@@ -1,0 +1,151 @@
+/* ---- Field container (variant="field") ---- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.fieldLabel {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.fieldTrigger {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  height: 36px;
+  padding: 0 var(--space-3);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-sans);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 150ms ease;
+}
+
+.fieldTrigger:hover {
+  border-color: var(--color-border-strong);
+}
+
+.fieldTrigger:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-color: var(--color-accent);
+}
+
+.fieldTriggerLabel {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  transition: transform 150ms ease;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+/* ---- Avatar trigger (variant="avatar") ---- */
+
+.avatarTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.avatarTrigger:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.placeholderCircle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1.5px dashed var(--color-border-strong);
+  border-radius: 50%;
+  color: var(--color-text-muted);
+}
+
+.unassignedIcon {
+  display: block;
+  width: 32px;
+  height: 32px;
+  border: 1.5px dashed var(--color-border-strong);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ---- Options listbox ---- */
+
+/* position is fixed, not absolute: this is portaled into document.body and
+   positioned from the trigger's real getBoundingClientRect, top/left/right/
+   width come from an inline style computed in AssigneeListbox.tsx, not from
+   this stylesheet. z-index 60 clears EntityModal's dialog (z-index 50, the
+   highest anywhere else in this codebase), since the field variant opens
+   from inside that modal but portals to a sibling of it in the DOM. */
+.options {
+  position: fixed;
+  min-width: 200px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  z-index: 60;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease;
+}
+
+.optionsOpen {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 100ms ease;
+}
+
+.option:hover,
+.optionFocused {
+  background-color: var(--color-surface-raised);
+}
+
+.option:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.optionSelected {
+  color: var(--color-accent);
+  font-weight: var(--font-weight-medium);
+  background-color: var(--color-accent-subtle);
+}

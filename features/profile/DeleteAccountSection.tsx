@@ -123,8 +123,9 @@ export function DeleteAccountSection() {
             You solely own {blockingProjects!.length}{" "}
             {blockingProjects!.length === 1 ? "project" : "projects"} with
             other members. Delete{" "}
-            {blockingProjects!.length === 1 ? "it" : "them"} or remove every
-            other member before deleting your account.
+            {blockingProjects!.length === 1 ? "it" : "them"} or transfer
+            ownership of the affected project(s) before deleting your
+            account.
           </p>
           <ul className={styles.blockedProjectList}>
             {blockingProjects!.map((project) => (
