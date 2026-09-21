@@ -348,7 +348,14 @@ list.
 - callable by any authenticated user, authorization is checked inside the
   function body, not delegated to a policy;
 - caller must be the project's current `owner_id`;
-- target must already hold a `collaborator` row on that same project;
+- target must already hold a `collaborator` row on that same project, and
+  that target's `profiles.deleted_at` must be null, joined into the same
+  `exists` check rather than a separate one. A soft-deleted target can
+  still hold a stale `collaborator` row (deletion never removes it), and
+  without this check the transfer would succeed into an account that can
+  never authenticate again (`reject_deleted_user_token` blocks it
+  unconditionally, see "Soft account deletion" above), orphaning the
+  project for every owner-only action with no way back;
 - a partial unique index, `project_members_project_id_idx` on
   `project_members (project_id) where role = 'owner'`, enforces at most
   one owner row per project at the schema level;
@@ -362,7 +369,8 @@ reuses its `USING` clause (`owner_id = auth.uid()`) as the check on the new
 row, which rejects setting `owner_id` to anyone but the caller. Both
 confirmed by reading the actual policy definitions, not assumed.
 
-Full migration: `020_ownership_transfer.sql`.
+Full migration: `020_ownership_transfer.sql`, target-active check added in
+`025_ownership_transfer_deleted_target.sql`.
 
 ### Assignee membership
 

@@ -580,77 +580,83 @@ export function ProjectSlideOver({
 
                       {isOwner && member.role !== "owner" && (
                         <div className={styles.memberActions}>
-                          <div className={styles.transferWrapper}>
-                            {confirmingTransferMemberId === member.id ? (
-                              <div className={styles.removeConfirmGroup}>
-                                <button
-                                  ref={cancelTransferButtonRef}
-                                  type="button"
-                                  onClick={() =>
-                                    setConfirmingTransferMemberId(null)
-                                  }
-                                  disabled={transferringMemberId === member.id}
-                                  aria-label="Cancel transfer"
-                                  className={styles.removeMemberButton}
-                                >
-                                  <X size={14} aria-hidden="true" />
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={transferringMemberId === member.id}
-                                  onClick={() =>
-                                    handleTransferOwnership(member.id)
-                                  }
-                                  aria-label={`Confirm transfer ownership to ${member.name}`}
-                                  className={styles.transferButtonConfirm}
-                                >
-                                  {transferringMemberId === member.id ? (
-                                    <Loader2
+                          {!member.deletedAt && (
+                            <div className={styles.transferWrapper}>
+                              {confirmingTransferMemberId === member.id ? (
+                                <div className={styles.removeConfirmGroup}>
+                                  <button
+                                    ref={cancelTransferButtonRef}
+                                    type="button"
+                                    onClick={() =>
+                                      setConfirmingTransferMemberId(null)
+                                    }
+                                    disabled={
+                                      transferringMemberId === member.id
+                                    }
+                                    aria-label="Cancel transfer"
+                                    className={styles.removeMemberButton}
+                                  >
+                                    <X size={14} aria-hidden="true" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={
+                                      transferringMemberId === member.id
+                                    }
+                                    onClick={() =>
+                                      handleTransferOwnership(member.id)
+                                    }
+                                    aria-label={`Confirm transfer ownership to ${member.name}`}
+                                    className={styles.transferButtonConfirm}
+                                  >
+                                    {transferringMemberId === member.id ? (
+                                      <Loader2
+                                        size={14}
+                                        className={styles.spinning}
+                                        aria-hidden="true"
+                                      />
+                                    ) : (
+                                      <Check size={14} aria-hidden="true" />
+                                    )}
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className={styles.tooltipTrigger}>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setTransferState({
+                                        error: null,
+                                        errorKind: null,
+                                      });
+                                      setConfirmingTransferMemberId(member.id);
+                                    }}
+                                    aria-label={`Transfer ownership to ${member.name}`}
+                                    className={styles.removeMemberButton}
+                                  >
+                                    <ArrowRightLeft
                                       size={14}
-                                      className={styles.spinning}
                                       aria-hidden="true"
                                     />
-                                  ) : (
-                                    <Check size={14} aria-hidden="true" />
-                                  )}
-                                </button>
-                              </div>
-                            ) : (
-                              <span className={styles.tooltipTrigger}>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setTransferState({
-                                      error: null,
-                                      errorKind: null,
-                                    });
-                                    setConfirmingTransferMemberId(member.id);
-                                  }}
-                                  aria-label={`Transfer ownership to ${member.name}`}
-                                  className={styles.removeMemberButton}
-                                >
-                                  <ArrowRightLeft
-                                    size={14}
+                                  </button>
+                                  <span
+                                    className={styles.tooltip}
                                     aria-hidden="true"
-                                  />
-                                </button>
-                                <span
-                                  className={styles.tooltip}
-                                  aria-hidden="true"
-                                >
-                                  Transfer ownership
+                                  >
+                                    Transfer ownership
+                                  </span>
                                 </span>
-                              </span>
-                            )}
-                            {transferState.error &&
-                              confirmingTransferMemberId === member.id && (
-                                <ActionErrorMessage
-                                  error={transferState.error}
-                                  errorKind={transferState.errorKind}
-                                  className={styles.removeMemberError}
-                                />
                               )}
-                          </div>
+                              {transferState.error &&
+                                confirmingTransferMemberId === member.id && (
+                                  <ActionErrorMessage
+                                    error={transferState.error}
+                                    errorKind={transferState.errorKind}
+                                    className={styles.removeMemberError}
+                                  />
+                                )}
+                            </div>
+                          )}
 
                           <div className={styles.removeMemberWrapper}>
                             {confirmingMemberId === member.id ? (
