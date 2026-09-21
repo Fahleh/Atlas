@@ -14,19 +14,10 @@ own plan.
 
 ## Current version, remaining work
 
-1. **Screen reader testing.** No automated or manual screen reader testing
-   (NVDA, VoiceOver, JAWS) has been performed against any part of the app.
-   Every ARIA pattern in `docs/a11y.md` and `docs/frontend.md` has been
-   built to the documented WAI-ARIA specification, but none of it has been
-   verified against a real assistive-technology tool.
-
-2. **Color contrast audit.** Token-level fixes for the contrast failures
-   Lighthouse actually flagged are done, see `docs/decisions.md`'s
-   "Splitting `--color-accent` into a background token and a text token,
-   and fixing the two gray text tokens alongside it" entry for the real
-   4.5:1 numbers behind that fix. A full manual audit of every color
-   combination in the app, not just the ones Lighthouse's own pages
-   happened to render, has not been performed.
+1. **Color contrast audit.** No formal WCAG contrast ratio check has been
+   run against the token palette in either light or dark mode. The palette
+   was chosen for aesthetic and brand reasons (see `docs/decisions.md`),
+   not verified against AA contrast minimums.
 
 ---
 
