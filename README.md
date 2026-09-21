@@ -72,7 +72,7 @@ A curated selection. Full reasoning for each, and everything else, lives in
 
 ## Testing strategy
 
-- 35 unit test files (`tests/unit/`): pure utilities, error interpretation, and component behavior, including the activity feed's person/thing message segments and title truncation.
+- 37 unit test files (`tests/unit/`): pure utilities, error interpretation, and component behavior, including the activity feed's person/thing message segments and title truncation.
 - 20 integration test files (`tests/integration/`): Server Actions, React Query hooks, and other business logic against mocked Supabase responses via MSW.
 - 15 Playwright E2E spec files (`tests/e2e/`): full flows including login, signup, project and task CRUD, membership, cross-user data isolation, an authorization boundary check confirming a collaborator cannot remove a member even by calling the API directly, a cross-tenant row isolation check confirming a non-member can't read, update, or delete another user's task row via direct PostgREST calls, a task-reordering check confirming a drag persists across a reload, React 19's field-reset-on-error behavior across login, signup, and reset-password, the soft-deleted-account login block, both grant types, and an ownership-transfer check confirming a transfer to a soft-deleted collaborator is rejected and ownership never changes, run against a local Supabase stack.
 - CI runs the unit and integration suite (`npm test`) on every pull request to develop & main, required to merge.

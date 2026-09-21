@@ -40,13 +40,15 @@ type PopoverPosition = {
   width?: number;
 };
 
-// ---- Constants ----------------------------------------------------------------
+// ---- Helpers ----------------------------------------------------------------
 
-const UNASSIGNED_OPTION: AssigneeOption = {
-  id: null,
-  name: "Unassigned",
-  avatarUrl: null,
-};
+function getUnassignedOption(currentAssigneeId: string | null): AssigneeOption {
+  return {
+    id: null,
+    name: currentAssigneeId ? "Unassign" : "Unassigned",
+    avatarUrl: null,
+  };
+}
 
 // Matches --space-1 (4px). Can't reference the CSS custom property from a
 // getBoundingClientRect calculation, so it's mirrored here as a constant.
@@ -103,8 +105,9 @@ export function AssigneeListbox({
     listboxRef,
   );
 
+  const unassignedOption = getUnassignedOption(assigneeId);
   const options: AssigneeOption[] = [
-    UNASSIGNED_OPTION,
+    unassignedOption,
     ...members.map((member) => ({
       id: member.id,
       name: member.name,
@@ -112,7 +115,8 @@ export function AssigneeListbox({
     })),
   ];
   const selectedIndex = options.findIndex((option) => option.id === assigneeId);
-  const selectedOption = selectedIndex >= 0 ? options[selectedIndex] : UNASSIGNED_OPTION;
+  const selectedOption =
+    selectedIndex >= 0 ? options[selectedIndex] : unassignedOption;
 
   // Move focus to the listbox when it opens so arrow-key navigation works immediately
   useEffect(() => {
@@ -149,8 +153,15 @@ export function AssigneeListbox({
         if (rect) {
           setPopoverPosition(
             variant === "field"
-              ? { top: rect.bottom + POPOVER_GAP_PX, left: rect.left, width: rect.width }
-              : { top: rect.bottom + POPOVER_GAP_PX, right: window.innerWidth - rect.right },
+              ? {
+                  top: rect.bottom + POPOVER_GAP_PX,
+                  left: rect.left,
+                  width: rect.width,
+                }
+              : {
+                  top: rect.bottom + POPOVER_GAP_PX,
+                  right: window.innerWidth - rect.right,
+                },
           );
         }
       }
@@ -192,7 +203,9 @@ export function AssigneeListbox({
     if (!option.id) {
       return <span className={styles.unassignedIcon} aria-hidden="true" />;
     }
-    return <Avatar name={option.name} avatarUrl={option.avatarUrl} size="small" />;
+    return (
+      <Avatar name={option.name} avatarUrl={option.avatarUrl} size="small" />
+    );
   }
 
   const listbox = (
@@ -201,7 +214,9 @@ export function AssigneeListbox({
       role="listbox"
       aria-label="Assignee"
       tabIndex={0}
-      aria-activedescendant={isOpen ? getOptionId(options[focusedIndex]) : undefined}
+      aria-activedescendant={
+        isOpen ? getOptionId(options[focusedIndex]) : undefined
+      }
       onKeyDown={handleKeyDown}
       style={{
         top: popoverPosition.top,
@@ -232,7 +247,10 @@ export function AssigneeListbox({
   return (
     <div className={variant === "field" ? styles.field : undefined}>
       {variant === "field" && label && (
-        <span className={styles.fieldLabel} id={name ? `${name}-label` : undefined}>
+        <span
+          className={styles.fieldLabel}
+          id={name ? `${name}-label` : undefined}
+        >
           {label}
         </span>
       )}
@@ -248,7 +266,9 @@ export function AssigneeListbox({
           className={styles.fieldTrigger}
         >
           {renderOptionAvatar(selectedOption)}
-          <span className={styles.fieldTriggerLabel}>{selectedOption.name}</span>
+          <span className={styles.fieldTriggerLabel}>
+            {selectedOption.name}
+          </span>
           <ChevronDown
             size={14}
             aria-hidden="true"
@@ -270,7 +290,11 @@ export function AssigneeListbox({
           className={styles.avatarTrigger}
         >
           {selectedOption.id ? (
-            <Avatar name={selectedOption.name} avatarUrl={selectedOption.avatarUrl} size="small" />
+            <Avatar
+              name={selectedOption.name}
+              avatarUrl={selectedOption.avatarUrl}
+              size="small"
+            />
           ) : (
             <span className={styles.placeholderCircle} aria-hidden="true">
               <Plus size={14} />
