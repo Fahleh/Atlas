@@ -560,11 +560,17 @@ export function ProjectSlideOver({
                 <ul className={styles.memberList}>
                   {members.map((member) => (
                     <li key={member.id} className={styles.memberRow}>
-                      <Avatar
-                        name={member.name}
-                        avatarUrl={member.avatarUrl}
-                        size="medium"
-                      />
+                      <span
+                        className={
+                          member.deletedAt ? sharedStyles.memberAvatarDeleted : ""
+                        }
+                      >
+                        <Avatar
+                          name={member.name}
+                          avatarUrl={member.avatarUrl}
+                          size="medium"
+                        />
+                      </span>
                       <div className={styles.memberInfo}>
                         <span className={styles.memberName}>{member.name}</span>
                         <span className={styles.memberRole}>
