@@ -120,7 +120,7 @@
 
 .navLinkActive {
   background-color: var(--color-accent-subtle);
-  color: var(--color-accent);
+  color: var(--color-text-accent);
 }
 
 .navLinkActive:hover {
@@ -159,7 +159,7 @@
 
 .logoutButton:hover {
   background-color: var(--color-surface-raised);
-  color: var(--color-danger);
+  color: var(--color-text-danger);
 }
 
 .logoutButton:focus-visible {

@@ -117,7 +117,7 @@
 }
 
 .statusOptionSelected {
-  color: var(--color-accent);
+  color: var(--color-text-accent);
   font-weight: var(--font-weight-medium);
   background-color: var(--color-accent-subtle);
 }

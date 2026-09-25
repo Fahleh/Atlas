@@ -64,7 +64,7 @@
   align-items: center;
   justify-content: center;
   background-color: var(--color-accent-subtle);
-  color: var(--color-accent);
+  color: var(--color-text-accent);
   border-radius: var(--radius-md);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);

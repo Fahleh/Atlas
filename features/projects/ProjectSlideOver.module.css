@@ -90,7 +90,7 @@
 
 /* Status colour modifiers */
 .statusActive {
-  color: var(--color-success);
+  color: var(--color-text-success);
 }
 .statusActive .statusDot {
   background-color: var(--color-success);

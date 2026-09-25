@@ -18,7 +18,7 @@
   padding: var(--space-3) var(--space-4);
   background-color: var(--color-surface-raised);
   border-left: 3px solid var(--color-danger);
-  color: var(--color-danger);
+  color: var(--color-text-danger);
   font-size: var(--font-size-sm);
 }
 
@@ -26,7 +26,7 @@
   padding: var(--space-3) var(--space-4);
   background-color: var(--color-surface-raised);
   border-left: 3px solid var(--color-success);
-  color: var(--color-success);
+  color: var(--color-text-success);
   font-size: var(--font-size-sm);
 }
 

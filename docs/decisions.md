@@ -81,6 +81,7 @@ reason to document something here.
 - [Why buildCsp lives in lib/csp.ts, not next.config.ts](#why-buildcsp-lives-in-libcspts-not-nextconfigts)
 - [Task position uses a fixed gap threshold, and its update trigger needs a WHEN clause](#task-position-uses-a-fixed-gap-threshold-and-its-update-trigger-needs-a-when-clause)
 - [Renormalizing task positions through a SECURITY DEFINER RPC, not a client-side batch write](#renormalizing-task-positions-through-a-security-definer-rpc-not-a-client-side-batch-write)
+- [--color-text-danger's dark value stops short of the largest passing margin](#color-text-dangers-dark-value-stops-short-of-the-largest-passing-margin)
 
 ---
 
@@ -2145,3 +2146,35 @@ self-correcting: Postgres gives no ordering guarantee between tied
 positions, and the next drag involving either task resolves it through
 the same reorder path above. A cosmetic ambiguity between two rows, not
 the data-integrity gap this entry's fix addresses.
+
+---
+
+## --color-text-danger's dark value stops short of the largest passing margin
+
+**Decision:** `--color-text-danger`'s dark value is `#fa9494`, 4.84:1
+against dark's `--color-surface-raised`. Same method as
+`--color-text-accent`: hue and saturation held at the base
+`--color-danger` dark value's own (H0°, S90.6%), lightness raised only
+as far as needed to clear 4.5:1 with real margin, not lowered to the
+bare-pass point and not raised to the largest margin available.
+
+**Why not the largest available margin.** A wider margin was computed and
+rejected, not overlooked. Holding the same hue and saturation and raising
+lightness further reaches Tailwind's red-300 territory, `#fca5a5`,
+5.50:1. The extra margin is real, but at that lightness the color reads
+as a soft, pastel salmon, not an alarm red. Danger red's job is to read
+as alarming, that is the functional point of the color, not an
+incidental property free to trade away for a bigger number. `#fa9494`
+was chosen specifically because it is the least amount of lightening
+that still clears 4.5:1 with margin, not a bare pass at the line either,
+`#f98b8b` at 4.52:1 was the actual bare-pass point, `#fa9494` is one step
+past it. If a future pass finds `#fa9494` still reads as too soft, or
+finds a higher-margin value that keeps the alarm read, that is a real
+reconsideration. Moving this value toward `#fca5a5` purely because it
+scores higher is not, that tradeoff was already made deliberately here.
+
+**Why light mode did not face the same tradeoff.** `--color-text-danger`'s
+light value, `#b91c1c`, gets there by darkening rather than lightening the
+base hue. A darker, more saturated red reads as more serious, not less,
+so light mode's fix had no tension between contrast and urgency the way
+dark mode's did.
