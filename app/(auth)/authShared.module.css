@@ -47,7 +47,7 @@
   background-color: var(--color-surface-raised);
   border-left: 3px solid var(--color-danger);
   border-radius: var(--radius-sm);
-  color: var(--color-danger);
+  color: var(--color-text-danger);
   font-size: var(--font-size-sm);
 }
 

@@ -32,6 +32,13 @@
   --color-success: #16a34a;
   --color-warning: #f97316;
 
+  /* Text-specific variants of the semantic colors, same reasoning as
+     --color-text-accent: the base token stays tuned for fills, dots, and
+     badges, not for passing 4.5:1 as text on --color-surface-raised.
+     See docs/decisions.md. */
+  --color-text-success: #0f7a38;
+  --color-text-danger: #b91c1c;
+
   /* Distinct from --color-text-on-accent: danger's light-mode value needs
      white, its dark-mode value needs dark, opposite of accent's needs. */
   --color-text-on-danger: #ffffff;
@@ -126,6 +133,14 @@
   --color-danger: #f87171;
   --color-success: #4ade80;
   --color-warning: #fb923c;
+
+  /* --color-text-success reuses --color-success's own dark value, already
+     clears 4.5:1 against dark's --color-surface-raised. --color-text-danger
+     needs its own value: base --color-danger fails as text here, see
+     docs/decisions.md for why this one stops short of the largest
+     available margin. */
+  --color-text-success: #4ade80;
+  --color-text-danger: #fa9494;
 
   --color-text-on-danger: #18181b;
 }
