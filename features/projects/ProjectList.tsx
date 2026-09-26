@@ -390,15 +390,17 @@ export function ProjectList() {
       )}
 
       {/* Slide-over panel: always in DOM, CSS-controlled visibility */}
-      <ProjectSlideOver
-        project={selectedProject}
-        selectedProjectId={selectedProjectId}
-        onClose={closeProject}
-        onEditProject={openProjectModalForEdit}
-        members={
-          selectedProject ? (membersByProject[selectedProject.id] ?? []) : []
-        }
-      />
+      {!isLoading && (
+        <ProjectSlideOver
+          project={selectedProject}
+          selectedProjectId={selectedProjectId}
+          onClose={closeProject}
+          onEditProject={openProjectModalForEdit}
+          members={
+            selectedProject ? (membersByProject[selectedProject.id] ?? []) : []
+          }
+        />
+      )}
 
       {/* Project create/edit modal, keyed by modalResetKey so the form resets
           on every open. disableScrollLock when the slide-over is already open. */}
