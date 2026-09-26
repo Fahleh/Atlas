@@ -5,8 +5,7 @@
 This document explains _why_ certain choices were made where the reasoning
 is not obvious from the code alone. It is not a changelog, and not a
 tutorial. Update it when a deliberate decision is made that a future reader
-(including a reviewer or interviewer) might otherwise mistake for an
-oversight or inconsistency.
+might otherwise mistake for an oversight or inconsistency.
 
 Entries whose `**Why:**` opens with an **`Incident:`** line were driven by a
 real, diagnosed, reproduced bug. The label exists so a reader can quickly

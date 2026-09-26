@@ -46,9 +46,9 @@ documentation describing behavior that no longer exists.
 ## Project Context
 
 **Atlas** is a production-grade Project Management Dashboard built as a
-senior-level portfolio project. It is not a prototype or learning exercise.
+portfolio project. It is not a prototype or learning exercise.
 Every line of code must be production-ready, explainable, maintainable,
-accessible, testable where appropriate, and defensible in a technical interview.
+accessible, testable where appropriate, and defensible in code review.
 
 ### Stack
 
@@ -135,7 +135,7 @@ An empty or unusable fetch is a failed fetch. Say so.
 
 ### Fix root causes
 
-Every implementation must reflect senior-level, industry-standard practice.
+Every implementation must reflect, industry-standard practice.
 Address the underlying cause rather than masking the visible symptom.
 
 Examples:
